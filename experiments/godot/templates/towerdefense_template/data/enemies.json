@@ -1,0 +1,29 @@
+[
+	{
+		"id":           "basic",
+		"display_name": "Basic",
+		"hp":           60,
+		"speed":        80.0,
+		"reward":       10,
+		"color":        "e74c3c",
+		"size":         18
+	},
+	{
+		"id":           "fast",
+		"display_name": "Fast",
+		"hp":           30,
+		"speed":        150.0,
+		"reward":       8,
+		"color":        "f39c12",
+		"size":         14
+	},
+	{
+		"id":           "tank",
+		"display_name": "Tank",
+		"hp":           300,
+		"speed":        40.0,
+		"reward":       25,
+		"color":        "7f8c8d",
+		"size":         26
+	}
+]

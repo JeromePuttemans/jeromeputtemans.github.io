@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Network Shader</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; background: #000; }
+    body { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; font-family: monospace; gap: 16px; cursor: none; }
+    #c { display: block; width: min(90vw, 85vh); height: min(90vw, 85vh); }
+    .controls { display: flex; gap: 24px; color: #777; font-size: 12px; align-items: center; flex-wrap: wrap; justify-content: center; cursor: default; }
+    label { display: flex; align-items: center; gap: 8px; }
+    input[type=range] { accent-color: #556; width: 100px; cursor: pointer; }
+    span { color: #aaa; min-width: 32px; }
+  </style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div class="controls">
+  <label>Branches <input type="range" id="rB" min="3" max="20" value="12"> <span id="vB">12</span></label>
+  <label>Vitesse   <input type="range" id="rS" min="0" max="30"  value="3"> <span id="vS">0.3</span></label>
+  <label>Glow      <input type="range" id="rG" min="1" max="30"  value="10"> <span id="vG">1.0</span></label>
+</div>
+
+<script>
+const canvas = document.getElementById('c');
+const gl = canvas.getContext('webgl');
+const SZ = 512;
+canvas.width = SZ; canvas.height = SZ;
+gl.viewport(0, 0, SZ, SZ);
+
+let N = 12, speed = 0.3, glowF = 1.0;
+
+// Position souris en coordonnées shader [-aspect..aspect, -1..1]
+// Centre par défaut
+let mouseX = 0.0, mouseY = 0.0;
+let targetX = 0.0, targetY = 0.0; // pour l'inertie
+
+canvas.addEventListener('mousemove', e => {
+  const rect = canvas.getBoundingClientRect();
+  const cx = (e.clientX - rect.left) / rect.width;   // 0..1
+  const cy = (e.clientY - rect.top)  / rect.height;  // 0..1
+  targetX =  (cx * 2.0 - 1.0);        // -1..1
+  targetY = cy * 2.0 - 1.0;        // -1..1 (Y inversé)
+});
+
+function ctrl(id, outId, scale, cb) {
+  document.getElementById(id).addEventListener('input', e => {
+    const v = (e.target.value / scale).toFixed(scale === 1 ? 0 : 1);
+    document.getElementById(outId).textContent = v;
+    cb(parseFloat(v));
+  });
+}
+ctrl('rB', 'vB', 1,  v => { N = v; buildProgram(); });
+ctrl('rS', 'vS', 10, v => { speed = v; });
+ctrl('rG', 'vG', 10, v => { glowF = v; });
+
+const VERT = `attribute vec2 pos; void main(){gl_Position=vec4(pos,0.,1.);}`;
+
+function makeFrag(n) { return `
+precision highp float;
+uniform float u_t, u_glow, u_n;
+uniform vec2  u_res, u_mouse;
+
+const float GS = 0.18;
+
+float sdC(vec2 p, float r){ return length(p)-r; }
+
+float ld(vec2 p, vec2 a, vec2 b){
+  vec2 ba=b-a, pa=p-a;
+  return length(pa - ba*clamp(dot(pa,ba)/dot(ba,ba),0.,1.));
+}
+
+float glow(float d, float s){ return s/(d*d+0.0006); }
+
+vec2 snap(vec2 v){ return floor(v/GS + 0.5) * GS; }
+
+// Tip i : part de u_mouse, va vers une intersection de grille
+vec2 tip(float i){
+  float a = i/u_n * 6.2832 + sin(i*2.399)*0.22;
+  float steps = 2.0 + floor(mod(i*1.7, 3.0));
+  vec2 raw = u_mouse + vec2(cos(a), sin(a)) * steps * GS;
+  vec2 s = snap(raw);
+  // Si le snap ramène au centre hub, force un décalage
+  if(length(s - snap(u_mouse)) < 0.01) s += snap(vec2(cos(a), sin(a))*GS);
+  return s;
+}
+
+void main(){
+  vec2 uv = gl_FragCoord.xy / u_res;
+  uv.y = 1.0 - uv.y;
+  // Coordonnées avec ratio correct
+  vec2 p = (uv*2.0-1.0) * vec2(u_res.x/u_res.y, 1.0);
+  // Hub = position souris (corrigée par ratio)
+  vec2 hub = u_mouse * vec2(u_res.x/u_res.y, 1.0);
+
+  vec3 col = vec3(0.0);
+  float pulse = 0.5 + 0.5*sin(u_t*0.8);
+
+  // ── Grille fixe ──
+  vec2 gp = mod(p + GS*0.5, GS) - GS*0.5;
+  col += vec3(0.26) * (1.0 - smoothstep(0.0, 0.003, sdC(gp, 0.007)));
+
+  // ── Branches ──
+  for(int i = 0; i < ${n}; i++){
+    float fi = float(i);
+    // tip() travaille en espace non-ratio, puis on applique le ratio
+    float a = fi/u_n * 6.2832 + sin(fi*2.399)*0.22;
+    float steps = 2.0 + floor(mod(fi*1.7, 3.0));
+    vec2 raw = u_mouse + vec2(cos(a), sin(a)) * steps * GS;
+    vec2 s = snap(raw);
+    if(length(s - snap(u_mouse)) < 0.01) s += snap(vec2(cos(a),sin(a))*GS);
+    // Appliquer ratio pour rendu
+    vec2 t = s * vec2(u_res.x/u_res.y, 1.0);
+
+    float li = ld(p, hub, t) - 0.0025;
+    col += vec3(0.90) * (1.0 - smoothstep(0.0, 0.003, li));
+    col += vec3(0.40, 0.52, 0.95) * glow(max(li, 0.0), 0.000045*u_glow);
+
+    float ni = sdC(p - t, 0.026 + 0.003*sin(u_t*1.5+fi));
+    col += vec3(1.0) * (1.0 - smoothstep(0.0, 0.004, ni));
+    col += vec3(0.45, 0.62, 1.0) * glow(max(ni+0.01,0.0), 0.00007*u_glow*(0.8+0.2*pulse));
+  }
+
+  // ── Hub central (suit la souris) ──
+  float c = sdC(p - hub, 0.036 + 0.003*pulse);
+  col += vec3(1.0) * (1.0 - smoothstep(0.0, 0.005, c));
+  col += vec3(0.38, 0.55, 1.0) * glow(max(c+0.005, 0.0), 0.00025*u_glow*(0.85+0.15*pulse));
+
+  gl_FragColor = vec4(clamp(col,0.,1.), 1.0);
+}`; }
+
+function mkShader(type, src){
+  const s = gl.createShader(type);
+  gl.shaderSource(s, src); gl.compileShader(s);
+  if(!gl.getShaderParameter(s, gl.COMPILE_STATUS)) console.error(gl.getShaderInfoLog(s));
+  return s;
+}
+
+let prog, uT, uG, uN, uR, uM;
+
+function buildProgram(){
+  if(prog) gl.deleteProgram(prog);
+  prog = gl.createProgram();
+  gl.attachShader(prog, mkShader(gl.VERTEX_SHADER, VERT));
+  gl.attachShader(prog, mkShader(gl.FRAGMENT_SHADER, makeFrag(N)));
+  gl.linkProgram(prog);
+  if(!gl.getProgramParameter(prog, gl.LINK_STATUS)) console.error(gl.getProgramInfoLog(prog));
+  gl.useProgram(prog);
+
+  const buf = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, 1,1]), gl.STATIC_DRAW);
+  const a = gl.getAttribLocation(prog, 'pos');
+  gl.enableVertexAttribArray(a);
+  gl.vertexAttribPointer(a, 2, gl.FLOAT, false, 0, 0);
+
+  uT = gl.getUniformLocation(prog, 'u_t');
+  uG = gl.getUniformLocation(prog, 'u_glow');
+  uN = gl.getUniformLocation(prog, 'u_n');
+  uR = gl.getUniformLocation(prog, 'u_res');
+  uM = gl.getUniformLocation(prog, 'u_mouse');
+  gl.uniform2f(uR, SZ, SZ);
+  gl.uniform1f(uN, N);
+}
+
+buildProgram();
+
+const INERTIA = 0.08;
+function frame(ms){
+  // Inertie douce
+  mouseX += (targetX - mouseX) * INERTIA;
+  mouseY += (targetY - mouseY) * INERTIA;
+
+  gl.uniform1f(uT, ms*0.001*speed);
+  gl.uniform1f(uG, glowF);
+  gl.uniform1f(uN, N);
+  gl.uniform2f(uM, mouseX, mouseY);
+  gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

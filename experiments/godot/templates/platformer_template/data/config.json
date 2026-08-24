@@ -1,0 +1,17 @@
+{
+	"default_language":        "en",
+	"gravity":                 900.0,
+	"jump_velocity":           -560.0,
+	"player_speed":            220.0,
+	"fall_gravity_multiplier": 2.2,
+	"short_hop_multiplier":    2.8,
+	"coyote_time":             0.12,
+	"jump_buffer_time":        0.12,
+	"max_lives":               3,
+	"coin_score_value":        10,
+	"enemy_kill_score":        50,
+	"enemy_speed":             80.0,
+	"bounce_velocity":         -260.0,
+	"camera_smoothing":        6.0,
+	"respawn_delay":           1.2
+}

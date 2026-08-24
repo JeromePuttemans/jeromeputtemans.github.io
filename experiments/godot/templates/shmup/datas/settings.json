@@ -1,0 +1,17 @@
+{
+  "meta": {
+	"convention_version": "2.0.0",
+	"project": "shmup",
+	"title": "Parallax"
+  },
+  "gameplay": {
+	"player_speed_base": 220.0,
+	"player_speed_min": 60.0,
+	"fire_speed_penalty": 8.0,
+	"bullet_speed": 500.0,
+	"scroll_speed": 80.0,
+	"enemy_spawn_interval": 2.0,
+	"player_hp": 1,
+	"bullet_lifetime": 1.2
+  }
+}

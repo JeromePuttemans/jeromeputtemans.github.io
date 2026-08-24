@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Tower Comparison</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #1a1a2e;
+    color: #e0e0e0;
+    font-family: 'Segoe UI', sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+    padding: 32px 16px;
+    gap: 32px;
+  }
+  h1 { font-size: 1.4rem; letter-spacing: 2px; color: #aac8ff; text-transform: uppercase; }
+
+  .charts-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 32px;
+    justify-content: center;
+    align-items: flex-start;
+  }
+
+  .card {
+    background: #16213e;
+    border-radius: 12px;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    border: 1px solid #2a2a4a;
+    min-width: 220px;
+  }
+  .card h2 {
+    font-size: 1rem;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  .stat-bars {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .bar-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.78rem;
+  }
+  .bar-label { width: 72px; color: #aaa; text-align: right; flex-shrink: 0; }
+  .bar-track {
+    flex: 1;
+    height: 10px;
+    background: #0d0d1e;
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .bar-fill {
+    height: 100%;
+    border-radius: 6px;
+    transition: width 0.6s ease;
+  }
+  .bar-val { width: 32px; text-align: left; color: #ddd; flex-shrink: 0; font-size: 0.75rem; }
+  .bar-desc {
+    font-size: 0.70rem;
+    color: #667;
+    margin: -4px 0 4px 80px;
+    line-height: 1.3;
+  }
+
+  /* Radar */
+  .radar-wrap {
+    background: #16213e;
+    border-radius: 12px;
+    padding: 24px 32px;
+    border: 1px solid #2a2a4a;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+  }
+  .radar-wrap h2 { font-size: 1rem; letter-spacing: 1px; text-transform: uppercase; color: #aac8ff; }
+  svg text { font-family: 'Segoe UI', sans-serif; }
+
+  .legend {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 0.82rem; }
+  .legend-dot { width: 12px; height: 12px; border-radius: 50%; }
+
+  .dps-note {
+    font-size: 0.75rem;
+    color: #888;
+    text-align: center;
+    max-width: 500px;
+    line-height: 1.5;
+  }
+</style>
+</head>
+<body>
+
+<h1>Tower Defense — Tower Comparison</h1>
+
+<div class="charts-row" id="cards"></div>
+<div class="radar-wrap">
+  <h2>Radar Chart — Normalized stats</h2>
+  <canvas id="radar" width="420" height="380"></canvas>
+  <div class="legend" id="legend"></div>
+  <p class="dps-note">
+    <strong>Damage</strong> — HP removed per hit ·
+    <strong>Range</strong> — targeting distance ·
+    <strong>Rate</strong> — shots/second ·
+    <strong>DPS</strong> — damage × rate ·
+    <strong>Efficiency</strong> — DPS per gold spent<br>
+    All axes normalized 0–100 within each category.
+  </p>
+</div>
+
+<script>
+const towers = [
+  { name:"Basic",  cost:50,  damage:20, range:140, fire_rate:1.2, splash:false, color:"#4a90d9" },
+  { name:"Sniper", cost:80,  damage:60, range:260, fire_rate:0.5, splash:false, color:"#9b59b6" },
+  { name:"Splash", cost:100, damage:15, range:120, fire_rate:0.8, splash:true,  color:"#e67e22" },
+];
+
+// ─── computed stats ───────────────────────────────────────────────────────
+towers.forEach(t => {
+  t.dps        = +(t.damage * t.fire_rate).toFixed(1);
+  t.efficiency = +(t.dps / t.cost * 100).toFixed(1); // DPS per gold
+});
+
+// ─── stat cards with bar charts ──────────────────────────────────────────
+const statDefs = [
+  { key:"damage",     label:"Damage",    fmt: v => v,       desc:"HP removed per hit on a single target" },
+  { key:"range",      label:"Range",     fmt: v => v+" px", desc:"Maximum distance at which the tower can target an enemy" },
+  { key:"fire_rate",  label:"Fire rate", fmt: v => v+"/s",  desc:"Number of shots fired per second" },
+  { key:"dps",        label:"DPS",       fmt: v => v,       desc:"Damage Per Second = damage × fire_rate (sustained output)" },
+  { key:"cost",       label:"Cost",      fmt: v => "$"+v,   desc:"Gold required to place this tower" },
+  { key:"efficiency", label:"Eff.",      fmt: v => v,       desc:"DPS per gold spent — higher means better value for money" },
+];
+
+// Max values per stat for normalisation
+const maxima = {};
+statDefs.forEach(s => {
+  maxima[s.key] = Math.max(...towers.map(t => t[s.key]));
+});
+
+const cardsEl = document.getElementById("cards");
+towers.forEach(t => {
+  const card = document.createElement("div");
+  card.className = "card";
+  card.innerHTML = `<h2 style="color:${t.color}">${t.name}${t.splash ? " 💥" : ""}</h2>`;
+
+  const bars = document.createElement("div");
+  bars.className = "stat-bars";
+
+  statDefs.forEach(s => {
+    const pct = Math.round(t[s.key] / maxima[s.key] * 100);
+    bars.innerHTML += `
+      <div class="bar-row">
+        <span class="bar-label">${s.label}</span>
+        <div class="bar-track">
+          <div class="bar-fill" style="width:${pct}%;background:${t.color}88;
+            box-shadow:0 0 6px ${t.color}66"></div>
+        </div>
+        <span class="bar-val">${s.fmt(t[s.key])}</span>
+      </div>
+      <div class="bar-desc">${s.desc}</div>`;
+  });
+  card.appendChild(bars);
+  cardsEl.appendChild(card);
+});
+
+// ─── legend ──────────────────────────────────────────────────────────────
+const legendEl = document.getElementById("legend");
+towers.forEach(t => {
+  legendEl.innerHTML += `
+    <div class="legend-item">
+      <div class="legend-dot" style="background:${t.color}"></div>
+      <span>${t.name}</span>
+    </div>`;
+});
+
+// ─── radar chart (canvas) ────────────────────────────────────────────────
+const axes = [
+  { key:"damage",    label:"Damage" },
+  { key:"range",     label:"Range" },
+  { key:"fire_rate", label:"Rate" },
+  { key:"dps",       label:"DPS" },
+  { key:"efficiency",label:"Efficiency" },
+];
+const N      = axes.length;
+const canvas = document.getElementById("radar");
+const ctx    = canvas.getContext("2d");
+const cx     = canvas.width  / 2;
+const cy     = canvas.height / 2 + 10;
+const R      = 140;
+
+function angleOf(i) { return (i / N) * Math.PI * 2 - Math.PI / 2; }
+
+function gridPt(i, r) {
+  const a = angleOf(i);
+  return [cx + Math.cos(a) * r, cy + Math.sin(a) * r];
+}
+
+// Rings
+for (let step = 1; step <= 4; step++) {
+  const r = R * step / 4;
+  ctx.beginPath();
+  for (let i = 0; i < N; i++) {
+    const [x, y] = gridPt(i, r);
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  }
+  ctx.closePath();
+  ctx.strokeStyle = "#2a3560";
+  ctx.lineWidth   = 1;
+  ctx.stroke();
+}
+
+// Axis lines + labels
+axes.forEach((ax, i) => {
+  const [x, y] = gridPt(i, R);
+  ctx.beginPath();
+  ctx.moveTo(cx, cy);
+  ctx.lineTo(x, y);
+  ctx.strokeStyle = "#3a4570";
+  ctx.lineWidth   = 1;
+  ctx.stroke();
+
+  const [lx, ly] = gridPt(i, R + 22);
+  ctx.fillStyle  = "#aac8ff";
+  ctx.font       = "bold 12px 'Segoe UI'";
+  ctx.textAlign  = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(ax.label, lx, ly);
+});
+
+// Tower polygons
+towers.forEach(t => {
+  ctx.beginPath();
+  axes.forEach((ax, i) => {
+    const pct = t[ax.key] / maxima[ax.key];
+    const r   = pct * R;
+    const [x, y] = gridPt(i, r);
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  });
+  ctx.closePath();
+
+  ctx.globalAlpha = 0.18;
+  ctx.fillStyle   = t.color;
+  ctx.fill();
+
+  ctx.globalAlpha = 0.9;
+  ctx.strokeStyle = t.color;
+  ctx.lineWidth   = 2.2;
+  ctx.stroke();
+
+  // Dots
+  axes.forEach((ax, i) => {
+    const pct = t[ax.key] / maxima[ax.key];
+    const [x, y] = gridPt(i, pct * R);
+    ctx.beginPath();
+    ctx.arc(x, y, 4, 0, Math.PI * 2);
+    ctx.fillStyle = t.color;
+    ctx.globalAlpha = 1;
+    ctx.fill();
+  });
+  ctx.globalAlpha = 1;
+});
+</script>
+</body>
+</html>

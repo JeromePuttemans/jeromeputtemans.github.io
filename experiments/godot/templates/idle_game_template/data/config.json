@@ -1,0 +1,9 @@
+{
+	"default_language": "en",
+	"main_resource": "gold",
+	"resources": ["gold"],
+	"auto_save_interval_seconds": 30.0,
+	"offline_cap_hours": 8.0,
+	"offline_factor": 0.5,
+	"click_base_value": 1.0
+}

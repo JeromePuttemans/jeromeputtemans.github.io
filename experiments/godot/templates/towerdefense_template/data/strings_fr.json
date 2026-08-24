@@ -1,0 +1,22 @@
+{
+	"gold_label":        "Or : {value}",
+	"lives_label":       "Vies : {value}",
+	"wave_label":        "Vague : {current}/{total}",
+	"score_label":       "Score : {value}",
+	"lang_button":       "FR",
+	"start_wave_button": "Lancer la vague",
+	"waiting_label":     "Prochaine vague dans {sec}s",
+	"tower_cost":        "{name}  {cost}$",
+	"tower_range":       "Portée : {value}",
+	"tower_damage":      "DGT : {value}",
+	"tower_rate":        "Cadence : {value}/s",
+	"sell_button":       "Vendre {value}$",
+	"no_gold":           "Or insuffisant !",
+	"game_over_title":   "PARTIE PERDUE",
+	"game_over_sub":     "Appuyez sur R pour recommencer",
+	"victory_title":     "VICTOIRE !",
+	"victory_sub":       "Appuyez sur R pour rejouer",
+	"select_tower":      "Sélectionnez une tour à placer",
+	"tile_occupied":     "Case occupée !",
+	"controls":          "Clic grille : placer   Clic tour : vendre"
+}

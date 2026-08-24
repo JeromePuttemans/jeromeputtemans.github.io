@@ -1,0 +1,13 @@
+{
+  "gameplay": {
+	"score": "SURVIVAL",
+	"score_unit": "sec",
+	"best": "BEST",
+	"press_start": "SPACE to play",
+	"speed_label": "SPEED"
+  },
+  "feedback": {
+	"game_over": "DESTROYED",
+	"new_best": "NEW BEST"
+  }
+}

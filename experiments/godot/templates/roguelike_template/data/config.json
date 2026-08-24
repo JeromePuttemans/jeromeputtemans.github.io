@@ -1,0 +1,26 @@
+{
+	"default_language": "en",
+	"dungeon_width": 50,
+	"dungeon_height": 30,
+	"tile_size": 20,
+	"max_rooms": 12,
+	"room_min_size": 4,
+	"room_max_size": 10,
+	"fov_radius": 8,
+	"total_floors": 5,
+	"player_hp_max": 30,
+	"player_attack": 5,
+	"player_defense": 2,
+	"enemies_per_room_min": 0,
+	"enemies_per_room_max": 2,
+	"colors": {
+		"wall_visible":   "3a3a5c",
+		"wall_explored":  "1e1e33",
+		"floor_visible":  "5c5c8a",
+		"floor_explored": "2a2a42",
+		"stairs":         "ffd700",
+		"player":         "ffffff",
+		"enemy_default":  "e05050",
+		"hidden":         "000000"
+	}
+}

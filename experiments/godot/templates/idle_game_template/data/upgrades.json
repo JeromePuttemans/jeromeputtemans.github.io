@@ -1,0 +1,38 @@
+[
+	{
+		"id": "cursor_x2",
+		"display_name": "Double Cursors",
+		"description": "Cursors produce x2",
+		"cost": 100.0,
+		"unlock_type": "OWNED_COUNT",
+		"unlock_producer_id": "cursor",
+		"unlock_threshold": 10,
+		"effect_type": "MULTIPLY_PRODUCER",
+		"effect_producer_id": "cursor",
+		"effect_multiplier": 2.0
+	},
+	{
+		"id": "mine_x2",
+		"display_name": "Improved Drills",
+		"description": "Mines produce x2",
+		"cost": 500.0,
+		"unlock_type": "OWNED_COUNT",
+		"unlock_producer_id": "mine",
+		"unlock_threshold": 10,
+		"effect_type": "MULTIPLY_PRODUCER",
+		"effect_producer_id": "mine",
+		"effect_multiplier": 2.0
+	},
+	{
+		"id": "golden_click",
+		"display_name": "Golden Click",
+		"description": "Manual click produces x5",
+		"cost": 1000.0,
+		"unlock_type": "RESOURCE_TOTAL",
+		"unlock_producer_id": "",
+		"unlock_threshold": 500.0,
+		"effect_type": "MULTIPLY_CLICK",
+		"effect_producer_id": "",
+		"effect_multiplier": 5.0
+	}
+]

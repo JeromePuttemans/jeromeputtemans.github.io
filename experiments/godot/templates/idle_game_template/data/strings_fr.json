@@ -1,0 +1,16 @@
+{
+	"resource_display":    "Or : {value}",
+	"rps_label":           "{value} or/s",
+	"cost_label":          "Coût : {value}",
+	"rps_per_unit":        "{value}/s par unité",
+	"rps_total":           "{value}/s",
+	"owned_count":         "x{value}",
+	"buy_button":          "Acheter\n{value}",
+	"buy_producer_button": "Acheter",
+	"click_button":        "Cliquer !",
+	"producers_title":     "Générateurs",
+	"upgrades_title":      "Améliorations",
+	"save_button":         "Sauvegarder",
+	"offline_log":         "Production hors-ligne : +{value}",
+	"lang_button":         "FR"
+}

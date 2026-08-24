@@ -1,0 +1,32 @@
+[
+	{
+		"id": "rat",
+		"display_name": "Rat",
+		"glyph": "r",
+		"color": "aa7733",
+		"hp": 5,
+		"attack": 2,
+		"defense": 0,
+		"chase_range": 6
+	},
+	{
+		"id": "orc",
+		"display_name": "Orc",
+		"glyph": "o",
+		"color": "44aa44",
+		"hp": 12,
+		"attack": 4,
+		"defense": 1,
+		"chase_range": 8
+	},
+	{
+		"id": "troll",
+		"display_name": "Troll",
+		"glyph": "T",
+		"color": "cc3333",
+		"hp": 20,
+		"attack": 7,
+		"defense": 2,
+		"chase_range": 10
+	}
+]

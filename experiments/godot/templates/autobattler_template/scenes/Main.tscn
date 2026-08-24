@@ -1,0 +1,155 @@
+[gd_scene load_steps=8 format=3 uid="uid://bhim403ilvp55"]
+
+[ext_resource type="Script" uid="uid://bd7ddcir1qlxg" path="res://scenes/Main.gd" id="1_main"]
+[ext_resource type="Script" uid="uid://m54y7sfq6ly0" path="res://scenes/ui/EconomyHUD.gd" id="2_hud"]
+[ext_resource type="Script" uid="uid://cfmy8bp6fw2ao" path="res://scenes/ui/BoardView.gd" id="3_board"]
+[ext_resource type="Script" uid="uid://u870nuwneyrw" path="res://scenes/ui/BenchPanel.gd" id="4_bench"]
+[ext_resource type="Script" uid="uid://uw1h7sbufhg2" path="res://scenes/ui/ShopPanel.gd" id="5_shop"]
+[ext_resource type="Script" uid="uid://dhos0oxypgmfb" path="res://scenes/ui/BattleLog.gd" id="6_log"]
+[ext_resource type="Script" uid="uid://5v32hj713ot1" path="res://scenes/ui/ReadyButton.gd" id="7_ready"]
+
+[node name="Main" type="Node"]
+script = ExtResource("1_main")
+
+[node name="BoardView" type="Node2D" parent="."]
+position = Vector2(8, 52)
+script = ExtResource("3_board")
+
+[node name="UI" type="CanvasLayer" parent="."]
+
+[node name="EconomyHUD" type="HBoxContainer" parent="UI"]
+offset_right = 1100.0
+offset_bottom = 40.0
+theme_override_constants/separation = 24
+script = ExtResource("2_hud")
+
+[node name="RoundLabel" type="Label" parent="UI/EconomyHUD"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.9, 0.9, 0.5, 1)
+theme_override_font_sizes/font_size = 14
+
+[node name="GoldLabel" type="Label" parent="UI/EconomyHUD"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.85, 0.2, 1)
+theme_override_font_sizes/font_size = 14
+
+[node name="HPLabel" type="Label" parent="UI/EconomyHUD"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.9, 0.4, 0.4, 1)
+theme_override_font_sizes/font_size = 14
+
+[node name="LangButton" type="Button" parent="UI/EconomyHUD"]
+custom_minimum_size = Vector2(44, 0)
+layout_mode = 2
+
+[node name="Sidebar" type="VBoxContainer" parent="UI"]
+offset_left = 620.0
+offset_top = 44.0
+offset_right = 1100.0
+offset_bottom = 740.0
+theme_override_constants/separation = 10
+
+[node name="ReadyButton" type="Button" parent="UI/Sidebar"]
+custom_minimum_size = Vector2(0, 36)
+layout_mode = 2
+script = ExtResource("7_ready")
+
+[node name="FeedbackLabel" type="Label" parent="UI/Sidebar"]
+visible = false
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.4, 0.4, 1)
+theme_override_font_sizes/font_size = 12
+
+[node name="BenchPanel" type="VBoxContainer" parent="UI/Sidebar"]
+layout_mode = 2
+size_flags_vertical = 3
+script = ExtResource("4_bench")
+
+[node name="TitleLabel" type="Label" parent="UI/Sidebar/BenchPanel"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7, 0.85, 1, 1)
+theme_override_font_sizes/font_size = 13
+
+[node name="ScrollContainer" type="ScrollContainer" parent="UI/Sidebar/BenchPanel"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="VBox" type="VBoxContainer" parent="UI/Sidebar/BenchPanel/ScrollContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+
+[node name="BattleLog" type="VBoxContainer" parent="UI/Sidebar"]
+layout_mode = 2
+script = ExtResource("6_log")
+
+[node name="TitleLabel" type="Label" parent="UI/Sidebar/BattleLog"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 13
+
+[node name="ScrollContainer" type="ScrollContainer" parent="UI/Sidebar/BattleLog"]
+custom_minimum_size = Vector2(0, 140)
+layout_mode = 2
+
+[node name="VBox" type="VBoxContainer" parent="UI/Sidebar/BattleLog/ScrollContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 2
+
+[node name="ShopPanel" type="VBoxContainer" parent="UI"]
+offset_left = 8.0
+offset_top = 560.0
+offset_right = 615.0
+offset_bottom = 740.0
+script = ExtResource("5_shop")
+
+[node name="TitleLabel" type="Label" parent="UI/ShopPanel"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.85, 0.3, 1)
+theme_override_font_sizes/font_size = 13
+
+[node name="ItemsHBox" type="HBoxContainer" parent="UI/ShopPanel"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 6
+
+[node name="RefreshButton" type="Button" parent="UI/ShopPanel"]
+layout_mode = 2
+
+[node name="FeedbackLabel" type="Label" parent="UI/ShopPanel"]
+visible = false
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.4, 0.4, 1)
+theme_override_font_sizes/font_size = 12
+
+[node name="Overlay" type="ColorRect" parent="UI"]
+visible = false
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0, 0, 0, 0.82)
+
+[node name="VBox" type="VBoxContainer" parent="UI/Overlay"]
+layout_mode = 0
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -260.0
+offset_top = -60.0
+offset_right = 260.0
+offset_bottom = 60.0
+alignment = 1
+
+[node name="TitleLabel" type="Label" parent="UI/Overlay/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.85, 0.3, 1)
+theme_override_font_sizes/font_size = 40
+horizontal_alignment = 1
+
+[node name="SubLabel" type="Label" parent="UI/Overlay/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.85, 0.85, 0.85, 1)
+theme_override_font_sizes/font_size = 16
+horizontal_alignment = 1

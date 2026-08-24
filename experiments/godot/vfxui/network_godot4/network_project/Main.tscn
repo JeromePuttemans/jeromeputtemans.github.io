@@ -1,0 +1,95 @@
+[gd_scene load_steps=4 format=3 uid="uid://02bm074n3tj3"]
+
+[ext_resource type="Script" uid="uid://b3vblfj2rdch6" path="res://Main.gd" id="1_main"]
+[ext_resource type="Shader" uid="uid://bjtq4vs6xn4ke" path="res://network.gdshader" id="2_shader"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_1"]
+shader = ExtResource("2_shader")
+shader_parameter/u_t = 0.0
+shader_parameter/u_glow = 1.0
+shader_parameter/u_n = 12.0
+shader_parameter/u_res = Vector2(512, 512)
+shader_parameter/u_mouse = Vector2(0, 0)
+
+[node name="Main" type="Node2D"]
+script = ExtResource("1_main")
+
+[node name="ColorRect" type="ColorRect" parent="."]
+material = SubResource("ShaderMaterial_1")
+offset_right = 512.0
+offset_bottom = 512.0
+
+[node name="UI" type="CanvasLayer" parent="."]
+
+[node name="Panel" type="PanelContainer" parent="UI"]
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -80.0
+
+[node name="VBox" type="VBoxContainer" parent="UI/Panel"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="RowBranches" type="HBoxContainer" parent="UI/Panel/VBox"]
+layout_mode = 2
+
+[node name="LabelBranches" type="Label" parent="UI/Panel/VBox/RowBranches"]
+custom_minimum_size = Vector2(70, 0)
+layout_mode = 2
+text = "Branches"
+
+[node name="SliderBranches" type="HSlider" parent="UI/Panel/VBox/RowBranches"]
+custom_minimum_size = Vector2(200, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 3.0
+max_value = 20.0
+value = 12.0
+
+[node name="ValBranches" type="Label" parent="UI/Panel/VBox/RowBranches"]
+custom_minimum_size = Vector2(35, 0)
+layout_mode = 2
+text = "12"
+
+[node name="RowSpeed" type="HBoxContainer" parent="UI/Panel/VBox"]
+layout_mode = 2
+
+[node name="LabelSpeed" type="Label" parent="UI/Panel/VBox/RowSpeed"]
+custom_minimum_size = Vector2(70, 0)
+layout_mode = 2
+text = "Vitesse"
+
+[node name="SliderSpeed" type="HSlider" parent="UI/Panel/VBox/RowSpeed"]
+custom_minimum_size = Vector2(200, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 30.0
+value = 3.0
+
+[node name="ValSpeed" type="Label" parent="UI/Panel/VBox/RowSpeed"]
+custom_minimum_size = Vector2(35, 0)
+layout_mode = 2
+text = "0.3"
+
+[node name="RowGlow" type="HBoxContainer" parent="UI/Panel/VBox"]
+layout_mode = 2
+
+[node name="LabelGlow" type="Label" parent="UI/Panel/VBox/RowGlow"]
+custom_minimum_size = Vector2(70, 0)
+layout_mode = 2
+text = "Glow"
+
+[node name="SliderGlow" type="HSlider" parent="UI/Panel/VBox/RowGlow"]
+custom_minimum_size = Vector2(200, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 1.0
+max_value = 30.0
+value = 10.0
+
+[node name="ValGlow" type="Label" parent="UI/Panel/VBox/RowGlow"]
+custom_minimum_size = Vector2(35, 0)
+layout_mode = 2
+text = "1.0"

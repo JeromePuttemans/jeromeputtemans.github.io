@@ -1,0 +1,12 @@
+{
+  "gameplay": {
+    "wave": "Wave",
+    "best": "Best",
+    "press_start": "Press Space"
+  },
+  "feedback": {
+    "player_death": "Destroyed. Try again?",
+    "wave_clear": "Wave cleared.",
+    "run_complete": "Sector secured."
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "gameplay": {
+	"score": "SURVIE",
+	"score_unit": "sec",
+	"best": "MEILLEUR",
+	"press_start": "ESPACE pour jouer",
+	"speed_label": "VITESSE"
+  },
+  "feedback": {
+	"game_over": "DÉTRUIT",
+	"new_best": "NOUVEAU RECORD"
+  }
+}

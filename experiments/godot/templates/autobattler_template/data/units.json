@@ -1,0 +1,52 @@
+[
+	{
+		"id":           "warrior",
+		"display_name": "Warrior",
+		"glyph":        "W",
+		"color":        "4a90d9",
+		"hp":           12,
+		"attack":       4,
+		"defense":      2,
+		"speed":        3
+	},
+	{
+		"id":           "archer",
+		"display_name": "Archer",
+		"glyph":        "A",
+		"color":        "7ed321",
+		"hp":           7,
+		"attack":       6,
+		"defense":      0,
+		"speed":        5
+	},
+	{
+		"id":           "mage",
+		"display_name": "Mage",
+		"glyph":        "M",
+		"color":        "bd10e0",
+		"hp":           6,
+		"attack":       8,
+		"defense":      0,
+		"speed":        4
+	},
+	{
+		"id":           "tank",
+		"display_name": "Tank",
+		"glyph":        "T",
+		"color":        "f5a623",
+		"hp":           20,
+		"attack":       2,
+		"defense":      4,
+		"speed":        2
+	},
+	{
+		"id":           "rogue",
+		"display_name": "Rogue",
+		"glyph":        "R",
+		"color":        "e84040",
+		"hp":           8,
+		"attack":       7,
+		"defense":      1,
+		"speed":        6
+	}
+]

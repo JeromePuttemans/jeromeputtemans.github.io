@@ -1,0 +1,50 @@
+[
+	{
+		"id":           "basic",
+		"hp":           2,
+		"speed":        110.0,
+		"move":         "straight",
+		"shoot":        "single",
+		"fire_rate":    0.9,
+		"score_key":    "score_per_basic",
+		"color":        "e74c3c",
+		"size":         16,
+		"bullet_color": "ff6b6b"
+	},
+	{
+		"id":           "fast",
+		"hp":           1,
+		"speed":        200.0,
+		"move":         "sine",
+		"shoot":        "none",
+		"fire_rate":    0.0,
+		"score_key":    "score_per_fast",
+		"color":        "f39c12",
+		"size":         12,
+		"bullet_color": "ffd166"
+	},
+	{
+		"id":           "heavy",
+		"hp":           6,
+		"speed":        55.0,
+		"move":         "straight",
+		"shoot":        "spread3",
+		"fire_rate":    1.4,
+		"score_key":    "score_per_heavy",
+		"color":        "8e44ad",
+		"size":         22,
+		"bullet_color": "c39bd3"
+	},
+	{
+		"id":           "boss",
+		"hp":           60,
+		"speed":        40.0,
+		"move":         "boss",
+		"shoot":        "ring8",
+		"fire_rate":    0.7,
+		"score_key":    "score_per_boss",
+		"color":        "c0392b",
+		"size":         44,
+		"bullet_color": "ff4757"
+	}
+]

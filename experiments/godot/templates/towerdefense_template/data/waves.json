@@ -1,0 +1,12 @@
+[
+	{ "wave": 1,  "spawns": [{"type":"basic","count":6}] },
+	{ "wave": 2,  "spawns": [{"type":"basic","count":8}, {"type":"fast","count":3}] },
+	{ "wave": 3,  "spawns": [{"type":"fast","count":8}, {"type":"basic","count":5}] },
+	{ "wave": 4,  "spawns": [{"type":"basic","count":10}, {"type":"tank","count":1}] },
+	{ "wave": 5,  "spawns": [{"type":"fast","count":12}, {"type":"tank","count":2}] },
+	{ "wave": 6,  "spawns": [{"type":"basic","count":12}, {"type":"fast","count":8}, {"type":"tank","count":2}] },
+	{ "wave": 7,  "spawns": [{"type":"tank","count":4}, {"type":"fast","count":10}] },
+	{ "wave": 8,  "spawns": [{"type":"basic","count":20}, {"type":"tank","count":3}] },
+	{ "wave": 9,  "spawns": [{"type":"fast","count":20}, {"type":"tank","count":5}] },
+	{ "wave": 10, "spawns": [{"type":"basic","count":15}, {"type":"fast","count":15}, {"type":"tank","count":8}] }
+]

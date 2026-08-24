@@ -1,0 +1,12 @@
+{
+	"default_language":        "en",
+	"tile_size":                64,
+	"starting_gold":           150,
+	"starting_lives":          20,
+	"wave_start_delay":        3.0,
+	"wave_between_delay":      5.0,
+	"spawn_interval":          0.8,
+	"sell_refund_ratio":       0.6,
+	"projectile_speed":        320.0,
+	"enemy_reach_damage":      1
+}

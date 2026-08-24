@@ -1,0 +1,56 @@
+{
+  "game": {
+    "title": "GDFighter",
+    "version": "0.1.0",
+    "target_fps": 60
+  },
+  "screen": {
+    "base_width": 1280,
+    "base_height": 720,
+    "stretch_mode": "canvas_items",
+    "stretch_aspect": "keep"
+  },
+  "match": {
+    "round_time_seconds": 99,
+    "rounds_to_win": 2,
+    "countdown_seconds": 3
+  },
+  "fighter": {
+    "max_health": 100,
+    "walk_speed": 220.0,
+    "jump_velocity": -600.0,
+    "gravity": 1400.0,
+    "dash_speed": 500.0,
+    "dash_duration": 0.18,
+    "dash_cooldown": 0.35,
+    "attack_startup_frames": 4,
+    "attack_active_frames": 6,
+    "attack_recovery_frames": 10,
+    "hitstun_duration": 0.25,
+    "blockstun_duration": 0.15
+  },
+  "moves": {
+    "light_punch":  { "damage": 8,  "hitstop": 0.06, "pushback": 60.0,  "knockback": 100.0 },
+    "heavy_punch":  { "damage": 18, "hitstop": 0.10, "pushback": 120.0, "knockback": 220.0 },
+    "light_kick":   { "damage": 10, "hitstop": 0.07, "pushback": 70.0,  "knockback": 130.0 },
+    "heavy_kick":   { "damage": 20, "hitstop": 0.12, "pushback": 140.0, "knockback": 260.0 },
+    "special_hadouken": { "damage": 15, "hitstop": 0.08, "pushback": 100.0, "knockback": 180.0, "projectile_speed": 400.0 }
+  },
+  "camera": {
+    "shake_duration": 0.25,
+    "shake_strength": 8.0
+  },
+  "ui": {
+    "health_bar_lerp_speed": 4.0,
+    "combo_display_duration": 1.5
+  },
+  "audio": {
+    "master_volume": 1.0,
+    "sfx_volume": 0.8,
+    "music_volume": 0.6
+  },
+  "debug": {
+    "show_hitboxes": false,
+    "show_fps": false
+  }
+}

@@ -1,0 +1,16 @@
+{
+	"resource_display":    "Gold: {value}",
+	"rps_label":           "{value} gold/s",
+	"cost_label":          "Cost: {value}",
+	"rps_per_unit":        "{value}/s per unit",
+	"rps_total":           "{value}/s",
+	"owned_count":         "x{value}",
+	"buy_button":          "Buy\n{value}",
+	"buy_producer_button": "Buy",
+	"click_button":        "Click!",
+	"producers_title":     "Generators",
+	"upgrades_title":      "Upgrades",
+	"save_button":         "Save",
+	"offline_log":         "Offline production: +{value}",
+	"lang_button":         "EN"
+}

@@ -1,0 +1,117 @@
+/* 3d-jox */
+/*
+To include css in the document:
+
+	<style type="text/css">
+	.border{
+		border: 2px solid #000000;
+	}
+	.cursorpointer{
+		cursor: pointer;
+	}
+	.backcolor{
+		background-color: yellow;
+	}
+	</style>
+*/
+body{
+font-family:Verdana, Geneva, sans-serif;
+font-size:12px ;
+}
+
+.border{
+	border: 2px solid #000000;
+}
+.borderdot{
+	border: 2px dotted #000000;
+}
+.cursorpointer{
+	cursor: pointer;
+}
+.body{
+	background-color: white;
+	color: black;
+	
+}
+.centerdiv{
+	position:relative;
+	margin:0 auto;
+	left:0px;
+	top:20px;
+	width:539px;
+	z-index:1;
+	
+}
+div.folioflv{
+	border: 2px solid #000000;
+	position:absolute; 
+	left:0px; 
+	top:187px; 
+	width:116px; 
+	height:116px; 
+	z-index:2;
+}
+
+.contentOut{
+	position:absolute;
+	top:-150px;
+}
+
+.text{
+	text-align: right;
+	font-family: Verdana, Arial, Helvetica, sans-serif;
+	font-size:10px ;
+}
+
+.textLeft{
+	text-align: left;
+	font-family: Verdana, Arial, Helvetica, sans-serif;
+	font-size:12px ;
+}
+
+A:link { 
+	color: black;
+} 
+A:visited { 
+	color: black;
+} 
+A:active { 
+	color: black;
+} 
+A:hover { 
+	color: black;
+} 
+img{
+	border: 0px solid #000000;
+}
+ul,li{
+	list-style: square;	
+}
+#likeFB{
+	position:fixed;
+/*	float:left;*/
+left:0;
+top:20px;
+}
+
+.menu{
+	position : absolute;
+	width:100px;
+	left:-120px;
+	top:0px;
+	text-align:left;
+	border-left : 1px solid black;
+	padding-left:5px;
+}
+.menu a{
+	text-decoration:none;
+	border-bottom:1px dotted #aaa;
+}
+.menu a.selected{
+	font-weight:bold;
+}
+.menu a:hover{
+	text-decoration:none;
+	border-bottom:1px solid black;
+}
+

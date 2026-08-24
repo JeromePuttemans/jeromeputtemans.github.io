@@ -1,0 +1,27 @@
+; Engine configuration file.
+; It's best edited using the editor UI and not directly,
+; since the parameters that go here are not all obvious.
+;
+; Format:
+;   [section] ; section goes between []
+;   param=value ; assign values to parameters
+
+config_version=5
+
+[application]
+
+config/features=PackedStringArray("4.4")
+
+[autoload]
+
+GameManager="res://scripts/GameManager.gd"
+
+[config]
+
+application/config/icon="res://icon.png"
+application/config/name="Roguelite Puzzle 3D"
+application/run/main_scene="res://scenes/Main.tscn"
+
+[editor]
+
+project/settings_visible_categories=["Rendering", "Physics", "Audio", "Input", "Network", "Navigation"]

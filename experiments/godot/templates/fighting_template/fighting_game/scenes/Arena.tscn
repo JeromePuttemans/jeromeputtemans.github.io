@@ -1,0 +1,206 @@
+[gd_scene load_steps=8 format=3 uid="uid://ck08sut53uejr"]
+
+[ext_resource type="Script" uid="uid://hmvuyt801i5v" path="res://scripts/Arena.gd" id="1_arena"]
+[ext_resource type="Script" uid="uid://svt778dbrjmi" path="res://scripts/Fighter.gd" id="2_fighter"]
+[ext_resource type="Script" uid="uid://dpw5u42tihca0" path="res://scripts/RoundManager.gd" id="3_rm"]
+[ext_resource type="Script" uid="uid://cqxbkx5trx5jl" path="res://scripts/HUD.gd" id="4_hud"]
+[ext_resource type="Script" uid="uid://cs6fykpnbh6tg" path="res://scripts/ControlsOverlay.gd" id="5_overlay"]
+[ext_resource type="Script" uid="uid://bcx7jdjb7esk6" path="res://scripts/OverlayDraw.gd" id="6_overlaydraw"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_floor"]
+size = Vector2(2400, 40)
+
+[node name="Arena" type="Node2D"]
+script = ExtResource("1_arena")
+
+[node name="Background" type="ColorRect" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.12, 0.1, 0.18, 1)
+
+[node name="StageFloor" type="StaticBody2D" parent="."]
+position = Vector2(640, 560)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="StageFloor"]
+shape = SubResource("RectangleShape2D_floor")
+
+[node name="FloorVisual" type="ColorRect" parent="StageFloor"]
+offset_left = -1200.0
+offset_top = -20.0
+offset_right = 1200.0
+offset_bottom = 60.0
+color = Color(0.25, 0.22, 0.35, 1)
+
+[node name="Camera2D" type="Camera2D" parent="."]
+position = Vector2(640, 360)
+zoom = Vector2(1, 1)
+limit_left = 0
+limit_right = 1280
+limit_top = 0
+limit_bottom = 720
+
+[node name="RoundManager" type="Node" parent="."]
+script = ExtResource("3_rm")
+
+[node name="CountdownTimer" type="Timer" parent="RoundManager"]
+one_shot = false
+
+[node name="RoundTimer" type="Timer" parent="RoundManager"]
+one_shot = false
+
+[node name="FighterP1" type="CharacterBody2D" parent="."]
+position = Vector2(320, 540)
+script = ExtResource("2_fighter")
+player_index = 0
+
+[node name="FighterP2" type="CharacterBody2D" parent="."]
+position = Vector2(960, 540)
+script = ExtResource("2_fighter")
+player_index = 1
+
+[node name="HUD" type="CanvasLayer" parent="."]
+script = ExtResource("4_hud")
+
+[node name="MarginContainer" type="MarginContainer" parent="HUD"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_top = 12
+
+[node name="HBoxContainer" type="HBoxContainer" parent="HUD/MarginContainer"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="HealthBarP1" type="ProgressBar" parent="HUD/MarginContainer/HBoxContainer"]
+layout_mode = 3
+anchors_preset = 15
+size_flags_horizontal = 3
+custom_minimum_size = Vector2(0, 28)
+min_value = 0.0
+max_value = 100.0
+value = 100.0
+show_percentage = false
+
+[node name="HealthBarP2" type="ProgressBar" parent="HUD/MarginContainer/HBoxContainer"]
+layout_mode = 3
+anchors_preset = 15
+size_flags_horizontal = 3
+custom_minimum_size = Vector2(0, 28)
+min_value = 0.0
+max_value = 100.0
+value = 100.0
+fill_mode = 3
+show_percentage = false
+
+[node name="TimerLabel" type="Label" parent="HUD"]
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+grow_horizontal = 2
+offset_left = -30.0
+offset_right = 30.0
+offset_top = 8.0
+offset_bottom = 42.0
+text = "99"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 28
+
+[node name="RoundLabel" type="Label" parent="HUD"]
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+grow_horizontal = 2
+offset_left = -60.0
+offset_right = 60.0
+offset_top = 44.0
+offset_bottom = 68.0
+text = "Round 1"
+horizontal_alignment = 1
+
+[node name="AnnouncementLabel" type="Label" parent="HUD"]
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+grow_horizontal = 2
+grow_vertical = 2
+offset_left = -160.0
+offset_top = -50.0
+offset_right = 160.0
+offset_bottom = 50.0
+text = ""
+horizontal_alignment = 1
+vertical_alignment = 1
+visible = false
+theme_override_font_sizes/font_size = 48
+
+[node name="ComboLabelP1" type="Label" parent="HUD"]
+offset_left = 20.0
+offset_top = 280.0
+offset_right = 200.0
+offset_bottom = 320.0
+text = "2x COMBO"
+visible = false
+theme_override_font_sizes/font_size = 22
+
+[node name="ComboLabelP2" type="Label" parent="HUD"]
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+grow_horizontal = 0
+offset_left = -220.0
+offset_top = 280.0
+offset_right = -20.0
+offset_bottom = 320.0
+text = "2x COMBO"
+horizontal_alignment = 2
+visible = false
+theme_override_font_sizes/font_size = 22
+
+[node name="WinIconsP1" type="HBoxContainer" parent="HUD"]
+offset_left = 20.0
+offset_top = 52.0
+offset_right = 160.0
+offset_bottom = 80.0
+theme_override_constants/separation = 6
+
+[node name="WinIconsP2" type="HBoxContainer" parent="HUD"]
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+grow_horizontal = 0
+offset_left = -160.0
+offset_top = 52.0
+offset_right = -20.0
+offset_bottom = 80.0
+theme_override_constants/separation = 6
+
+[node name="ControlsOverlay" type="CanvasLayer" parent="."]
+script = ExtResource("5_overlay")
+layer = 10
+
+[node name="OverlayDraw" type="Node2D" parent="ControlsOverlay"]
+script = ExtResource("6_overlaydraw")
+
+[node name="TabHintLabel" type="Label" parent="HUD"]
+anchors_preset = 6
+anchor_left = 0.0
+anchor_top = 1.0
+anchor_right = 0.0
+anchor_bottom = 1.0
+grow_vertical = 0
+offset_left = 12.0
+offset_top = -28.0
+offset_right = 260.0
+offset_bottom = -8.0
+text = "[TAB] Controles / Controls"
+theme_override_font_sizes/font_size = 13
+modulate = Color(0.7, 0.7, 0.7, 0.8)

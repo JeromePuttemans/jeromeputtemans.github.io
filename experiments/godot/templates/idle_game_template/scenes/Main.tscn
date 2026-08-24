@@ -1,0 +1,109 @@
+[gd_scene load_steps=6 format=3 uid="uid://mainscene"]
+
+[ext_resource type="Script" uid="uid://cu5dxvxjobvyn" path="res://scenes/Main.gd" id="1_main"]
+[ext_resource type="Script" uid="uid://dd6gbc74os3tb" path="res://scenes/ui/ResourceDisplay.gd" id="2_rdisp"]
+[ext_resource type="Script" uid="uid://c6fb3hw2pm08l" path="res://scenes/ui/ClickButton.gd" id="3_cbtn"]
+[ext_resource type="Script" uid="uid://cqvmix6lbu0ax" path="res://scenes/ui/ProducerList.gd" id="4_plist"]
+[ext_resource type="Script" uid="uid://cmvbapjvc6jlj" path="res://scenes/ui/UpgradePanel.gd" id="5_upanel"]
+
+[node name="Main" type="Node"]
+script = ExtResource("1_main")
+
+[node name="UI" type="CanvasLayer" parent="."]
+
+[node name="Root" type="MarginContainer" parent="UI"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 12
+
+[node name="MainVBox" type="VBoxContainer" parent="UI/Root"]
+layout_mode = 2
+
+[node name="HUD" type="HBoxContainer" parent="UI/Root/MainVBox"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="RPSLabel" type="Label" parent="UI/Root/MainVBox/HUD"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.6, 1, 0.6, 1)
+theme_override_font_sizes/font_size = 13
+
+[node name="SaveButton" type="Button" parent="UI/Root/MainVBox/HUD"]
+layout_mode = 2
+
+[node name="LangButton" type="Button" parent="UI/Root/MainVBox/HUD"]
+custom_minimum_size = Vector2(44, 0)
+layout_mode = 2
+
+[node name="Columns" type="HBoxContainer" parent="UI/Root/MainVBox"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 16
+
+[node name="LeftColumn" type="VBoxContainer" parent="UI/Root/MainVBox/Columns"]
+custom_minimum_size = Vector2(200, 0)
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="ResourceDisplay" type="VBoxContainer" parent="UI/Root/MainVBox/Columns/LeftColumn"]
+layout_mode = 2
+script = ExtResource("2_rdisp")
+
+[node name="GoldLabel" type="Label" parent="UI/Root/MainVBox/Columns/LeftColumn/ResourceDisplay"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.85, 0.1, 1)
+theme_override_font_sizes/font_size = 28
+
+[node name="ClickButton" type="Button" parent="UI/Root/MainVBox/Columns/LeftColumn"]
+custom_minimum_size = Vector2(160, 160)
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+script = ExtResource("3_cbtn")
+
+[node name="RightColumn" type="VBoxContainer" parent="UI/Root/MainVBox/Columns"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 12
+
+[node name="ProducersTitle" type="Label" parent="UI/Root/MainVBox/Columns/RightColumn"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+
+[node name="ProducerList" type="ScrollContainer" parent="UI/Root/MainVBox/Columns/RightColumn"]
+custom_minimum_size = Vector2(280, 300)
+layout_mode = 2
+size_flags_vertical = 3
+script = ExtResource("4_plist")
+
+[node name="VBoxContainer" type="VBoxContainer" parent="UI/Root/MainVBox/Columns/RightColumn/ProducerList"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+
+[node name="UpgradePanel" type="PanelContainer" parent="UI/Root/MainVBox/Columns/RightColumn"]
+custom_minimum_size = Vector2(280, 160)
+layout_mode = 2
+script = ExtResource("5_upanel")
+
+[node name="VBox" type="VBoxContainer" parent="UI/Root/MainVBox/Columns/RightColumn/UpgradePanel"]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="UI/Root/MainVBox/Columns/RightColumn/UpgradePanel/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.9, 0.7, 0.2, 1)
+theme_override_font_sizes/font_size = 14
+horizontal_alignment = 1
+
+[node name="ScrollContainer" type="ScrollContainer" parent="UI/Root/MainVBox/Columns/RightColumn/UpgradePanel/VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="VBoxContainer" type="VBoxContainer" parent="UI/Root/MainVBox/Columns/RightColumn/UpgradePanel/VBox/ScrollContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4

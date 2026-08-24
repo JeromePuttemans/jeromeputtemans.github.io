@@ -1,0 +1,35 @@
+[
+	{
+		"id":          "basic",
+		"display_name": "Basic",
+		"cost":         50,
+		"damage":       20,
+		"range":        140,
+		"fire_rate":    1.2,
+		"splash":       false,
+		"splash_radius": 0,
+		"color":        "4a90d9"
+	},
+	{
+		"id":          "sniper",
+		"display_name": "Sniper",
+		"cost":         80,
+		"damage":       60,
+		"range":        260,
+		"fire_rate":    0.5,
+		"splash":       false,
+		"splash_radius": 0,
+		"color":        "9b59b6"
+	},
+	{
+		"id":          "splash",
+		"display_name": "Splash",
+		"cost":         100,
+		"damage":       15,
+		"range":        120,
+		"fire_rate":    0.8,
+		"splash":       true,
+		"splash_radius": 64,
+		"color":        "e67e22"
+	}
+]

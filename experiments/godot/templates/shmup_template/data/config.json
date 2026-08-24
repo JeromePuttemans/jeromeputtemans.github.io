@@ -1,0 +1,47 @@
+{
+	"default_language":            "en",
+
+	"viewport_play_width":         480,
+	"viewport_play_height":        854,
+
+	"player_speed":                260.0,
+	"player_lerp":                 14.0,
+	"player_fire_rate":            8.0,
+	"player_bullet_speed":         520.0,
+	"player_hp":                   3,
+	"iframe_duration":             1.8,
+	"iframe_blink_rate":           12.0,
+
+	"enemy_bullet_speed":          200.0,
+	"spawn_interval":              0.9,
+
+	"player_bullet_pool":          64,
+	"enemy_bullet_pool":           128,
+
+	"shake_decay":                 3.2,
+	"shake_max_offset":            14.0,
+	"shake_max_roll":              0.03,
+	"trauma_player_hit":           0.75,
+	"trauma_enemy_death":          0.28,
+	"trauma_shoot":                0.04,
+	"trauma_boss_death":           1.0,
+
+	"hitstop_enemy":               3,
+	"hitstop_player":              5,
+
+	"star_count":                  120,
+	"star_speed_near":             180.0,
+	"star_speed_mid":              90.0,
+	"star_speed_far":              38.0,
+
+	"explosion_duration":          0.38,
+	"explosion_particles":         14,
+
+	"score_per_basic":             100,
+	"score_per_fast":              150,
+	"score_per_heavy":             300,
+	"score_per_boss":              2000,
+
+	"float_label_speed":           60.0,
+	"float_label_duration":        0.9
+}

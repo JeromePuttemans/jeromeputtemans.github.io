@@ -1,0 +1,19 @@
+{
+	"default_language":            "en",
+	"board_cols":                  4,
+	"board_rows":                  2,
+	"bench_size":                  8,
+	"tile_size":                   72,
+	"shop_size":                   5,
+	"shop_refresh_cost":           2,
+	"unit_buy_cost":               3,
+	"unit_sell_value":             1,
+	"player_hp_start":             20,
+	"rounds_total":                8,
+	"gold_per_round":              5,
+	"interest_cap":                3,
+	"battle_tick_delay_ms":        150,
+	"base_damage_to_player":       2,
+	"enemy_team_size_min":         2,
+	"enemy_team_size_max":         4
+}

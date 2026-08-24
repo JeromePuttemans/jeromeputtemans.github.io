@@ -1,0 +1,15 @@
+{
+	"score_label":     "Score: {value}",
+	"lives_label":     "Lives: {value}",
+	"wave_label":      "Wave {current}/{total}",
+	"high_score":      "Best: {value}",
+	"lang_button":     "EN",
+	"game_over_title": "GAME OVER",
+	"game_over_sub":   "Press R to restart",
+	"victory_title":   "VICTORY!",
+	"victory_sub":     "Press R to play again",
+	"wave_clear":      "WAVE {n} CLEAR",
+	"boss_incoming":   "⚠ BOSS INCOMING ⚠",
+	"get_ready":       "GET READY",
+	"controls":        "Move: Arrows / WASD   Shoot: Z / Space"
+}

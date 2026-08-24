@@ -1,0 +1,16 @@
+{
+  "meta": {
+    "convention_version": "2.3.0",
+    "project": "gravshift"
+  },
+  "gameplay": {
+    "scroll_speed": 60.0,
+    "player_speed": 220.0,
+    "gravity_radius": 180,
+    "gravity_strength": 0.35,
+    "bullet_speed": 400.0,
+    "enemy_bullet_speed": 180.0,
+    "wave_count": 3,
+    "enemies_per_wave": 6
+  }
+}

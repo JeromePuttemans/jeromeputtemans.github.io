@@ -1,0 +1,55 @@
+[gd_scene load_steps=2 format=3 uid="uid://producercard"]
+
+[ext_resource type="Script" uid="uid://drhetso8vj7wu" path="res://scenes/ui/ProducerCard.gd" id="1_card"]
+
+[node name="ProducerCard" type="PanelContainer"]
+custom_minimum_size = Vector2(260, 80)
+script = ExtResource("1_card")
+
+[node name="VBox" type="VBoxContainer" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 6.0
+offset_top = 4.0
+offset_right = -6.0
+offset_bottom = -4.0
+
+[node name="Header" type="HBoxContainer" parent="VBox"]
+
+[node name="NameLabel" type="Label" parent="VBox/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Producer"
+theme_override_font_sizes/font_size = 14
+
+[node name="OwnedLabel" type="Label" parent="VBox/Header"]
+layout_mode = 2
+horizontal_alignment = 1
+text = "x0"
+theme_override_colors/font_color = Color(0.8, 0.8, 0.2, 1)
+
+[node name="DescriptionLabel" type="Label" parent="VBox"]
+layout_mode = 2
+text = "Description"
+theme_override_font_sizes/font_size = 11
+theme_override_colors/font_color = Color(0.7, 0.7, 0.7, 1)
+
+[node name="Footer" type="HBoxContainer" parent="VBox"]
+
+[node name="CostLabel" type="Label" parent="VBox/Footer"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Coût : 10"
+theme_override_font_sizes/font_size = 12
+
+[node name="RPSLabel" type="Label" parent="VBox/Footer"]
+layout_mode = 2
+text = "0.00/s"
+theme_override_font_sizes/font_size = 11
+theme_override_colors/font_color = Color(0.4, 0.9, 0.4, 1)
+
+[node name="BuyButton" type="Button" parent="VBox/Footer"]
+layout_mode = 2
+text = "Acheter"
+custom_minimum_size = Vector2(70, 0)

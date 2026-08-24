@@ -1,0 +1,12 @@
+{
+  "gameplay": {
+    "wave": "Vague",
+    "best": "Meilleur",
+    "press_start": "Appuie sur Espace"
+  },
+  "feedback": {
+    "player_death": "Détruit. Recommencer ?",
+    "wave_clear": "Vague franchie.",
+    "run_complete": "Secteur sécurisé."
+  }
+}

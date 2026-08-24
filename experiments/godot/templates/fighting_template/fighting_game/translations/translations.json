@@ -1,0 +1,40 @@
+{
+  "en": {
+    "GAME_TITLE":   "GDFighter",
+    "ROUND":        "Round",
+    "FIGHT":        "FIGHT!",
+    "KO":           "K.O.",
+    "WIN":          "WIN!",
+    "DRAW":         "DRAW",
+    "PLAYER_1":     "Player 1",
+    "PLAYER_2":     "Player 2",
+    "PRESS_START":  "Press any key to start",
+    "ROUND_WINS":   "wins",
+    "TIME":         "TIME",
+    "COMBO":        "COMBO",
+    "PERFECT":      "PERFECT!",
+    "BLOCKED":      "BLOCKED",
+    "MENU_TITLE":   "Main Menu",
+    "MENU_PLAY":    "Play",
+    "MENU_QUIT":    "Quit"
+  },
+  "fr": {
+    "GAME_TITLE":   "GDFighter",
+    "ROUND":        "Round",
+    "FIGHT":        "COMBAT!",
+    "KO":           "K.O.",
+    "WIN":          "VICTOIRE!",
+    "DRAW":         "EGALITE",
+    "PLAYER_1":     "Joueur 1",
+    "PLAYER_2":     "Joueur 2",
+    "PRESS_START":  "Appuyez sur une touche",
+    "ROUND_WINS":   "victoires",
+    "TIME":         "TEMPS",
+    "COMBO":        "COMBO",
+    "PERFECT":      "PARFAIT!",
+    "BLOCKED":      "BLOQUE",
+    "MENU_TITLE":   "Menu Principal",
+    "MENU_PLAY":    "Jouer",
+    "MENU_QUIT":    "Quitter"
+  }
+}

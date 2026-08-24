@@ -1,0 +1,15 @@
+{
+	"lives_label":     "Lives: {value}",
+	"score_label":     "Score: {value}",
+	"level_label":     "Level {value}",
+	"lang_button":     "EN",
+	"paused_title":    "PAUSED",
+	"paused_sub":      "Press Esc to resume",
+	"dead_title":      "YOU DIED",
+	"dead_sub":        "Respawning...",
+	"game_over_title": "GAME OVER",
+	"game_over_sub":   "Press R to restart",
+	"win_title":       "YOU WIN!",
+	"win_sub":         "Press R to play again",
+	"controls":        "Move: A/D or ←/→     Jump: Space / W / ↑"
+}

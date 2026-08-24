@@ -1,0 +1,14 @@
+{
+	"hp_label": "HP: {current}/{max}",
+	"floor_label": "Floor {value}",
+	"player_attacks": "You hit {target} for {damage} damage.",
+	"enemy_attacks": "{name} hits you for {damage} damage.",
+	"enemy_died": "{name} is defeated!",
+	"player_died_msg": "You died! Press R to restart.",
+	"victory_msg": "You escaped! Press R to play again.",
+	"game_over_title": "GAME OVER",
+	"victory_title": "VICTORY",
+	"controls": "Move: WASD / Arrows   Diagonal: Q E Z C   Wait: Space   Restart: R",
+	"descend_msg": "You descend deeper into the dungeon.",
+	"lang_button": "EN"
+}

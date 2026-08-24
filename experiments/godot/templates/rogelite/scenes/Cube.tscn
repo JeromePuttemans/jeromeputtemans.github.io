@@ -1,0 +1,14 @@
+[gd_scene load_steps=2 format=3 uid="UID_CUBE"]
+[ext_resource type="Script" path="res://scripts/Cube.gd" id=0]
+
+[node name="Cube" type="StaticBody3D"]
+script = ExtResource(0)
+
+[node name="Up" type="MeshInstance3D" parent="."]
+[node name="Down" type="MeshInstance3D" parent="."]
+[node name="Left" type="MeshInstance3D" parent="."]
+[node name="Right" type="MeshInstance3D" parent="."]
+[node name="Front" type="MeshInstance3D" parent="."]
+[node name="Back" type="MeshInstance3D" parent="."]
+
+[resource]

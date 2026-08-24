@@ -1,0 +1,45 @@
+[gd_scene load_steps=5 format=3 uid="uid://dvol5v5cr6ebo"]
+
+[ext_resource type="Script" uid="uid://6nsfu2rydjrq" path="res://scripts/ExportManager.gd" id="ExportManager"]
+[ext_resource type="Script" uid="uid://dddn5bxw1d6bx" path="res://scripts/GameManager.gd" id="GameManager"]
+[ext_resource type="Script" uid="uid://cjkw04b6hp5cp" path="res://scripts/PathRecorder.gd" id="PathRecorder"]
+[ext_resource type="Script" uid="uid://cb84pwk2l4x4g" path="res://scripts/TubeRenderer.gd" id="TubeRenderer"]
+
+[node name="Main" type="Node3D"]
+script = ExtResource("GameManager")
+
+[node name="XROrigin3D" type="XROrigin3D" parent="."]
+
+[node name="XRCamera3D" type="XRCamera3D" parent="XROrigin3D"]
+
+[node name="CountdownLabel" type="Label3D" parent="XROrigin3D/XRCamera3D"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -1.5)
+visible = false
+billboard = 1
+text = "3"
+font_size = 160
+
+[node name="StatusLabel" type="Label3D" parent="XROrigin3D/XRCamera3D"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.25, -1.5)
+billboard = 1
+text = "IDLE  —  A / B to record"
+font_size = 48
+outline_size = 6
+
+[node name="LeftController" type="XRController3D" parent="XROrigin3D"]
+tracker = &"left_hand"
+
+[node name="RightController" type="XRController3D" parent="XROrigin3D"]
+tracker = &"right_hand"
+
+[node name="PathRecorder" type="Node" parent="."]
+script = ExtResource("PathRecorder")
+
+[node name="TubeLeft" type="Node3D" parent="."]
+script = ExtResource("TubeRenderer")
+
+[node name="TubeRight" type="Node3D" parent="."]
+script = ExtResource("TubeRenderer")
+
+[node name="ExportManager" type="Node" parent="."]
+script = ExtResource("ExportManager")

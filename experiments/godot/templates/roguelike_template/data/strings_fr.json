@@ -1,0 +1,14 @@
+{
+	"hp_label":        "PV : {current}/{max}",
+	"floor_label":     "Étage {value}",
+	"player_attacks":  "Vous frappez {target} pour {damage} dégâts.",
+	"enemy_attacks":   "{name} vous frappe pour {damage} dégâts.",
+	"enemy_died":      "{name} est vaincu !",
+	"player_died_msg": "Vous êtes mort ! Appuyez sur R pour recommencer.",
+	"victory_msg":     "Vous vous échappez ! Appuyez sur R pour rejouer.",
+	"game_over_title": "GAME OVER",
+	"victory_title":   "VICTOIRE",
+	"controls":        "Déplacer : WASD / Flèches   Diagonal : Q E Z C   Attendre : Espace   Restart : R",
+	"descend_msg":     "Vous descendez plus profond dans le donjon.",
+	"lang_button":     "FR"
+}

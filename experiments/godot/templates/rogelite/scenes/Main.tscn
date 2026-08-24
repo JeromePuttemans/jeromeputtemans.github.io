@@ -1,0 +1,12 @@
+[gd_scene load_steps=3 format=3 uid="UID_MAIN"]
+[ext_resource type="Script" path="res://scripts/GridManager.gd" id=0]
+[ext_resource type="Script" path="res://scripts/Player.gd" id=1]
+[ext_resource type="Script" path="res://scripts/HUD.gd" id=2]
+
+[node name="Main" type="Node3D"]
+[node name="GridManager" type="Node3D" parent="."]
+script = ExtResource(0)
+[node name="Player" type="Node3D" parent="."]
+script = ExtResource(1)
+[node name="HUD" type="CanvasLayer" parent="."]
+script = ExtResource(2)

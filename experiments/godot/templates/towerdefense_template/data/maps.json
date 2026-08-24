@@ -1,0 +1,27 @@
+[
+	{
+		"id":   1,
+		"name": "Grasslands",
+		"cols": 13,
+		"rows": 9,
+		"waypoints": [
+			[0, 4],
+			[3, 4],
+			[3, 7],
+			[9, 7],
+			[9, 4],
+			[12, 4]
+		],
+		"grid": [
+			"BBBBBBBBBBBBB",
+			"BBBBBBBBBBBBB",
+			"BBBBBBBBBBBBB",
+			"BBBBBBBBBBBBB",
+			"PPPPBBBBBPPPP",
+			"BBBPBBBBBPBBB",
+			"BBBPBBBBBPBBB",
+			"BBBPPPPPPPBBB",
+			"BBBBBBBBBBBBB"
+		]
+	}
+]

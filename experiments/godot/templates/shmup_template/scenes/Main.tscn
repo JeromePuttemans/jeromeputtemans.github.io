@@ -1,0 +1,134 @@
+[gd_scene load_steps=4 format=3 uid="uid://b675yi4jmut30"]
+
+[ext_resource type="Script" uid="uid://ce37t7js8gc5t" path="res://scenes/Main.gd" id="1_main"]
+[ext_resource type="Script" uid="uid://883foclixukl" path="res://scenes/ui/HUD.gd" id="2_hud"]
+[ext_resource type="Script" uid="uid://dsd2dolvgixtj" path="res://scripts/Player.gd" id="3_player"]
+
+[node name="Main" type="Node2D"]
+script = ExtResource("1_main")
+
+[node name="World" type="Node2D" parent="."]
+
+[node name="StarField" type="Node2D" parent="World"]
+
+[node name="Enemies" type="Node2D" parent="World"]
+
+[node name="FX" type="Node2D" parent="World"]
+
+[node name="Player" type="Node2D" parent="World"]
+position = Vector2(240, 700)
+script = ExtResource("3_player")
+
+[node name="UI" type="CanvasLayer" parent="."]
+
+[node name="HUD" type="MarginContainer" parent="UI"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_top = 6
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 6
+script = ExtResource("2_hud")
+
+[node name="VBoxOuter" type="VBoxContainer" parent="UI/HUD"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+mouse_filter = 2
+
+[node name="TopBar" type="HBoxContainer" parent="UI/HUD/VBoxOuter"]
+layout_mode = 2
+size_flags_vertical = 0
+mouse_filter = 2
+theme_override_constants/separation = 14
+
+[node name="ScoreLabel" type="Label" parent="UI/HUD/VBoxOuter/TopBar"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.85, 0.2, 1)
+theme_override_font_sizes/font_size = 14
+
+[node name="HSLabel" type="Label" parent="UI/HUD/VBoxOuter/TopBar"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.6, 0.6, 0.6, 1)
+theme_override_font_sizes/font_size = 12
+
+[node name="Spacer1" type="Control" parent="UI/HUD/VBoxOuter/TopBar"]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+
+[node name="WaveLabel" type="Label" parent="UI/HUD/VBoxOuter/TopBar"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.6, 0.9, 1, 1)
+theme_override_font_sizes/font_size = 14
+
+[node name="LivesLabel" type="Label" parent="UI/HUD/VBoxOuter/TopBar"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.4, 0.4, 1)
+theme_override_font_sizes/font_size = 14
+
+[node name="LangButton" type="Button" parent="UI/HUD/VBoxOuter/TopBar"]
+custom_minimum_size = Vector2(40, 0)
+layout_mode = 2
+
+[node name="CenterSpacer" type="Control" parent="UI/HUD/VBoxOuter"]
+layout_mode = 2
+size_flags_vertical = 3
+mouse_filter = 2
+
+[node name="BottomBar" type="HBoxContainer" parent="UI/HUD/VBoxOuter"]
+layout_mode = 2
+size_flags_vertical = 0
+mouse_filter = 2
+
+[node name="ControlsLabel" type="Label" parent="UI/HUD/VBoxOuter/BottomBar"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.5, 0.5, 0.5, 0.7)
+theme_override_font_sizes/font_size = 11
+
+[node name="Banner" type="Label" parent="UI"]
+visible = false
+anchors_preset = -1
+anchor_left = 0.5
+anchor_top = 0.42
+anchor_right = 0.5
+anchor_bottom = 0.42
+offset_left = -280.0
+offset_right = 280.0
+theme_override_colors/font_color = Color(1, 0.9, 0.3, 1)
+theme_override_font_sizes/font_size = 28
+horizontal_alignment = 1
+
+[node name="Overlay" type="ColorRect" parent="UI"]
+visible = false
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0, 0, 0, 0.78)
+
+[node name="VBox" type="VBoxContainer" parent="UI/Overlay"]
+layout_mode = 0
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -240.0
+offset_top = -60.0
+offset_right = 240.0
+offset_bottom = 60.0
+alignment = 1
+
+[node name="Title" type="Label" parent="UI/Overlay/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.85, 0.2, 1)
+theme_override_font_sizes/font_size = 46
+horizontal_alignment = 1
+
+[node name="Sub" type="Label" parent="UI/Overlay/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.85, 0.85, 0.85, 1)
+theme_override_font_sizes/font_size = 16
+horizontal_alignment = 1

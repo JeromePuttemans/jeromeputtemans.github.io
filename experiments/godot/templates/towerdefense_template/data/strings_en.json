@@ -1,0 +1,22 @@
+{
+	"gold_label":        "Gold: {value}",
+	"lives_label":       "Lives: {value}",
+	"wave_label":        "Wave: {current}/{total}",
+	"score_label":       "Score: {value}",
+	"lang_button":       "EN",
+	"start_wave_button": "Start Wave",
+	"waiting_label":     "Next wave in {sec}s",
+	"tower_cost":        "{name}  ${cost}",
+	"tower_range":       "Range: {value}",
+	"tower_damage":      "DMG: {value}",
+	"tower_rate":        "Rate: {value}/s",
+	"sell_button":       "Sell ${value}",
+	"no_gold":           "Not enough gold!",
+	"game_over_title":   "GAME OVER",
+	"game_over_sub":     "Press R to restart",
+	"victory_title":     "VICTORY!",
+	"victory_sub":       "Press R to play again",
+	"select_tower":      "Select a tower to place",
+	"tile_occupied":     "Tile occupied!",
+	"controls":          "Click grid: place tower   Click tower: sell"
+}

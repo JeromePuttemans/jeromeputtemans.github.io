@@ -1,0 +1,15 @@
+{
+	"lives_label":     "Vies : {value}",
+	"score_label":     "Score : {value}",
+	"level_label":     "Niveau {value}",
+	"lang_button":     "FR",
+	"paused_title":    "PAUSE",
+	"paused_sub":      "Appuyez sur Échap pour reprendre",
+	"dead_title":      "MORT",
+	"dead_sub":        "Réapparition...",
+	"game_over_title": "GAME OVER",
+	"game_over_sub":   "Appuyez sur R pour recommencer",
+	"win_title":       "VICTOIRE !",
+	"win_sub":         "Appuyez sur R pour rejouer",
+	"controls":        "Déplacer : A/D ou ←/→     Sauter : Espace / W / ↑"
+}

@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>HUD Rings</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; background: #000; overflow: hidden; }
+    body { display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+    canvas { display: block; }
+    #overlay {
+      position: absolute;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      pointer-events: none; user-select: none;
+    }
+    #num {
+      font-family: 'Arial Black', Arial, sans-serif;
+      font-size: clamp(48px, 10vw, 92px);
+      font-weight: 900;
+      color: #fff;
+      text-shadow: 0 0 12px #000, 0 0 4px #000, 0 2px 8px #000;
+      letter-spacing: -3px;
+      line-height: 1;
+    }
+    #label {
+      font-family: 'Arial', sans-serif;
+      font-size: clamp(10px, 1.8vw, 16px);
+      font-weight: 400;
+      color: #888;
+      letter-spacing: 4px;
+      margin-top: 4px;
+    }
+    #hint {
+      position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+      font-family: monospace; font-size: 11px; color: #333; letter-spacing: 2px;
+    }
+  </style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="overlay">
+  <div id="num">58</div>
+  <div id="label">PERCENT</div>
+</div>
+<span id="hint">SCROLL TO ADJUST · CLICK TO ANIMATE</span>
+
+<script>
+const canvas = document.getElementById('c');
+const ctx    = canvas.getContext('2d');
+const numEl  = document.getElementById('num');
+const overlay = document.getElementById('overlay');
+
+let W, H, cx, cy;
+let value   = 58;    // 0-100
+let targetV = 58;
+let t       = 0;
+let rotating = false;
+let rotOff  = 0;
+
+function resize() {
+  const sz = Math.min(window.innerWidth, window.innerHeight);
+  W = canvas.width  = sz;
+  H = canvas.height = sz;
+  canvas.style.width  = sz + 'px';
+  canvas.style.height = sz + 'px';
+  cx = W / 2; cy = H * 0.44;
+  overlay.style.width  = sz + 'px';
+  overlay.style.height = sz + 'px';
+}
+resize();
+window.addEventListener('resize', resize);
+
+// Scroll : change la valeur
+window.addEventListener('wheel', e => {
+  targetV = Math.max(0, Math.min(100, targetV - e.deltaY * 0.05));
+});
+
+// Click : lance une animation de rotation
+canvas.addEventListener('click', () => { rotating = !rotating; });
+
+// ── Dessin d'un anneau elliptique en perspective ──────────────────────────────
+function drawRing(yOff, rxBase, ry, lineW, alpha, dash, dashOff, fill) {
+  const rx = rxBase;
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.strokeStyle = '#fff';
+  ctx.lineWidth   = lineW;
+  if (dash) ctx.setLineDash([dash, dash * 0.7]);
+  else       ctx.setLineDash([]);
+  ctx.lineDashOffset = dashOff;
+
+  if (fill) {
+    // Fond sombre de l'anneau
+    ctx.fillStyle = '#111';
+    ctx.beginPath();
+    ctx.ellipse(cx, cy + yOff, rx + lineW, ry + lineW * 0.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  ctx.beginPath();
+  ctx.ellipse(cx, cy + yOff, rx, ry, 0, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.restore();
+}
+
+// Anneau de progression : arc d'ellipse
+function drawProgress(pct, yOff, rx, ry, lineW, rot) {
+  const end   = (pct / 100) * Math.PI * 2 - Math.PI / 2 + rot;
+  const start = -Math.PI / 2 + rot;
+  const steps = 300;
+
+  function buildPath(a0, a1) {
+    ctx.beginPath();
+    for (let i = 0; i <= steps; i++) {
+      const a = a0 + (a1 - a0) * (i / steps);
+      const x = cx + Math.cos(a) * rx;
+      const y = (cy + yOff) + Math.sin(a) * ry;
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    }
+  }
+
+  // Arc gris (reste)
+  ctx.save();
+  ctx.strokeStyle = '#2a2a2a';
+  ctx.lineWidth   = lineW;
+  ctx.lineCap     = 'round';
+  ctx.setLineDash([]);
+  buildPath(end, end + (Math.PI * 2 - (end - start)));
+  ctx.stroke();
+  ctx.restore();
+
+  // Arc blanc (progression) — round caps aux deux bouts
+  ctx.save();
+  ctx.strokeStyle = '#fff';
+  ctx.lineWidth   = lineW;
+  ctx.lineCap     = 'round';
+  ctx.lineJoin    = 'round';
+  ctx.setLineDash([]);
+  buildPath(start, end);
+  ctx.stroke();
+  ctx.restore();
+}
+
+// Ticks autour d'un anneau
+function drawTicks(yOff, rx, ry, n, len, lineW, alpha, rot) {
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.strokeStyle = '#fff';
+  ctx.lineWidth   = lineW;
+  ctx.setLineDash([]);
+  for (let i = 0; i < n; i++) {
+    const a   = (i / n) * Math.PI * 2 + rot;
+    const cos = Math.cos(a), sin = Math.sin(a);
+    const x1  = cx + cos * rx, y1 = (cy + yOff) + sin * ry;
+    const x2  = cx + cos * (rx + len), y2 = (cy + yOff) + sin * (ry + len * ry / rx);
+    ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+  }
+  ctx.restore();
+}
+
+// Labels sur l'anneau principal
+function drawLabels(yOff, rx, ry, rot) {
+  const marks = [0, 20, 40, 60, 80];
+  ctx.save();
+  ctx.font      = `${Math.round(W * 0.02)}px Arial`;
+  ctx.fillStyle = '#555';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  for (const v of marks) {
+    const a   = (v / 100) * Math.PI * 2 - Math.PI / 2 + rot;
+    const r   = rx + W * 0.05;
+    const x   = cx + Math.cos(a) * r;
+    const y   = (cy + yOff) + Math.sin(a) * (ry + W * 0.05 * ry / rx);
+    ctx.fillText(v, x, y);
+  }
+  ctx.restore();
+}
+
+function draw() {
+  ctx.clearRect(0, 0, W, H);
+
+  const s = W / 600;  // scale factor
+  const rot = rotating ? t * 0.4 : rotOff;
+
+  // ── Perspective rings (bas → haut) ────────────────────────────────────────
+  const rings = [
+    { y: 260, rx: 180, ry: 36, lw: 1.0, a: 0.18, dash: 12 },
+    { y: 200, rx: 210, ry: 48, lw: 1.0, a: 0.28, dash: 10 },
+    { y: 148, rx: 235, ry: 58, lw: 1.2, a: 0.38, dash: 8  },
+    { y:  96, rx: 252, ry: 66, lw: 1.5, a: 0.55, dash: 0  },
+  ];
+
+  for (const r of rings) {
+    const scale = s;
+    drawRing(r.y * scale, r.rx * scale, r.ry * scale, r.lw * scale,
+             r.a, r.dash * scale, t * 20, true);
+    if (!r.dash) {
+      drawTicks(r.y * scale, r.rx * scale, r.ry * scale,
+                36, 8 * scale, 0.8 * scale, 0.4, rot);
+    }
+  }
+
+  // ── Ombre / reflet sous les anneaux ───────────────────────────────────────
+  const grd = ctx.createRadialGradient(cx, cy + 310 * s, 0, cx, cy + 310 * s, 220 * s);
+  grd.addColorStop(0,   'rgba(255,255,255,0.04)');
+  grd.addColorStop(0.5, 'rgba(255,255,255,0.01)');
+  grd.addColorStop(1,   'transparent');
+  ctx.save();
+  ctx.fillStyle = grd;
+  ctx.beginPath();
+  ctx.ellipse(cx, cy + 310 * s, 220 * s, 44 * s, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+
+  // ── Anneau principal (progress) ────────────────────────────────────────────
+  const mry = 96 * s, mrx = 252 * s, mry2 = 66 * s, mlw = 22 * s;
+
+  // Fond anneau
+  ctx.save();
+  ctx.strokeStyle = '#181818';
+  ctx.lineWidth   = mlw;
+  ctx.setLineDash([]);
+  ctx.beginPath();
+  ctx.ellipse(cx, cy + mry, mrx, mry2, 0, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.restore();
+
+  drawProgress(value, mry, mrx, mry2, mlw, rot);
+  drawTicks(mry, mrx + mlw * 0.5, mry2 + mlw * 0.25,
+            60, 6 * s, 0.6 * s, 0.5, rot);
+  drawLabels(mry, mrx + mlw * 0.9, mry2 + mlw * 0.45 * mry2 / mrx, rot);
+
+  // ── Anneau de bord lumineux (top) ─────────────────────────────────────────
+  ctx.save();
+  ctx.strokeStyle = '#fff';
+  ctx.lineWidth   = 1.5 * s;
+  ctx.globalAlpha = 0.9;
+  ctx.setLineDash([]);
+  ctx.beginPath();
+  ctx.ellipse(cx, cy + mry, mrx + mlw * 0.5, mry2 + mlw * 0.25, 0, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.ellipse(cx, cy + mry, mrx - mlw * 0.5, mry2 - mlw * 0.25, 0, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.restore();
+}
+
+let lastMs = 0;
+function frame(ms) {
+  const dt = (ms - lastMs) * 0.001;
+  lastMs = ms;
+  t += dt;
+
+  // Inertie valeur
+  value += (targetV - value) * 0.06;
+  numEl.textContent = Math.round(value);
+
+  draw();
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

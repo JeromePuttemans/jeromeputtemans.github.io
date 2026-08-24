@@ -1,0 +1,148 @@
+[gd_scene load_steps=7 format=3 uid="uid://bxu86dmq84kch"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_glv2v"]
+bg_color = Color(0.827451, 0.054902, 0.12549, 1)
+border_width_left = 6
+border_width_top = 6
+border_width_right = 6
+border_width_bottom = 6
+border_color = Color(0.0666667, 0.0666667, 0.0666667, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_uu6xs"]
+bg_color = Color(0.960784, 0.772549, 0.0941176, 1)
+border_width_left = 6
+border_width_top = 6
+border_width_right = 6
+border_width_bottom = 6
+border_color = Color(0.0666667, 0.0666667, 0.0666667, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_r0du0"]
+bg_color = Color(0.0666667, 0.0666667, 0.0666667, 1)
+border_width_left = 6
+border_width_top = 6
+border_width_right = 6
+border_color = Color(0.0666667, 0.0666667, 0.0666667, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_cm0pq"]
+bg_color = Color(0.113725, 0.372549, 0.658824, 1)
+border_width_left = 6
+border_width_top = 6
+border_width_right = 6
+border_width_bottom = 6
+border_color = Color(0.0666667, 0.0666667, 0.0666667, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_fos0i"]
+bg_color = Color(0.501961, 0.501961, 0.501961, 1)
+border_width_left = 6
+border_width_top = 6
+border_width_right = 6
+border_width_bottom = 6
+border_color = Color(0.0666667, 0.0666667, 0.0666667, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_3dxm6"]
+bg_color = Color(1, 1, 1, 1)
+border_width_left = 6
+border_width_top = 6
+border_width_right = 6
+border_width_bottom = 6
+border_color = Color(0.0666667, 0.0666667, 0.0666667, 1)
+
+[node name="Background" type="Node2D"]
+
+[node name="DecoRight" type="Node2D" parent="."]
+position = Vector2(528.915, 0)
+
+[node name="Panel" type="Panel" parent="DecoRight"]
+offset_top = 315.0
+offset_right = 68.0
+offset_bottom = 516.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_glv2v")
+
+[node name="Panel2" type="Panel" parent="DecoRight"]
+offset_top = 200.0
+offset_right = 68.0
+offset_bottom = 321.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_uu6xs")
+
+[node name="Panel3" type="Panel" parent="DecoRight"]
+offset_top = 510.0
+offset_right = 68.0
+offset_bottom = 656.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_r0du0")
+
+[node name="Panel4" type="Panel" parent="DecoRight"]
+offset_right = 68.0
+offset_bottom = 206.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_cm0pq")
+
+[node name="Panel5" type="Panel" parent="DecoRight"]
+offset_left = 62.0
+offset_right = 299.0
+offset_bottom = 206.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_uu6xs")
+
+[node name="Panel6" type="Panel" parent="DecoRight"]
+offset_left = 62.0
+offset_top = 200.0
+offset_right = 299.0
+offset_bottom = 321.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_fos0i")
+
+[node name="Panel7" type="Panel" parent="DecoRight"]
+offset_left = 62.0
+offset_top = 315.0
+offset_right = 178.0
+offset_bottom = 481.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_3dxm6")
+
+[node name="Panel8" type="Panel" parent="DecoRight"]
+offset_left = 172.0
+offset_top = 315.0
+offset_right = 299.0
+offset_bottom = 397.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_uu6xs")
+
+[node name="Panel9" type="Panel" parent="DecoRight"]
+offset_left = 172.0
+offset_top = 391.0
+offset_right = 299.0
+offset_bottom = 656.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_cm0pq")
+
+[node name="Panel10" type="Panel" parent="DecoRight"]
+offset_left = 62.0
+offset_top = 475.0
+offset_right = 178.0
+offset_bottom = 656.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_uu6xs")
+
+[node name="DecoLeft" type="Node2D" parent="."]
+
+[node name="Panel" type="Panel" parent="DecoLeft"]
+offset_right = 83.0
+offset_bottom = 243.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_glv2v")
+
+[node name="Panel2" type="Panel" parent="DecoLeft"]
+offset_top = 237.0
+offset_right = 83.0
+offset_bottom = 369.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_uu6xs")
+
+[node name="Panel3" type="Panel" parent="DecoLeft"]
+offset_top = 363.0
+offset_right = 83.0
+offset_bottom = 449.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_r0du0")
+
+[node name="Panel4" type="Panel" parent="DecoLeft"]
+offset_top = 443.0
+offset_right = 83.0
+offset_bottom = 656.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_cm0pq")
+
+[node name="Panel7" type="Panel" parent="."]
+offset_left = 77.0
+offset_right = 535.0
+offset_bottom = 656.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_3dxm6")

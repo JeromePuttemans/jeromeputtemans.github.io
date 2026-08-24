@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>HUD 3D Shader</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; background: #000; overflow: hidden; }
+    body { display: flex; align-items: center; justify-content: center; min-height: 100vh; cursor: none; }
+    #wrap { position: relative; }
+    canvas { display: block; }
+    #overlay {
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: flex-start; padding-top: 5%; pointer-events: none;
+    }
+    #num {
+      font-family: 'Arial Black', Arial, sans-serif;
+      font-size: clamp(40px, 9vw, 86px); font-weight: 900;
+      color: #fff; letter-spacing: -2px; line-height: 1;
+      text-shadow: 0 0 30px #000, 0 0 10px #000;
+    }
+    #lbl {
+      font-family: Arial, sans-serif; font-size: clamp(9px, 1.3vw, 13px);
+      color: #555; letter-spacing: 5px; margin-top: 5px;
+    }
+    #hint { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%);
+      font-family: monospace; font-size: 11px; color: #222; letter-spacing: 2px; }
+  </style>
+</head>
+<body>
+<div id="wrap">
+  <canvas id="c"></canvas>
+  <div id="overlay">
+    <div id="num">58</div>
+    <div id="lbl">PERCENT</div>
+  </div>
+</div>
+<span id="hint">SCROLL TO ADJUST</span>
+<script>
+// ── Font texture ─────────────────────────────────────────────────────────────
+// Génère une texture atlas avec les chiffres 0-9
+// Chaque glyphe = cellule de CELL_W x CELL_H pixels
+const CELL_W = 24, CELL_H = 32, DIGITS = 10;
+const FONT_W = CELL_W * DIGITS, FONT_H = CELL_H;
+
+function buildFontTexture() {
+  const fc = document.createElement('canvas');
+  fc.width = FONT_W; fc.height = FONT_H;
+  const fctx = fc.getContext('2d');
+  fctx.clearRect(0, 0, FONT_W, FONT_H);
+  fctx.fillStyle = '#fff';
+  fctx.font = `bold ${CELL_H * 0.75}px Arial`;
+  fctx.textAlign = 'center';
+  fctx.textBaseline = 'middle';
+  for (let d = 0; d < 10; d++) {
+    fctx.fillText(String(d), d * CELL_W + CELL_W * 0.5, CELL_H * 0.5);
+  }
+  return fc;
+}
+
+// ── WebGL setup ──────────────────────────────────────────────────────────────
+const canvas = document.getElementById('c');
+const gl = canvas.getContext('webgl');
+const numEl = document.getElementById('num');
+const wrap  = document.getElementById('wrap');
+let SZ, uR;
+
+function resize() {
+  SZ = Math.round(Math.min(window.innerWidth, window.innerHeight) * 0.92);
+  canvas.width = canvas.height = SZ;
+  canvas.style.width = canvas.style.height = SZ + 'px';
+  wrap.style.width = wrap.style.height = SZ + 'px';
+  gl.viewport(0, 0, SZ, SZ);
+  if (uR) gl.uniform2f(uR, SZ, SZ);
+}
+window.addEventListener('resize', resize);
+
+let value = 58, targetV = 58;
+let mouseY = 0.5, targetMY = 0.5;
+let mouseX = 0.5, targetMX = 0.5;
+window.addEventListener('wheel', e => {
+  targetV = Math.max(0, Math.min(100, targetV - e.deltaY * 0.04));
+});
+canvas.addEventListener('mousemove', e => {
+  const r = canvas.getBoundingClientRect();
+  targetMY = (e.clientY - r.top) / r.height;
+  targetMX = (e.clientX - r.left) / r.width;
+});
+
+const VERT = `attribute vec2 pos; void main(){ gl_Position = vec4(pos,0.,1.); }`;
+
+const FRAG = `
+precision highp float;
+uniform float u_t, u_val, u_my, u_mx;
+uniform vec2  u_res;
+uniform sampler2D u_font;
+// atlas : 10 chiffres côte à côte, chacun occupe 1/10 de la largeur
+#define FONT_COLS 10.0
+#define PI  3.14159265
+#define TAU 6.28318530
+
+// ── Caméra ───────────────────────────────────────────────────────────────────
+vec3 normalize3(vec3 v){ return normalize(v); }
+
+mat3 camMatrix(vec3 ro, vec3 ta, vec3 worldUp) {
+  vec3 cw = normalize(ta - ro);
+  vec3 cu = normalize(cross(cw, worldUp));
+  vec3 cv = cross(cu, cw);
+  return mat3(cu, cv, cw);
+}
+
+void getCam(float my, out vec3 ro, out mat3 cam) {
+  float camY   = mix(6.0,  0.05, my);
+  float camDist= mix(0.01, 5.50, my);
+  // Orbite horizontale : u_mx [0..1] → angle [-PI..PI]
+  float orbitA = (u_mx - 0.5) * 6.2832;
+  ro = vec3(sin(orbitA) * camDist, camY, cos(orbitA) * camDist);
+  vec3 ta      = vec3(0.0, 0.0, 0.0);
+  vec3 worldUp = normalize(mix(vec3(0.,0.,-1.), vec3(0.,1.,0.), my));
+  cam = camMatrix(ro, ta, worldUp);
+}
+
+// ── Ray / plan ────────────────────────────────────────────────────────────────
+float rayPlane(vec3 ro, vec3 rd, float h) {
+  if (abs(rd.y) < 0.0001) return -1.0;
+  return (h - ro.y) / rd.y;
+}
+
+// ── Anneau ────────────────────────────────────────────────────────────────────
+float ringHit(vec3 ro, vec3 rd, float h, float r, float hw,
+              out float tHit, out float sdf) {
+  tHit = rayPlane(ro, rd, h);
+  if (tHit < 0.0) { sdf = 999.0; return 0.0; }
+  vec3 hit = ro + rd * tHit;
+  sdf = abs(length(hit.xz) - r) - hw;
+  return 1.0 - smoothstep(0.0, 0.012, sdf);
+}
+
+float ringOnly(vec3 ro, vec3 rd, float h, float r, float hw) {
+  float t = rayPlane(ro, rd, h);
+  if (t < 0.0) return 0.0;
+  vec3 hit = ro + rd * t;
+  return 1.0 - smoothstep(0.0, 0.012, abs(length(hit.xz) - r) - hw);
+}
+
+float ellAngle(vec3 ro, vec3 rd, float h) {
+  float t = rayPlane(ro, rd, h);
+  if (t < 0.0) return -1.0;
+  vec3 hit = ro + rd * t;
+  return mod(atan(hit.z, hit.x) + TAU, TAU);
+}
+
+// ── Projection monde → UV écran ───────────────────────────────────────────────
+// Retourne les UV [0..1] d'un point 3D world, ou vec2(-1) si hors champ
+vec2 project(vec3 worldPt, vec3 ro, mat3 cam) {
+  vec3 p  = worldPt - ro;
+  float cx = dot(p, cam[0]);
+  float cy = dot(p, cam[1]);
+  float cz = dot(p, cam[2]);
+  if (cz <= 0.001) return vec2(-1.0);
+  float focal = 1.8;
+  float aspect = u_res.x / u_res.y;
+  float sx = (cx / cz) * focal / aspect;
+  float sy = (cy / cz) * focal;
+  return vec2(sx, sy) * 0.5 + 0.5;  // [0..1]
+}
+
+// ── Rendu d'un chiffre depuis la texture atlas ────────────────────────────────
+// digit : 0-9
+// uv    : coordonnées locales dans le glyphe [0..1]
+float sampleDigit(float digit, vec2 uv) {
+  if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) return 0.0;
+  vec2 atlasUV = vec2((digit + uv.x) / FONT_COLS, 1.0 - uv.y);
+  return texture2D(u_font, atlasUV).a;
+}
+
+// Rendu d'un nombre à 1 ou 2 chiffres centré sur screenUV
+// Taille du glyphe en UV écran
+float drawNumber(float num, vec2 fragUV, vec2 centerUV, float glyphW, float glyphH) {
+  float d0 = floor(num / 10.0);  // dizaines (0 si <10)
+  float d1 = mod(num, 10.0);     // unités
+
+  bool twoDigits = num >= 10.0;
+  float totalW   = twoDigits ? glyphW * 2.0 : glyphW;
+  vec2  origin   = centerUV - vec2(totalW * 0.5, glyphH * 0.5);
+
+  vec2 delta = fragUV - origin;
+  float alpha = 0.0;
+
+  if (twoDigits) {
+    // Chiffre des dizaines
+    vec2 uvD0 = delta / vec2(glyphW, glyphH);
+    alpha += sampleDigit(d0, uvD0);
+    // Chiffre des unités
+    vec2 uvD1 = (delta - vec2(glyphW, 0.0)) / vec2(glyphW, glyphH);
+    alpha += sampleDigit(d1, uvD1);
+  } else {
+    vec2 uvD1 = delta / vec2(glyphW, glyphH);
+    alpha += sampleDigit(d1, uvD1);
+  }
+  return clamp(alpha, 0.0, 1.0);
+}
+
+void main() {
+  vec2 uv = (gl_FragCoord.xy / u_res) * 2.0 - 1.0;
+  uv.x *= u_res.x / u_res.y;
+
+  vec3 ro; mat3 cam;
+  getCam(u_my, ro, cam);
+  vec3 rd = normalize(cam * vec3(uv, 1.8));
+
+  vec3 col = vec3(0.0);
+  float rot = u_t * 0.10;
+
+  // ── Anneau principal ──────────────────────────────────────────────────────
+  float mainR = 1.0, mainHW = 0.18, mainY = 0.0;
+  float tMain, sdfMain;
+  float hitMain = ringHit(ro, rd, mainY, mainR, mainHW, tMain, sdfMain);
+
+  if (hitMain > 0.0) {
+    float a      = ellAngle(ro, rd, mainY);
+    float startA = PI * 0.5;
+    float relA   = mod(a - startA + TAU, TAU);
+    float relEnd = (u_val / 100.0) * TAU;
+    bool  inProg = relA <= relEnd;
+    if (inProg) {
+      col += vec3(1.0) * hitMain;
+      col += vec3(0.3, 0.5, 1.0) * max(0.0, 0.002 / (sdfMain*sdfMain + 0.001));
+    } else {
+      col += vec3(0.09) * hitMain;
+    }
+    float edgeSDF = abs(sdfMain + mainHW * 0.9) - 0.01;
+    col += vec3(0.6) * (1.0 - smoothstep(0.0, 0.015, edgeSDF)) * hitMain;
+  }
+
+  // Caps
+  float startA3d = PI * 0.5;
+  float endA3d   = startA3d + (u_val / 100.0) * TAU;
+  float tPlane   = rayPlane(ro, rd, mainY);
+  if (tPlane > 0.0) {
+    vec3 hit    = ro + rd * tPlane;
+    vec3 ptEnd  = vec3(cos(endA3d)   * mainR, mainY, sin(endA3d)   * mainR);
+    vec3 ptSt   = vec3(cos(startA3d) * mainR, mainY, sin(startA3d) * mainR);
+    col += vec3(1.0) * (1.0 - smoothstep(0.0, 0.015, length(hit - ptEnd)  - mainHW));
+    col += vec3(1.0) * (1.0 - smoothstep(0.0, 0.015, length(hit - ptSt)   - mainHW));
+  }
+
+  // Ticks
+  if (tPlane > 0.0) {
+    vec3 hitT = ro + rd * tPlane;
+    float df  = length(hitT.xz) - (mainR + mainHW);
+    if (df > 0.0 && df < 0.28) {
+      float ang  = mod(atan(hitT.z, hitT.x) + TAU + rot, TAU);
+      float idx  = ang / TAU * 60.0;
+      float slot = floor(idx);
+      bool  big  = mod(slot, 5.0) < 0.5;
+      float tlen = big ? 0.22 : 0.11;
+      if (fract(idx) > 0.82)
+        col += vec3(big ? 0.60 : 0.28) * step(df, tlen);
+    }
+  }
+
+  // ── Anneaux secondaires ───────────────────────────────────────────────────
+  col += vec3(0.28) * ringOnly(ro, rd, -0.55, 0.82, 0.012);
+  {
+    float t3 = rayPlane(ro, rd, -1.05);
+    if (t3 > 0.0) {
+      vec3 h3 = ro + rd * t3;
+      float d3 = abs(length(h3.xz) - 0.65) - 0.008;
+      float a3 = mod(atan(h3.z, h3.x) + TAU, TAU) * 12.0;
+      col += vec3(0.17) * (1.0 - smoothstep(0.0,0.015,d3)) * step(0.5, sin(a3));
+    }
+  }
+  {
+    float t4 = rayPlane(ro, rd, -1.50);
+    if (t4 > 0.0) {
+      vec3 h4 = ro + rd * t4;
+      float d4 = abs(length(h4.xz) - 0.48) - 0.006;
+      float a4 = mod(atan(h4.z, h4.x) + TAU, TAU) * 10.0;
+      col += vec3(0.11) * (1.0 - smoothstep(0.0,0.015,d4)) * step(0.45, sin(a4));
+    }
+  }
+
+  // ── Labels numériques — à plat dans le plan XZ ──────────────────────────
+  // On intersecte le rayon avec Y=0, puis on calcule les coords locales
+  // dans le rectangle du label (axes tangent + radial)
+  float labelR  = mainR + mainHW + 0.30;
+  // Taille du label dans l'espace 3D monde
+  float lblW    = 0.28;   // largeur  (direction tangente)
+  float lblH    = 0.20;   // hauteur  (direction radiale)
+
+  float tLbl = rayPlane(ro, rd, mainY);
+  if (tLbl > 0.0) {
+    vec3 hitLbl = ro + rd * tLbl;
+
+    for (int i = 0; i < 5; i++) {
+      float val3d   = float(i) * 20.0;
+      float angle3d = startA3d + (val3d / 100.0) * TAU;
+
+      // Centre du label dans le plan
+      vec2 ctr = vec2(cos(angle3d), sin(angle3d)) * labelR;
+
+      // Axes locaux du label dans le plan XZ
+      // tangente : perpendiculaire au rayon, dans le plan
+      vec2 tangent = vec2(-sin(angle3d),  cos(angle3d));
+      vec2 radial  = vec2( cos(angle3d),  sin(angle3d));
+
+      // Coordonnées du point d'intersection dans le repère local du label
+      vec2 delta = hitLbl.xz - ctr;
+      float lx = dot(delta, tangent);   // -lblW/2 .. lblW/2
+      float ly = dot(delta, radial);    // -lblH/2 .. lblH/2
+
+      // UV dans le label [0..1]
+      float uvx = lx / lblW + 0.5;
+      float uvy = ly / lblH + 0.5;
+
+      if (uvx < 0.0 || uvx > 1.0 || uvy < 0.0 || uvy > 1.0) continue;
+
+      // Composition des chiffres dans l'atlas
+      float d0 = floor(val3d / 10.0);
+      float d1 = mod(val3d, 10.0);
+      bool two = val3d >= 10.0;
+
+      float alpha = 0.0;
+      if (two) {
+        // Deux chiffres côte à côte centrés
+        float ux0 = uvx * 2.0;          // chiffre gauche : [0..1] dans [0..0.5]
+        float ux1 = uvx * 2.0 - 1.0;   // chiffre droit  : [0..1] dans [0.5..1]
+        if (ux0 >= 0.0 && ux0 <= 1.0)
+          alpha += texture2D(u_font, vec2((d0 + ux0) / FONT_COLS, 1.0 - uvy)).a;
+        if (ux1 >= 0.0 && ux1 <= 1.0)
+          alpha += texture2D(u_font, vec2((d1 + ux1) / FONT_COLS, 1.0 - uvy)).a;
+      } else {
+        alpha = texture2D(u_font, vec2((d1 + uvx) / FONT_COLS, 1.0 - uvy)).a;
+      }
+
+      col += vec3(0.72) * clamp(alpha, 0.0, 1.0);
+    }
+  }
+
+  gl_FragColor = vec4(clamp(col, 0.0, 1.0), 1.0);
+}
+`;
+
+function mkShader(type, src) {
+  const s = gl.createShader(type);
+  gl.shaderSource(s, src); gl.compileShader(s);
+  if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) console.error(gl.getShaderInfoLog(s));
+  return s;
+}
+
+const prog = gl.createProgram();
+gl.attachShader(prog, mkShader(gl.VERTEX_SHADER, VERT));
+gl.attachShader(prog, mkShader(gl.FRAGMENT_SHADER, FRAG));
+gl.linkProgram(prog);
+if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) console.error(gl.getProgramInfoLog(prog));
+gl.useProgram(prog);
+
+const buf = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1,1,-1,-1,1,1,1]), gl.STATIC_DRAW);
+const aPos = gl.getAttribLocation(prog, 'pos');
+gl.enableVertexAttribArray(aPos);
+gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
+
+// ── Upload font texture ───────────────────────────────────────────────────────
+const fontCanvas = buildFontTexture();
+const tex = gl.createTexture();
+gl.activeTexture(gl.TEXTURE0);
+gl.bindTexture(gl.TEXTURE_2D, tex);
+gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, fontCanvas);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
+const uT    = gl.getUniformLocation(prog, 'u_t');
+const uVal  = gl.getUniformLocation(prog, 'u_val');
+const uMY   = gl.getUniformLocation(prog, 'u_my');
+const uMX   = gl.getUniformLocation(prog, 'u_mx');
+const uFont = gl.getUniformLocation(prog, 'u_font');
+uR = gl.getUniformLocation(prog, 'u_res');
+gl.uniform1i(uFont, 0);
+resize();
+
+function frame(ms) {
+  value  += (targetV  - value)  * 0.07;
+  mouseY += (targetMY - mouseY) * 0.05;
+  mouseX += (targetMX - mouseX) * 0.05;
+  numEl.textContent = Math.round(value);
+  gl.uniform1f(uT,   ms * 0.001);
+  gl.uniform1f(uVal, value);
+  gl.uniform1f(uMY,  mouseY);
+  gl.uniform1f(uMX,  mouseX);
+  gl.uniform2f(uR,   SZ, SZ);
+  gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

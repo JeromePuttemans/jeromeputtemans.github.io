@@ -1,0 +1,10 @@
+[gd_scene load_steps=2 format=3 uid="uid://clickbtn"]
+
+[ext_resource type="Script" uid="uid://c6fb3hw2pm08l" path="res://scenes/ui/ClickButton.gd" id="1_cbtn"]
+
+[node name="ClickButton" type="Button"]
+custom_minimum_size = Vector2(160, 160)
+text = "💰
+Cliquer !"
+script = ExtResource("1_cbtn")
+theme_override_font_sizes/font_size = 20
