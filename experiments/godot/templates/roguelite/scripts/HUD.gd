@@ -1,14 +1,23 @@
 class_name RogueHUD
 extends CanvasLayer
 
-# HUD: status panel, goal, messages, direction gizmo, intro and end screens.
+# HUD: status panel, goal, messages, direction labels, options, intro,
+# upgrade choice and end screens.
 #
-# DIRECTION GIZMO (the readability key of a 3D grid game):
-#   around the player's screen position, one arrow per direction (front,
-#   back, left, right, up, down), drawn by projecting the world direction
-#   with Camera3D.unproject_position(). Each arrow carries its key letter;
-#   green = open, faint red = wall. A golden arrow points to the current goal
-#   (core, then teleporter) with its distance in rooms.
+# UPGRADE CHOICE: after each delivered core (GameManager.upgrade_offered),
+#   three cards, one per upgrade, each with what it does and its effect in
+#   numbers for the next level ("Rooms with a crystal: 10 % -> 13 %"). Click
+#   a card's button or press 1, 2, 3 (number row by physical position, or
+#   keypad). A maxed upgrade's card is disabled. The end screen offers no
+#   upgrade: it sums up the run and lists the upgrades kept.
+#
+# DIRECTION LABELS: the arrows themselves are 3D meshes (DirectionGizmo,
+#   child of the player). The HUD only writes, in 2D, each arrow's key
+#   letter at the projected label point of the arrow, and the distance in
+#   rooms next to the golden goal arrow (hidden, like the arrow, when the
+#   goal is close). Labels are drawn farthest first, and
+#   fade out when they come close to the player on screen (arrow pointing
+#   almost straight at or away from the camera).
 
 signal start_requested()
 
@@ -27,40 +36,40 @@ class Gizmo extends Control:
 	func _process(_delta: float) -> void:
 		queue_redraw()
 	func _draw() -> void:
-		if hud == null or hud.camera == null or hud.player == null or not GameManager.running:
+		if hud == null or hud.camera == null or hud.player == null or not GameManager.can_act():
 			return
 		var cam: Camera3D = hud.camera
-		var origin: Vector3 = hud.player.position
+		var origin: Vector3 = hud.player.global_position
 		if cam.is_position_behind(origin):
 			return
 		var center: Vector2 = cam.unproject_position(origin)
-		var font: Font = ThemeDB.fallback_font
+		var items: Array = []   # [camera distance, world point, text, color, font size]
 		for dir in GridManager.DIRS:
-			var tip2: Vector2 = cam.unproject_position(origin + Vector3(dir) * 0.5)
-			var v: Vector2 = (tip2 - center).normalized()
 			var open: bool = hud.grid.can_move(hud.player.cell, dir)
-			var col: Color = Color(0.45, 1.0, 0.6, 0.95) if open else Color(1.0, 0.4, 0.4, 0.3)
-			var a: Vector2 = center + v * 26.0
-			var b: Vector2 = center + v * 58.0
-			draw_line(a, b, col, 3.0, true)
-			var side := Vector2(-v.y, v.x)
-			draw_colored_polygon(PackedVector2Array([b + v * 10.0, b + side * 7.0, b - side * 7.0]), col)
-			var label: String = hud.key_label(dir)
-			var at: Vector2 = b + v * 22.0 + Vector2(-8, 6)
-			draw_string_outline(font, at, label, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, 4, Color(0, 0, 0, 0.8))
-			draw_string(font, at, label, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, col if open else Color(1, 0.6, 0.6, 0.5))
-		# Goal arrow
-		var target: Vector3i = hud.goal_cell()
-		var delta3: Vector3 = Vector3(target) - origin
-		if delta3.length() > 0.1:
-			var g2: Vector2 = cam.unproject_position(origin + delta3.normalized())
-			var gv: Vector2 = (g2 - center).normalized()
-			var p: Vector2 = center + gv * 96.0
-			var gs := Vector2(-gv.y, gv.x)
-			draw_colored_polygon(PackedVector2Array([p + gv * 18.0, p + gs * 11.0, p - gs * 11.0]), COL_GOLD)
-			var dist: int = hud.goal_distance()
-			draw_string_outline(font, p + gv * 30.0 + Vector2(-10, 6), str(dist), HORIZONTAL_ALIGNMENT_LEFT, -1, 18, 5, Color(0, 0, 0, 0.85))
-			draw_string(font, p + gv * 30.0 + Vector2(-10, 6), str(dist), HORIZONTAL_ALIGNMENT_LEFT, -1, 18, COL_GOLD)
+			var reach: float = DirectionGizmo.OPEN_LABEL if open else DirectionGizmo.BLOCKED_LABEL
+			var col: Color = Color(0.6, 1.0, 0.7) if open else Color(1.0, 0.6, 0.6, 0.55)
+			var p: Vector3 = origin + Vector3(dir) * reach
+			items.append([cam.global_position.distance_to(p), p, hud.key_label(hud.player.to_relative(dir)), col, 16])
+		var to_goal: Vector3 = Vector3(hud.goal_cell()) - origin
+		if to_goal.length() > DirectionGizmo.GOAL_MIN_DIST:
+			var g: Vector3 = origin + to_goal.normalized() * DirectionGizmo.GOAL_LABEL
+			items.append([cam.global_position.distance_to(g), g, str(hud.goal_distance()), COL_GOLD, 18])
+		items.sort_custom(func(a: Array, b: Array) -> bool: return float(a[0]) > float(b[0]))
+		var font: Font = ThemeDB.fallback_font
+		for it in items:
+			var p: Vector3 = it[1]
+			if cam.is_position_behind(p):
+				continue
+			var at: Vector2 = cam.unproject_position(p)
+			var col: Color = it[3]
+			col.a *= smoothstep(10.0, 26.0, at.distance_to(center))
+			if col.a <= 0.01:
+				continue
+			var text: String = it[2]
+			var size: int = it[4]
+			var pos: Vector2 = at + Vector2(-font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x * 0.5, size * 0.35)
+			draw_string_outline(font, pos, text, HORIZONTAL_ALIGNMENT_LEFT, -1, size, 4, Color(0, 0, 0, 0.8 * col.a))
+			draw_string(font, pos, text, HORIZONTAL_ALIGNMENT_LEFT, -1, size, col)
 
 class EnergyBar extends Control:
 	var value: float = 0.0
@@ -87,12 +96,21 @@ var grid: GridManager = null
 var _status: PanelContainer
 var _level_lbl: Label
 var _bar: EnergyBar
-var _frag_lbl: Label
+var _crystal_lbl: Label
 var _bomb_lbl: Label
 var _best_lbl: Label
 var _goal_lbl: Label
 var _msg_box: VBoxContainer
 var _controls_lbl: Label
+var _camera_lbl: Label
+var _radius_title: Label
+var _radius_slider: HSlider
+var _radius_value: Label
+var _far_title: Label
+var _far_slider: HSlider
+var _far_value: Label
+var _kb_title: Label
+var _kb_option: OptionButton
 var _lang_btn: Button
 var _intro: PanelContainer
 var _intro_title: Label
@@ -101,12 +119,14 @@ var _start_btn: Button
 var _over: ColorRect
 var _over_title: Label
 var _over_stats: Label
-var _shop_title: Label
-var _shop_rows: Dictionary = {}
+var _over_kept: Label
 var _restart_btn: Button
+var _choice: ColorRect
+var _choice_title: Label
+var _choice_text: Label
+var _cards: Dictionary = {}   # upgrade id -> {name, desc, effect, level, button}
 var _banner: Label
 var _flash: ColorRect
-var _key_labels: Dictionary = {}
 
 func bind(cam: Camera3D, pawn: PlayerPawn, g: GridManager) -> void:
 	camera = cam
@@ -114,7 +134,6 @@ func bind(cam: Camera3D, pawn: PlayerPawn, g: GridManager) -> void:
 	grid = g
 
 func _ready() -> void:
-	_compute_key_labels()
 	var root := Control.new()
 	root.set_anchors_preset(Control.PRESET_FULL_RECT)
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -127,13 +146,15 @@ func _ready() -> void:
 	_build_status(root)
 	_build_overlays(root)
 	GameManager.energy_changed.connect(_on_energy)
-	GameManager.fragments_changed.connect(func(_t: int) -> void: _refresh())
-	GameManager.level_started.connect(func(_l: int) -> void: _refresh())
+	GameManager.level_started.connect(_on_level_started)
 	GameManager.core_collected_changed.connect(func(_c: bool) -> void: _refresh())
 	GameManager.level_completed.connect(_on_level_completed)
 	GameManager.message.connect(_on_message)
 	GameManager.run_ended.connect(_on_run_ended)
-	GameManager.upgrades_changed.connect(_refresh_shop)
+	GameManager.upgrade_offered.connect(_on_upgrade_offered)
+	GameManager.upgrades_changed.connect(_refresh)
+	GameManager.settings_changed.connect(_sync_options)
+	Keyboard.layout_changed.connect(_refresh_texts)
 	Strings.language_changed.connect(func(_l: String) -> void: _refresh_texts())
 	_refresh_texts()
 	show_intro()
@@ -154,18 +175,20 @@ func goal_distance() -> int:
 	return d.x + d.y + d.z
 
 func key_label(dir: Vector3i) -> String:
-	return str(_key_labels.get(dir, "?"))
+	return Keyboard.label(dir)
 
 ## Intro: no run yet, so the status panel and the goal are hidden.
 func show_intro() -> void:
 	_intro.visible = true
 	_over.visible = false
+	_choice.visible = false
 	_status.visible = false
 	_goal_lbl.visible = false
 
 func hide_overlays() -> void:
 	_intro.visible = false
 	_over.visible = false
+	_choice.visible = false
 	_status.visible = true
 	_goal_lbl.visible = true
 
@@ -195,9 +218,15 @@ func _on_message(text: String, kind: String) -> void:
 	tw.tween_property(lbl, "modulate:a", 0.0, 0.8)
 	tw.tween_callback(lbl.queue_free)
 
-func _on_level_completed(level: int, bonus: int) -> void:
-	_on_message(Strings.t("msg_level", {value = level, frag = bonus}), "good")
-	_banner.text = Strings.t("level", {value = level + 1}).to_upper()
+func _on_level_completed(level: int) -> void:
+	_on_message(Strings.t("msg_level", {value = level}), "good")
+
+## Banner for every level after the first, once the upgrade is picked.
+func _on_level_started(level: int) -> void:
+	_refresh()
+	if level <= 1:
+		return
+	_banner.text = Strings.t("level", {value = level}).to_upper()
 	_banner.visible = true
 	_banner.modulate.a = 0.0
 	var tw := create_tween()
@@ -206,11 +235,40 @@ func _on_level_completed(level: int, bonus: int) -> void:
 	tw.tween_property(_banner, "modulate:a", 0.0, 0.5)
 	tw.tween_callback(func() -> void: _banner.visible = false)
 
+func _on_upgrade_offered() -> void:
+	_refresh()
+	_refresh_choice()
+	_choice.visible = true
+	_choice.modulate.a = 0.0
+	create_tween().tween_property(_choice, "modulate:a", 1.0, 0.25)
+
+func _choose(id: String) -> void:
+	if not GameManager.choose_upgrade(id):
+		return
+	Sfx.play("upgrade", 0.0)
+	_choice.visible = false
+	_on_message(Strings.t("msg_upgrade", {name = Strings.t("up_%s_name" % id),
+		value = int(GameManager.upgrades[id]), max = GameManager.upgrade_max(id)}), "good")
+
+## Keys 1 / 2 / 3 pick a card. The number row is read by physical position
+## (an AZERTY keyboard types other characters there without Shift), the
+## keypad by keycode.
+func _unhandled_input(event: InputEvent) -> void:
+	if not _choice.visible:
+		return
+	var key: InputEventKey = event as InputEventKey
+	if key == null or not key.pressed or key.echo:
+		return
+	var index: int = [KEY_1, KEY_2, KEY_3].find(key.physical_keycode)
+	if index < 0:
+		index = [KEY_KP_1, KEY_KP_2, KEY_KP_3].find(key.keycode)
+	if index >= 0 and index < GameManager.UPGRADE_IDS.size():
+		_choose(GameManager.UPGRADE_IDS[index])
+		get_viewport().set_input_as_handled()
+
 func _on_run_ended(reason: String) -> void:
 	Sfx.play("death", 0.0)
-	_over_title.text = Strings.t(reason)
-	_over_stats.text = Strings.t("over_stats", {level = GameManager.level, rooms = GameManager.rooms_explored, frag = GameManager.run_fragments})
-	_refresh_shop()
+	_refresh_over()
 	_over.visible = true
 	_over.modulate.a = 0.0
 	create_tween().tween_property(_over, "modulate:a", 1.0, 0.4)
@@ -221,59 +279,65 @@ func _on_run_ended(reason: String) -> void:
 
 func _refresh() -> void:
 	_level_lbl.text = Strings.t("level", {value = GameManager.level})
-	_frag_lbl.text = Strings.t("fragments", {value = GameManager.fragments})
+	_crystal_lbl.text = Strings.t("crystals", {value = GameManager.upgrade_value("prospect", int(GameManager.upgrades["prospect"]))})
 	_bomb_lbl.text = Strings.t("bomb", {value = GameManager.bomb_cost()})
 	_best_lbl.text = Strings.t("best", {value = maxi(GameManager.best_level, 1)})
 
 func _refresh_texts() -> void:
 	_refresh()
 	_lang_btn.text = Strings.t("lang_button")
+	_camera_lbl.text = Strings.t("camera_hint")
+	_radius_title.text = Strings.t("opt_radius")
+	_far_title.text = Strings.t("opt_far")
+	_sync_options()
+	_kb_title.text = Strings.t("opt_keyboard")
+	var detected: String = Keyboard.detected_name()
+	_kb_option.set_item_text(0, Strings.t("kb_auto", {value = detected}) if detected != "" else Strings.t("kb_auto_other"))
+	_kb_option.select(maxi(Keyboard.MODES.find(Keyboard.mode), 0))
 	_intro_title.text = Strings.t("title")
 	_intro_text.text = Strings.t("intro")
 	_start_btn.text = Strings.t("start")
 	_restart_btn.text = Strings.t("restart")
-	_shop_title.text = Strings.t("shop_title")
 	_controls_lbl.text = Strings.t("controls", {front = key_label(Vector3i(0, 0, -1)), back = key_label(Vector3i(0, 0, 1)),
 		left = key_label(Vector3i(-1, 0, 0)), right = key_label(Vector3i(1, 0, 0)),
 		up = key_label(Vector3i(0, 1, 0)), down = key_label(Vector3i(0, -1, 0))})
 	if _over.visible:
-		_over_title.text = Strings.t(GameManager.end_reason)
-		_over_stats.text = Strings.t("over_stats", {level = GameManager.level, rooms = GameManager.rooms_explored, frag = GameManager.run_fragments})
-	_refresh_shop()
+		_refresh_over()
+	if _choice.visible:
+		_refresh_choice()
 
-func _refresh_shop() -> void:
-	_refresh()
-	for id in _shop_rows:
-		var row: Dictionary = _shop_rows[id]
+## End screen: run summary, then the upgrades kept (when there are any).
+func _refresh_over() -> void:
+	_over_title.text = Strings.t(GameManager.end_reason)
+	_over_stats.text = Strings.t("over_stats", {level = GameManager.level, rooms = GameManager.rooms_explored})
+	var kept: PackedStringArray = []
+	for id in GameManager.UPGRADE_IDS:
+		if int(GameManager.upgrades[id]) > 0:
+			kept.append("%s %d/%d" % [Strings.t("up_%s_name" % id), int(GameManager.upgrades[id]), GameManager.upgrade_max(id)])
+	_over_kept.text = Strings.t("over_kept", {list = "   ·   ".join(kept)}) if not kept.is_empty() else ""
+	_over_kept.visible = not kept.is_empty()
+
+## Cards: effect for the NEXT level, so the player sees what the pick buys.
+func _refresh_choice() -> void:
+	_choice_title.text = Strings.t("choice_title", {value = GameManager.level - 1})
+	_choice_text.text = Strings.t("choice_text")
+	for i in GameManager.UPGRADE_IDS.size():
+		var id: String = GameManager.UPGRADE_IDS[i]
+		var card: Dictionary = _cards[id]
 		var lvl: int = int(GameManager.upgrades[id])
-		var name_lbl: Label = row["name"] as Label
-		var lvl_lbl: Label = row["level"] as Label
-		name_lbl.text = Strings.t("up_" + str(id), {value = int(GameManager.num("energy_per_upgrade"))})
-		lvl_lbl.text = Strings.t("up_level", {value = lvl, max = int(GameManager.num("upgrade_max_level"))})
-		var cost: int = GameManager.upgrade_cost(str(id))
-		var btn: Button = row["button"] as Button
-		btn.text = Strings.t("up_maxed") if cost < 0 else Strings.t("up_buy", {cost = cost})
-		btn.disabled = cost < 0 or GameManager.fragments < cost
+		var open: bool = GameManager.upgrade_available(id)
+		(card["name"] as Label).text = Strings.t("up_%s_name" % id)
+		(card["desc"] as Label).text = Strings.t("up_%s_desc" % id)
+		(card["effect"] as Label).text = Strings.t("up_%s_effect" % id, {now = GameManager.upgrade_value(id, lvl),
+			next = GameManager.upgrade_value(id, lvl + 1)}) if open else ""
+		(card["level"] as Label).text = Strings.t("up_level", {value = lvl, max = GameManager.upgrade_max(id)})
+		var btn: Button = card["button"] as Button
+		btn.text = Strings.t("up_choose", {key = i + 1}) if open else Strings.t("up_maxed")
+		btn.disabled = not open
 
 # ---------------------------------------------------------------------------
 # Building
 # ---------------------------------------------------------------------------
-
-func _compute_key_labels() -> void:
-	var physical: Dictionary = {Vector3i(0, 0, -1): KEY_W, Vector3i(0, 0, 1): KEY_S, Vector3i(-1, 0, 0): KEY_A,
-		Vector3i(1, 0, 0): KEY_D, Vector3i(0, 1, 0): KEY_E, Vector3i(0, -1, 0): KEY_Q}
-	var desktop: bool = DisplayServer.get_name() in ["Windows", "macOS", "X11", "Wayland"]
-	var azerty: Dictionary = {KEY_W: "Z", KEY_A: "Q", KEY_Q: "A"}
-	for dir in physical:
-		var k: Key = physical[dir]
-		var label: String = OS.get_keycode_string(k)
-		if desktop:
-			var mapped: String = OS.get_keycode_string(DisplayServer.keyboard_get_keycode_from_physical(k))
-			if mapped.length() == 1:
-				label = mapped
-		elif OS.get_locale_language() == "fr" and azerty.has(k):
-			label = str(azerty[k])
-		_key_labels[dir] = label
 
 func _build_status(root: Control) -> void:
 	var panel := PanelContainer.new()
@@ -289,10 +353,10 @@ func _build_status(root: Control) -> void:
 	_bar = EnergyBar.new()
 	_bar.custom_minimum_size = Vector2(0, 22)
 	box.add_child(_bar)
-	_frag_lbl = _label(15, Color("c7a8ff"))
-	box.add_child(_frag_lbl)
 	_bomb_lbl = _label(14, COL_TEXT)
 	box.add_child(_bomb_lbl)
+	_crystal_lbl = _label(14, COL_GOOD)
+	box.add_child(_crystal_lbl)
 	_best_lbl = _label(13, COL_MUTED)
 	box.add_child(_best_lbl)
 	_msg_box = VBoxContainer.new()
@@ -313,6 +377,13 @@ func _build_status(root: Control) -> void:
 	_controls_lbl.size = Vector2(1040, 24)
 	_controls_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	root.add_child(_controls_lbl)
+	_camera_lbl = _label(12, Color(COL_MUTED, 0.85))
+	_camera_lbl.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
+	_camera_lbl.position = Vector2(-520, -56)
+	_camera_lbl.size = Vector2(1040, 20)
+	_camera_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	root.add_child(_camera_lbl)
+	_build_options(root)
 	_lang_btn = Button.new()
 	_lang_btn.focus_mode = Control.FOCUS_NONE
 	_lang_btn.set_anchors_preset(Control.PRESET_TOP_RIGHT)
@@ -335,6 +406,77 @@ func _build_status(root: Control) -> void:
 	_banner.visible = false
 	root.add_child(_banner)
 
+## Options panel: focus radius, opacity of the rooms outside it, keyboard
+## layout of the key letters. No control takes keyboard focus: the arrow
+## keys keep moving the player. The panel grows upward from its bottom edge.
+func _build_options(root: Control) -> void:
+	var panel := PanelContainer.new()
+	panel.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
+	panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	panel.offset_left = 16
+	panel.offset_top = -64   # clear of the camera hint line below
+	panel.offset_bottom = -64
+	root.add_child(panel)
+	var grid := GridContainer.new()
+	grid.columns = 3
+	grid.add_theme_constant_override("h_separation", 10)
+	grid.add_theme_constant_override("v_separation", 8)
+	panel.add_child(grid)
+	_radius_title = _label(13, COL_TEXT)
+	grid.add_child(_radius_title)
+	_radius_slider = HSlider.new()
+	_radius_slider.min_value = GameManager.FOCUS_RADIUS_MIN
+	_radius_slider.max_value = GameManager.FOCUS_RADIUS_MAX
+	_radius_slider.step = 1.0
+	_radius_slider.tick_count = GameManager.FOCUS_RADIUS_MAX - GameManager.FOCUS_RADIUS_MIN + 1
+	_radius_slider.ticks_on_borders = true
+	_radius_slider.value = GameManager.focus_radius
+	_radius_slider.focus_mode = Control.FOCUS_NONE
+	_radius_slider.custom_minimum_size = Vector2(140, 20)
+	_radius_slider.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_radius_slider.value_changed.connect(func(value: float) -> void: GameManager.set_focus_radius(int(value)))
+	grid.add_child(_radius_slider)
+	_radius_value = _label(13, COL_CYAN)
+	grid.add_child(_radius_value)
+	_far_title = _label(13, COL_TEXT)
+	grid.add_child(_far_title)
+	_far_slider = HSlider.new()
+	_far_slider.min_value = 0.0
+	_far_slider.max_value = 1.0
+	_far_slider.step = 0.05
+	_far_slider.value = GameManager.far_opacity
+	_far_slider.focus_mode = Control.FOCUS_NONE
+	_far_slider.custom_minimum_size = Vector2(140, 20)
+	_far_slider.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_far_slider.value_changed.connect(_on_far_changed)
+	grid.add_child(_far_slider)
+	_far_value = _label(13, COL_CYAN)
+	_far_value.custom_minimum_size = Vector2(44, 0)
+	grid.add_child(_far_value)
+	_kb_title = _label(13, COL_TEXT)
+	grid.add_child(_kb_title)
+	_kb_option = OptionButton.new()
+	_kb_option.focus_mode = Control.FOCUS_NONE
+	_kb_option.add_theme_font_size_override("font_size", 13)
+	for text in ["auto", "AZERTY", "QWERTY"]:   # item 0 text is set by _refresh_texts
+		_kb_option.add_item(text)
+	_kb_option.get_popup().add_theme_font_size_override("font_size", 13)
+	_kb_option.item_selected.connect(func(index: int) -> void: GameManager.set_keyboard_mode(Keyboard.MODES[index]))
+	grid.add_child(_kb_option)
+	grid.add_child(Control.new())   # empty third column
+
+## Sliders and value labels from the settings (after a change, a loaded
+## save or a language switch), without re-emitting value_changed.
+func _sync_options() -> void:
+	var r: int = GameManager.focus_radius
+	_radius_slider.set_value_no_signal(r)
+	_radius_value.text = Strings.t("radius_value_one") if r == 1 else Strings.t("radius_value", {value = r})
+	_far_slider.set_value_no_signal(GameManager.far_opacity)
+	_far_value.text = "%d %%" % int(round(GameManager.far_opacity * 100.0))
+
+func _on_far_changed(value: float) -> void:
+	GameManager.set_far_opacity(value)
+
 func _build_overlays(root: Control) -> void:
 	# Intro
 	_intro = PanelContainer.new()
@@ -355,7 +497,7 @@ func _build_overlays(root: Control) -> void:
 	_start_btn = _accent_button()
 	_start_btn.pressed.connect(func() -> void: start_requested.emit())
 	ib.add_child(_start_btn)
-	# Game over + shop
+	# Game over: summary only
 	_over = ColorRect.new()
 	_over.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_over.color = Color(0.02, 0.03, 0.06, 0.82)
@@ -375,30 +517,64 @@ func _build_overlays(root: Control) -> void:
 	_over_stats = _label(15, COL_TEXT)
 	_over_stats.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	ob.add_child(_over_stats)
-	_shop_title = _label(13, COL_MUTED)
-	ob.add_child(_shop_title)
-	for id in GameManager.UPGRADE_IDS:
-		var row := HBoxContainer.new()
-		row.add_theme_constant_override("separation", 10)
-		ob.add_child(row)
-		var name_lbl := _label(15, COL_TEXT)
-		name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		row.add_child(name_lbl)
-		var lvl_lbl := _label(13, COL_MUTED)
-		row.add_child(lvl_lbl)
-		var btn := Button.new()
-		btn.focus_mode = Control.FOCUS_NONE
-		btn.custom_minimum_size = Vector2(150, 34)
-		btn.pressed.connect(_on_buy.bind(id))
-		row.add_child(btn)
-		_shop_rows[id] = {name = name_lbl, level = lvl_lbl, button = btn}
+	_over_kept = _label(14, COL_GOOD)
+	_over_kept.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_over_kept.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	ob.add_child(_over_kept)
 	_restart_btn = _accent_button()
 	_restart_btn.pressed.connect(func() -> void: start_requested.emit())
 	ob.add_child(_restart_btn)
+	_build_choice(root)
 
-func _on_buy(id: String) -> void:
-	if GameManager.buy_upgrade(id):
-		Sfx.play("upgrade", 0.0)
+## Upgrade choice: title, explanation, one card per upgrade.
+func _build_choice(root: Control) -> void:
+	_choice = ColorRect.new()
+	_choice.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_choice.color = Color(0.02, 0.03, 0.06, 0.78)
+	_choice.visible = false
+	root.add_child(_choice)
+	var center := CenterContainer.new()
+	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_choice.add_child(center)
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 14)
+	center.add_child(box)
+	_choice_title = _label(34, COL_GOLD)
+	_choice_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	box.add_child(_choice_title)
+	_choice_text = _label(15, COL_TEXT)
+	_choice_text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_choice_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_choice_text.custom_minimum_size = Vector2(780, 0)
+	box.add_child(_choice_text)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 16)
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	box.add_child(row)
+	for id in GameManager.UPGRADE_IDS:
+		var card := PanelContainer.new()
+		card.custom_minimum_size = Vector2(250, 0)
+		row.add_child(card)
+		var v := VBoxContainer.new()
+		v.add_theme_constant_override("separation", 8)
+		card.add_child(v)
+		var name_lbl := _label(21, COL_CYAN)
+		v.add_child(name_lbl)
+		var desc := _label(14, COL_TEXT)
+		desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		desc.custom_minimum_size = Vector2(226, 0)
+		desc.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		v.add_child(desc)
+		var effect := _label(15, COL_GOLD)
+		effect.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		effect.custom_minimum_size = Vector2(226, 0)
+		v.add_child(effect)
+		var lvl := _label(13, COL_MUTED)
+		v.add_child(lvl)
+		var btn := _accent_button()
+		btn.pressed.connect(_choose.bind(id))
+		v.add_child(btn)
+		_cards[id] = {name = name_lbl, desc = desc, effect = effect, level = lvl, button = btn}
 
 func _label(font_size: int, color: Color) -> Label:
 	var l := Label.new()

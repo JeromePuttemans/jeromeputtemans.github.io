@@ -132,6 +132,32 @@ func bomb(center: Vector3i) -> void:
 func room_count() -> int:
 	return grid.size()
 
+## FOCUS: rooms within GameManager.focus_radius moves (options slider) of
+## `center`, walking only through
+## open passages (breadth-first search over the room graph), are drawn
+## normally; every other room fades to the far opacity. A room right behind
+## a wall is therefore faded: what counts is the walking distance, which is
+## what the player needs to read.
+func update_focus(center: Vector3i) -> void:
+	var radius: int = GameManager.focus_radius
+	var dist: Dictionary = {center: 0}
+	var queue: Array[Vector3i] = [center]
+	var head: int = 0
+	while head < queue.size():
+		var cur: Vector3i = queue[head]
+		head += 1
+		var d_cur: int = int(dist[cur])
+		if d_cur >= radius:
+			continue
+		for d in DIRS:
+			var n: Vector3i = cur + d
+			if dist.has(n) or not has_room(n) or not can_move(cur, d):
+				continue
+			dist[n] = d_cur + 1
+			queue.append(n)
+	for p in grid:
+		(grid[p] as RoomCube).apply_focus(dist.has(p))
+
 func _add_room(p: Vector3i, mask: int, type: int, animate: bool) -> void:
 	var r := RoomCube.new()
 	add_child(r)

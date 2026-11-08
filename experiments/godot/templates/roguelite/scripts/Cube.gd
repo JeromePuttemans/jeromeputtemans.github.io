@@ -9,6 +9,15 @@ extends Node3D
 #     blue ring (teleporter), glowing yellow sphere with a light (core)
 # Meshes and materials are cached in static variables and shared by every
 # room, so a maze of hundreds of rooms stays cheap.
+#
+# FOCUS (readability when rooms overlap in depth):
+#   GridManager marks each room as near (within GameManager.focus_radius moves of the
+#   player through open passages) or far. A far room uses the "far" variant
+#   of its materials, whose alpha is the base alpha x far_opacity (the
+#   options slider). Every far room shares those few materials, so moving the
+#   slider only updates a handful of materials. At 0 the far rooms are hidden.
+#   The teleporter and the core keep their glowing decoration at full
+#   strength: they stay visible as landmarks.
 
 const TYPE_COLORS: Array[Color] = [
 	Color(0.62, 0.68, 0.82),   # neutral
@@ -20,6 +29,7 @@ const TYPE_COLORS: Array[Color] = [
 static var _edge_mesh: ArrayMesh = null
 static var _panels: Array[BoxMesh] = []
 static var _mats: Dictionary = {}
+static var far_opacity: float = 0.15
 
 var mask: int = 0
 var type: int = 0
@@ -28,6 +38,7 @@ var _deco: Node3D = null
 var _edges: MeshInstance3D = null
 var _time: float = 0.0
 var _pop: Tween = null
+var _near: bool = true
 
 func setup(m: int, t: int, animate: bool) -> void:
 	mask = m
@@ -52,6 +63,41 @@ func has_wall(dir: Vector3i) -> bool:
 func set_mask(m: int) -> void:
 	mask = m
 	_build_walls()
+	apply_focus(_near)
+
+func is_near() -> bool:
+	return _near
+
+func _is_landmark() -> bool:
+	return type == GridManager.Type.TELEPORTER or type == GridManager.Type.CORE
+
+## Switches the room between its near and far look (see FOCUS above).
+func apply_focus(near: bool) -> void:
+	_near = near
+	var hidden: bool = not near and far_opacity <= 0.01
+	_edges.visible = not hidden
+	_walls.visible = not hidden
+	_edges.material_override = _mat("edge", type, not near)
+	for c in _walls.get_children():
+		var wall: MeshInstance3D = c as MeshInstance3D
+		wall.material_override = _mat("wall", type, not near)
+	if _deco != null:
+		var deco_far: bool = not near and not _is_landmark()
+		_deco.visible = not (deco_far and hidden)
+		for c in _deco.get_children():
+			var mi: MeshInstance3D = c as MeshInstance3D
+			if mi != null:
+				mi.material_override = _mat("glow", type, deco_far)
+
+## Opacity of far rooms, from 0 (hidden) to 1 (same as near rooms).
+static func set_far_opacity(value: float) -> void:
+	far_opacity = clampf(value, 0.0, 1.0)
+	for key in _mats.keys():
+		var k: String = str(key)
+		if k.ends_with("_far"):
+			var parts: PackedStringArray = k.split("_")
+			var m: StandardMaterial3D = _mats[key] as StandardMaterial3D
+			m.albedo_color.a = _base_alpha(parts[0], int(parts[1])) * far_opacity
 
 func set_type(t: int) -> void:
 	type = t
@@ -85,9 +131,9 @@ func _build() -> void:
 		_edges = MeshInstance3D.new()
 		_edges.mesh = _get_edge_mesh()
 		add_child(_edges)
-	_edges.material_override = _mat("edge", type)
 	_build_walls()
 	_build_deco()
+	apply_focus(_near)
 
 func _build_walls() -> void:
 	if _walls != null:
@@ -195,26 +241,37 @@ static func _get_panel(dir: Vector3i) -> BoxMesh:
 		return _panels[1]
 	return _panels[2]
 
-static func _mat(kind: String, t: int) -> StandardMaterial3D:
-	var key: String = "%s_%d" % [kind, t]
+static func _base_alpha(kind: String, t: int) -> float:
+	match kind:
+		"edge":
+			return 0.75 if t != GridManager.Type.NEUTRAL else 0.4
+		"wall":
+			return 0.42
+	return 1.0
+
+static func _mat(kind: String, t: int, far: bool = false) -> StandardMaterial3D:
+	var key: String = "%s_%d_%s" % [kind, t, "far" if far else "near"]
 	if _mats.has(key):
 		return _mats[key] as StandardMaterial3D
 	var c: Color = TYPE_COLORS[clampi(t, 0, TYPE_COLORS.size() - 1)]
+	var alpha: float = _base_alpha(kind, t) * (far_opacity if far else 1.0)
 	var m := StandardMaterial3D.new()
 	match kind:
 		"edge":
 			m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 			m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-			m.albedo_color = Color(c, 0.75 if t != GridManager.Type.NEUTRAL else 0.4)
+			m.albedo_color = Color(c, alpha)
 		"wall":
 			m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 			m.cull_mode = BaseMaterial3D.CULL_DISABLED
-			m.albedo_color = Color(c.darkened(0.15), 0.42)
+			m.albedo_color = Color(c.darkened(0.15), alpha)
 			m.emission_enabled = true
 			m.emission = c * 0.18
 			m.roughness = 0.7
 		_:
-			m.albedo_color = c
+			if far:
+				m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+			m.albedo_color = Color(c, alpha)
 			m.emission_enabled = true
 			m.emission = c
 			m.emission_energy_multiplier = 1.6

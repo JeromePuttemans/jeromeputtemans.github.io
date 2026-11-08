@@ -22,6 +22,7 @@ config/icon="res://icon.png"
 [autoload]
 
 Strings="*res://scripts/Strings.gd"
+Keyboard="*res://scripts/Keyboard.gd"
 Sfx="*res://scripts/Sfx.gd"
 GameManager="*res://scripts/GameManager.gd"
 
