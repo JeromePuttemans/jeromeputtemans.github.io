@@ -1,5 +1,5 @@
 # =============================================================================
-# StringManager.gd — Autoload (Singleton)
+# StringManager.gd (Autoload, Singleton)
 # =============================================================================
 # Loads data/strings_<lang>.json and provides {placeholder} substitution.
 # Adding a language: copy strings_en.json, translate values, add the code to
@@ -46,10 +46,18 @@ func t(key: String, replacements: Dictionary = {}) -> String:
 		s = s.replace("{%s}" % k, str(replacements[k]))
 	return s
 
+func has_key(key: String) -> bool:
+	return _strings.has(key) or _fallback.has(key)
+
+## Localised string if the key exists, otherwise the given fallback text.
+## Used for data-driven names (towers.json display_name as fallback).
+func t_or(key: String, fallback: String) -> String:
+	return t(key) if has_key(key) else fallback
+
 func _load_file(lang: String) -> Dictionary:
 	var path = STRINGS_DIR + "strings_" + lang + ".json"
 	if not FileAccess.file_exists(path):
-		push_error("StringManager: not found — " + path)
+		push_error("StringManager: file not found: " + path)
 		return {}
 	var f = FileAccess.open(path, FileAccess.READ)
 	if not f:

@@ -1,12 +1,12 @@
 [
-	{ "wave": 1,  "spawns": [{"type":"basic","count":6}] },
-	{ "wave": 2,  "spawns": [{"type":"basic","count":8}, {"type":"fast","count":3}] },
-	{ "wave": 3,  "spawns": [{"type":"fast","count":8}, {"type":"basic","count":5}] },
-	{ "wave": 4,  "spawns": [{"type":"basic","count":10}, {"type":"tank","count":1}] },
-	{ "wave": 5,  "spawns": [{"type":"fast","count":12}, {"type":"tank","count":2}] },
-	{ "wave": 6,  "spawns": [{"type":"basic","count":12}, {"type":"fast","count":8}, {"type":"tank","count":2}] },
-	{ "wave": 7,  "spawns": [{"type":"tank","count":4}, {"type":"fast","count":10}] },
-	{ "wave": 8,  "spawns": [{"type":"basic","count":20}, {"type":"tank","count":3}] },
-	{ "wave": 9,  "spawns": [{"type":"fast","count":20}, {"type":"tank","count":5}] },
-	{ "wave": 10, "spawns": [{"type":"basic","count":15}, {"type":"fast","count":15}, {"type":"tank","count":8}] }
+	{ "wave": 1,  "spawns": [{"type":"grunt",  "count":8,  "interval":1.0}] },
+	{ "wave": 2,  "spawns": [{"type":"grunt",  "count":10, "interval":0.8}, {"type":"runner", "count":4,  "interval":0.7, "delay":1.5}] },
+	{ "wave": 3,  "spawns": [{"type":"runner", "count":12, "interval":0.5}, {"type":"grunt",  "count":6,  "interval":0.8, "delay":2.0}] },
+	{ "wave": 4,  "spawns": [{"type":"grunt",  "count":12, "interval":0.7}, {"type":"brute",  "count":1,  "delay":2.0}] },
+	{ "wave": 5,  "spawns": [{"type":"runner", "count":16, "interval":0.45}, {"type":"brute", "count":2,  "interval":2.0, "delay":2.0}] },
+	{ "wave": 6,  "spawns": [{"type":"grunt",  "count":14, "interval":0.6}, {"type":"runner", "count":10, "interval":0.4, "delay":1.0}, {"type":"brute", "count":2, "interval":2.0, "delay":1.5}] },
+	{ "wave": 7,  "spawns": [{"type":"brute",  "count":5,  "interval":1.6}, {"type":"runner", "count":12, "interval":0.4, "delay":1.0}] },
+	{ "wave": 8,  "spawns": [{"type":"grunt",  "count":24, "interval":0.5}, {"type":"brute",  "count":4,  "interval":1.5, "delay":1.0}] },
+	{ "wave": 9,  "spawns": [{"type":"runner", "count":24, "interval":0.35}, {"type":"brute", "count":6,  "interval":1.4, "delay":1.0}] },
+	{ "wave": 10, "spawns": [{"type":"grunt",  "count":20, "interval":0.5}, {"type":"runner", "count":20, "interval":0.35, "delay":1.0}, {"type":"brute", "count":10, "interval":1.2, "delay":1.0}] }
 ]

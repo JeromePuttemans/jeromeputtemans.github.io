@@ -1,156 +1,442 @@
-[gd_scene load_steps=4 format=3 uid="uid://y5lkfbkkdqjj"]
+[gd_scene load_steps=9 format=3 uid="uid://y5lkfbkkdqjj"]
 
 [ext_resource type="Script" uid="uid://r323n2nrf1s4" path="res://scenes/Main.gd" id="1_main"]
 [ext_resource type="Script" uid="uid://bsyxbht0fc70m" path="res://scenes/ui/HUD.gd" id="2_hud"]
 [ext_resource type="Script" uid="uid://whbc2ae7bino" path="res://scripts/TDGrid.gd" id="3_gridmap"]
+[ext_resource type="Script" path="res://scripts/ShakeCamera.gd" id="4_camera"]
+[ext_resource type="Script" path="res://scripts/PathMarkers.gd" id="5_markers"]
+[ext_resource type="Script" path="res://scripts/Fx.gd" id="6_fx"]
+[ext_resource type="Script" path="res://scripts/PlacementPreview.gd" id="7_preview"]
+[ext_resource type="Script" path="res://scenes/ui/HudIcon.gd" id="8_icon"]
 
 [node name="Main" type="Node2D"]
+process_mode = 3
 script = ExtResource("1_main")
 
+[node name="Camera" type="Camera2D" parent="."]
+process_mode = 1
+anchor_mode = 0
+script = ExtResource("4_camera")
+
 [node name="World" type="Node2D" parent="."]
+process_mode = 1
 
 [node name="GridMap" type="Node2D" parent="World"]
 script = ExtResource("3_gridmap")
 
-[node name="Enemies" type="Node2D" parent="World"]
+[node name="PathMarkers" type="Node2D" parent="World"]
+script = ExtResource("5_markers")
 
 [node name="Towers" type="Node2D" parent="World"]
 
+[node name="Enemies" type="Node2D" parent="World"]
+
 [node name="Projectiles" type="Node2D" parent="World"]
 
-[node name="UI" type="CanvasLayer" parent="."]
+[node name="Fx" type="Node2D" parent="World"]
+script = ExtResource("6_fx")
 
-[node name="HUD" type="MarginContainer" parent="UI"]
+[node name="Preview" type="Node2D" parent="World"]
+script = ExtResource("7_preview")
+
+[node name="UI" type="CanvasLayer" parent="."]
+process_mode = 3
+
+[node name="Vignette" type="ColorRect" parent="UI"]
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-theme_override_constants/margin_left = 10
-theme_override_constants/margin_top = 6
-theme_override_constants/margin_right = 10
-theme_override_constants/margin_bottom = 6
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="HUD" type="Control" parent="UI"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
 script = ExtResource("2_hud")
 
-[node name="VBoxOuter" type="VBoxContainer" parent="UI/HUD"]
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
+[node name="TopBar" type="PanelContainer" parent="UI/HUD"]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 10.0
+offset_top = 8.0
+offset_right = -10.0
+offset_bottom = 52.0
+grow_horizontal = 2
 
-[node name="TopBar" type="HBoxContainer" parent="UI/HUD/VBoxOuter"]
+[node name="Row" type="HBoxContainer" parent="UI/HUD/TopBar"]
 layout_mode = 2
-size_flags_vertical = 0
-theme_override_constants/separation = 16
+mouse_filter = 2
+theme_override_constants/separation = 26
 
-[node name="GoldLabel" type="Label" parent="UI/HUD/VBoxOuter/TopBar"]
+[node name="Gold" type="HBoxContainer" parent="UI/HUD/TopBar/Row"]
 layout_mode = 2
-theme_override_colors/font_color = Color(1, 0.85, 0.2, 1)
-theme_override_font_sizes/font_size = 14
+mouse_filter = 2
+theme_override_constants/separation = 7
 
-[node name="LivesLabel" type="Label" parent="UI/HUD/VBoxOuter/TopBar"]
+[node name="Icon" type="Control" parent="UI/HUD/TopBar/Row/Gold"]
+custom_minimum_size = Vector2(22, 22)
 layout_mode = 2
-theme_override_colors/font_color = Color(1, 0.4, 0.4, 1)
-theme_override_font_sizes/font_size = 14
+size_flags_vertical = 4
+mouse_filter = 2
+script = ExtResource("8_icon")
+kind = "coin"
 
-[node name="ScoreLabel" type="Label" parent="UI/HUD/VBoxOuter/TopBar"]
+[node name="Value" type="Label" parent="UI/HUD/TopBar/Row/Gold"]
+custom_minimum_size = Vector2(52, 0)
 layout_mode = 2
-size_flags_horizontal = 3
-theme_override_colors/font_color = Color(0.6, 1, 0.6, 1)
-theme_override_font_sizes/font_size = 14
+text = "0"
 
-[node name="WaveLabel" type="Label" parent="UI/HUD/VBoxOuter/TopBar"]
+[node name="Lives" type="HBoxContainer" parent="UI/HUD/TopBar/Row"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.7, 0.9, 1, 1)
-theme_override_font_sizes/font_size = 14
+mouse_filter = 2
+theme_override_constants/separation = 7
 
-[node name="LangButton" type="Button" parent="UI/HUD/VBoxOuter/TopBar"]
-custom_minimum_size = Vector2(44, 0)
+[node name="Icon" type="Control" parent="UI/HUD/TopBar/Row/Lives"]
+custom_minimum_size = Vector2(22, 22)
 layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+script = ExtResource("8_icon")
+kind = "heart"
 
-[node name="ContentRow" type="HBoxContainer" parent="UI/HUD/VBoxOuter"]
+[node name="Value" type="Label" parent="UI/HUD/TopBar/Row/Lives"]
+custom_minimum_size = Vector2(30, 0)
 layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
+text = "0"
 
-[node name="GameAreaSpacer" type="Control" parent="UI/HUD/VBoxOuter/ContentRow"]
+[node name="Wave" type="HBoxContainer" parent="UI/HUD/TopBar/Row"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 7
+
+[node name="Icon" type="Control" parent="UI/HUD/TopBar/Row/Wave"]
+custom_minimum_size = Vector2(22, 22)
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+script = ExtResource("8_icon")
+kind = "wave"
+
+[node name="Value" type="Label" parent="UI/HUD/TopBar/Row/Wave"]
+layout_mode = 2
+text = "Wave 1/10"
+
+[node name="Score" type="HBoxContainer" parent="UI/HUD/TopBar/Row"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 7
+
+[node name="Icon" type="Control" parent="UI/HUD/TopBar/Row/Score"]
+custom_minimum_size = Vector2(20, 20)
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+script = ExtResource("8_icon")
+kind = "star"
+
+[node name="Value" type="Label" parent="UI/HUD/TopBar/Row/Score"]
+layout_mode = 2
+text = "0"
+
+[node name="Spacer" type="Control" parent="UI/HUD/TopBar/Row"]
 layout_mode = 2
 size_flags_horizontal = 3
 mouse_filter = 2
 
-[node name="RightPanel" type="VBoxContainer" parent="UI/HUD/VBoxOuter/ContentRow"]
-custom_minimum_size = Vector2(160, 0)
+[node name="SpeedButton" type="Button" parent="UI/HUD/TopBar/Row"]
+custom_minimum_size = Vector2(46, 34)
 layout_mode = 2
-size_flags_vertical = 0
-theme_override_constants/separation = 6
+focus_mode = 0
+tooltip_text = "Speed (F)"
+text = "x1"
 
-[node name="ShopVBox" type="VBoxContainer" parent="UI/HUD/VBoxOuter/ContentRow/RightPanel"]
+[node name="PauseButton" type="Button" parent="UI/HUD/TopBar/Row"]
+custom_minimum_size = Vector2(42, 34)
 layout_mode = 2
-theme_override_constants/separation = 4
+focus_mode = 0
+tooltip_text = "Pause (P)"
 
-[node name="SellPanel" type="VBoxContainer" parent="UI/HUD/VBoxOuter/ContentRow/RightPanel"]
-visible = false
-layout_mode = 2
-theme_override_constants/separation = 4
-
-[node name="NameLabel" type="Label" parent="UI/HUD/VBoxOuter/ContentRow/RightPanel/SellPanel"]
-layout_mode = 2
-theme_override_font_sizes/font_size = 13
-
-[node name="SellButton" type="Button" parent="UI/HUD/VBoxOuter/ContentRow/RightPanel/SellPanel"]
-layout_mode = 2
-
-[node name="FeedbackLabel" type="Label" parent="UI/HUD/VBoxOuter/ContentRow/RightPanel"]
-visible = false
-layout_mode = 2
-theme_override_colors/font_color = Color(1, 0.4, 0.3, 1)
-theme_override_font_sizes/font_size = 12
-autowrap_mode = 3
-
-[node name="BottomBar" type="HBoxContainer" parent="UI/HUD/VBoxOuter"]
-layout_mode = 2
-size_flags_vertical = 0
-theme_override_constants/separation = 12
-
-[node name="ControlsLabel" type="Label" parent="UI/HUD/VBoxOuter/BottomBar"]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_colors/font_color = Color(0.7, 0.7, 0.7, 0.7)
-theme_override_font_sizes/font_size = 11
-
-[node name="WaveTimerLabel" type="Label" parent="UI/HUD/VBoxOuter/BottomBar"]
-visible = false
-layout_mode = 2
-theme_override_colors/font_color = Color(1, 0.85, 0.3, 1)
-theme_override_font_sizes/font_size = 13
-
-[node name="WaveButton" type="Button" parent="UI/HUD/VBoxOuter/BottomBar"]
-layout_mode = 2
-
-[node name="Overlay" type="ColorRect" parent="UI"]
-visible = false
+[node name="Icon" type="Control" parent="UI/HUD/TopBar/Row/PauseButton"]
+layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-color = Color(0, 0, 0, 0.78)
+offset_left = 10.0
+offset_top = 8.0
+offset_right = -10.0
+offset_bottom = -8.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("8_icon")
+kind = "pause"
 
-[node name="VBox" type="VBoxContainer" parent="UI/Overlay"]
+[node name="SoundButton" type="Button" parent="UI/HUD/TopBar/Row"]
+custom_minimum_size = Vector2(42, 34)
+layout_mode = 2
+focus_mode = 0
+tooltip_text = "Sound (M)"
+
+[node name="Icon" type="Control" parent="UI/HUD/TopBar/Row/SoundButton"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 10.0
+offset_top = 8.0
+offset_right = -10.0
+offset_bottom = -8.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("8_icon")
+kind = "sound"
+
+[node name="LangButton" type="Button" parent="UI/HUD/TopBar/Row"]
+custom_minimum_size = Vector2(46, 34)
+layout_mode = 2
+focus_mode = 0
+text = "EN"
+
+[node name="SidePanel" type="PanelContainer" parent="UI/HUD"]
+layout_mode = 1
+anchors_preset = 11
+anchor_left = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -310.0
+offset_top = 62.0
+offset_right = -10.0
+offset_bottom = -10.0
+grow_horizontal = 0
+grow_vertical = 1
+
+[node name="VBox" type="VBoxContainer" parent="UI/HUD/SidePanel"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 8
+
+[node name="ShopTitle" type="Label" parent="UI/HUD/SidePanel/VBox"]
+layout_mode = 2
+text = "TOWERS"
+
+[node name="ShopList" type="VBoxContainer" parent="UI/HUD/SidePanel/VBox"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 6
+
+[node name="TowerPanel" type="PanelContainer" parent="UI/HUD/SidePanel/VBox"]
+visible = false
+layout_mode = 2
+
+[node name="VBox" type="VBoxContainer" parent="UI/HUD/SidePanel/VBox/TowerPanel"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 7
+
+[node name="Header" type="HBoxContainer" parent="UI/HUD/SidePanel/VBox/TowerPanel/VBox"]
+layout_mode = 2
+mouse_filter = 2
+
+[node name="Name" type="Label" parent="UI/HUD/SidePanel/VBox/TowerPanel/VBox/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Tower"
+
+[node name="Level" type="Label" parent="UI/HUD/SidePanel/VBox/TowerPanel/VBox/Header"]
+layout_mode = 2
+text = "Level 1"
+
+[node name="Stats" type="GridContainer" parent="UI/HUD/SidePanel/VBox/TowerPanel/VBox"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 3
+columns = 4
+
+[node name="TargetButton" type="Button" parent="UI/HUD/SidePanel/VBox/TowerPanel/VBox"]
+custom_minimum_size = Vector2(0, 32)
+layout_mode = 2
+focus_mode = 0
+tooltip_text = "T"
+text = "Target: First"
+
+[node name="Actions" type="HBoxContainer" parent="UI/HUD/SidePanel/VBox/TowerPanel/VBox"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 6
+
+[node name="UpgradeButton" type="Button" parent="UI/HUD/SidePanel/VBox/TowerPanel/VBox/Actions"]
+custom_minimum_size = Vector2(0, 36)
+layout_mode = 2
+size_flags_horizontal = 3
+focus_mode = 0
+tooltip_text = "U"
+text = "Upgrade"
+
+[node name="SellButton" type="Button" parent="UI/HUD/SidePanel/VBox/TowerPanel/VBox/Actions"]
+custom_minimum_size = Vector2(0, 36)
+layout_mode = 2
+size_flags_horizontal = 3
+focus_mode = 0
+tooltip_text = "S"
+text = "Sell"
+
+[node name="Filler" type="Control" parent="UI/HUD/SidePanel/VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+mouse_filter = 2
+
+[node name="WavePanel" type="PanelContainer" parent="UI/HUD/SidePanel/VBox"]
+layout_mode = 2
+
+[node name="VBox" type="VBoxContainer" parent="UI/HUD/SidePanel/VBox/WavePanel"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 7
+
+[node name="Title" type="Label" parent="UI/HUD/SidePanel/VBox/WavePanel/VBox"]
+layout_mode = 2
+text = "NEXT WAVE"
+
+[node name="Chips" type="HBoxContainer" parent="UI/HUD/SidePanel/VBox/WavePanel/VBox"]
+custom_minimum_size = Vector2(0, 34)
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 6
+
+[node name="Status" type="Label" parent="UI/HUD/SidePanel/VBox/WavePanel/VBox"]
+layout_mode = 2
+text = ""
+
+[node name="Progress" type="ProgressBar" parent="UI/HUD/SidePanel/VBox/WavePanel/VBox"]
+custom_minimum_size = Vector2(0, 8)
+layout_mode = 2
+mouse_filter = 2
+max_value = 1.0
+step = 0.0
+show_percentage = false
+
+[node name="WaveButton" type="Button" parent="UI/HUD/SidePanel/VBox/WavePanel/VBox"]
+custom_minimum_size = Vector2(0, 42)
+layout_mode = 2
+focus_mode = 0
+tooltip_text = "Space"
+text = "Start wave"
+
+[node name="Controls" type="Label" parent="UI/HUD/SidePanel/VBox"]
+layout_mode = 2
+text = ""
+autowrap_mode = 3
+
+[node name="Banner" type="Label" parent="UI/HUD"]
+visible = false
 layout_mode = 0
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -240.0
-offset_top = -60.0
-offset_right = 240.0
-offset_bottom = 60.0
-alignment = 1
+offset_right = 600.0
+offset_bottom = 80.0
+text = "WAVE 1"
+horizontal_alignment = 1
+vertical_alignment = 1
 
-[node name="TitleLabel" type="Label" parent="UI/Overlay/VBox"]
+[node name="Hint" type="Label" parent="UI/HUD"]
+layout_mode = 0
+offset_right = 600.0
+offset_bottom = 24.0
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="PauseOverlay" type="ColorRect" parent="UI/HUD"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.03, 0.04, 0.07, 0.72)
+
+[node name="Center" type="CenterContainer" parent="UI/HUD/PauseOverlay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="Panel" type="PanelContainer" parent="UI/HUD/PauseOverlay/Center"]
 layout_mode = 2
-theme_override_colors/font_color = Color(1, 0.85, 0.2, 1)
-theme_override_font_sizes/font_size = 42
+
+[node name="VBox" type="VBoxContainer" parent="UI/HUD/PauseOverlay/Center/Panel"]
+custom_minimum_size = Vector2(320, 0)
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 12
+
+[node name="Title" type="Label" parent="UI/HUD/PauseOverlay/Center/Panel/VBox"]
+layout_mode = 2
+text = "PAUSED"
 horizontal_alignment = 1
 
-[node name="SubLabel" type="Label" parent="UI/Overlay/VBox"]
+[node name="ResumeButton" type="Button" parent="UI/HUD/PauseOverlay/Center/Panel/VBox"]
+custom_minimum_size = Vector2(0, 42)
 layout_mode = 2
-theme_override_colors/font_color = Color(0.85, 0.85, 0.85, 1)
-theme_override_font_sizes/font_size = 16
+focus_mode = 0
+text = "Resume"
+
+[node name="RestartButton" type="Button" parent="UI/HUD/PauseOverlay/Center/Panel/VBox"]
+custom_minimum_size = Vector2(0, 42)
+layout_mode = 2
+focus_mode = 0
+text = "Restart"
+
+[node name="EndOverlay" type="ColorRect" parent="UI/HUD"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.03, 0.04, 0.07, 0.75)
+
+[node name="Center" type="CenterContainer" parent="UI/HUD/EndOverlay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="Panel" type="PanelContainer" parent="UI/HUD/EndOverlay/Center"]
+layout_mode = 2
+
+[node name="VBox" type="VBoxContainer" parent="UI/HUD/EndOverlay/Center/Panel"]
+custom_minimum_size = Vector2(440, 0)
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 14
+
+[node name="Title" type="Label" parent="UI/HUD/EndOverlay/Center/Panel/VBox"]
+layout_mode = 2
+text = "VICTORY"
 horizontal_alignment = 1
+
+[node name="Stats" type="Label" parent="UI/HUD/EndOverlay/Center/Panel/VBox"]
+layout_mode = 2
+text = ""
+horizontal_alignment = 1
+
+[node name="RestartButton" type="Button" parent="UI/HUD/EndOverlay/Center/Panel/VBox"]
+custom_minimum_size = Vector2(0, 46)
+layout_mode = 2
+focus_mode = 0
+text = "Play again"

@@ -1,35 +1,50 @@
 [
 	{
-		"id":          "basic",
-		"display_name": "Basic",
-		"cost":         50,
-		"damage":       20,
-		"range":        140,
-		"fire_rate":    1.2,
-		"splash":       false,
-		"splash_radius": 0,
-		"color":        "4a90d9"
+		"id":               "gun",
+		"display_name":     "Gatling",
+		"attack":           "bullet",
+		"cost":             50,
+		"damage":           10,
+		"range":            2.3,
+		"fire_rate":        2.5,
+		"splash_radius":    0.0,
+		"projectile_speed": 9.0,
+		"color":            "4aa3ff",
+		"upgrades": [
+			{ "cost": 45, "damage": 15, "range": 2.5, "fire_rate": 3.0 },
+			{ "cost": 80, "damage": 22, "range": 2.8, "fire_rate": 3.6 }
+		]
 	},
 	{
-		"id":          "sniper",
-		"display_name": "Sniper",
-		"cost":         80,
-		"damage":       60,
-		"range":        260,
-		"fire_rate":    0.5,
-		"splash":       false,
-		"splash_radius": 0,
-		"color":        "9b59b6"
+		"id":               "sniper",
+		"display_name":     "Railgun",
+		"attack":           "beam",
+		"cost":             100,
+		"damage":           60,
+		"range":            4.0,
+		"fire_rate":        0.45,
+		"splash_radius":    0.0,
+		"projectile_speed": 0.0,
+		"color":            "b07cff",
+		"upgrades": [
+			{ "cost": 75,  "damage": 100, "range": 4.3, "fire_rate": 0.5 },
+			{ "cost": 130, "damage": 160, "range": 4.6, "fire_rate": 0.55 }
+		]
 	},
 	{
-		"id":          "splash",
-		"display_name": "Splash",
-		"cost":         100,
-		"damage":       15,
-		"range":        120,
-		"fire_rate":    0.8,
-		"splash":       true,
-		"splash_radius": 64,
-		"color":        "e67e22"
+		"id":               "mortar",
+		"display_name":     "Mortar",
+		"attack":           "shell",
+		"cost":             100,
+		"damage":           35,
+		"range":            3.0,
+		"fire_rate":        0.55,
+		"splash_radius":    1.0,
+		"projectile_speed": 5.0,
+		"color":            "ff8a3d",
+		"upgrades": [
+			{ "cost": 85,  "damage": 50, "splash_radius": 1.15, "fire_rate": 0.6 },
+			{ "cost": 140, "damage": 70, "splash_radius": 1.3,  "fire_rate": 0.7, "range": 3.3 }
+		]
 	}
 ]

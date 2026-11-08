@@ -1,5 +1,5 @@
 # =============================================================================
-# ConfigManager.gd — Autoload (Singleton)
+# ConfigManager.gd (Autoload, Singleton)
 # =============================================================================
 # Loads data/config.json and exposes typed getters.
 # Must be FIRST in the autoload list.
@@ -13,11 +13,11 @@ var _cfg: Dictionary = {}
 
 func _ready() -> void:
 	if not FileAccess.file_exists(CONFIG_PATH):
-		push_error("ConfigManager: file not found — " + CONFIG_PATH)
+		push_error("ConfigManager: file not found: " + CONFIG_PATH)
 		return
 	var f = FileAccess.open(CONFIG_PATH, FileAccess.READ)
 	if not f:
-		push_error("ConfigManager: cannot open — " + CONFIG_PATH)
+		push_error("ConfigManager: cannot open " + CONFIG_PATH)
 		return
 	var j = JSON.new()
 	if j.parse(f.get_as_text()) != OK:

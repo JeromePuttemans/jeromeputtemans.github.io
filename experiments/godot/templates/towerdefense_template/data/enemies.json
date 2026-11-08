@@ -1,29 +1,38 @@
 [
 	{
-		"id":           "basic",
-		"display_name": "Basic",
-		"hp":           60,
-		"speed":        80.0,
-		"reward":       10,
-		"color":        "e74c3c",
-		"size":         18
+		"id":           "grunt",
+		"display_name": "Grunt",
+		"shape":        "blob",
+		"hp":           70,
+		"speed":        1.25,
+		"armor":        0,
+		"reward":       6,
+		"lives_damage": 1,
+		"color":        "ff5a5a",
+		"size":         0.24
 	},
 	{
-		"id":           "fast",
-		"display_name": "Fast",
-		"hp":           30,
-		"speed":        150.0,
-		"reward":       8,
-		"color":        "f39c12",
-		"size":         14
+		"id":           "runner",
+		"display_name": "Runner",
+		"shape":        "dart",
+		"hp":           38,
+		"speed":        2.3,
+		"armor":        0,
+		"reward":       5,
+		"lives_damage": 1,
+		"color":        "ffc93c",
+		"size":         0.2
 	},
 	{
-		"id":           "tank",
-		"display_name": "Tank",
-		"hp":           300,
-		"speed":        40.0,
-		"reward":       25,
-		"color":        "7f8c8d",
-		"size":         26
+		"id":           "brute",
+		"display_name": "Brute",
+		"shape":        "armored",
+		"hp":           360,
+		"speed":        0.7,
+		"armor":        6,
+		"reward":       18,
+		"lives_damage": 3,
+		"color":        "8e9aaf",
+		"size":         0.34
 	}
 ]

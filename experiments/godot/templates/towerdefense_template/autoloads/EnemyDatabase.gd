@@ -1,5 +1,5 @@
 # =============================================================================
-# EnemyDatabase.gd — Autoload (Singleton)
+# EnemyDatabase.gd (Autoload, Singleton)
 # =============================================================================
 # Loads data/enemies.json on startup.
 # =============================================================================
@@ -11,7 +11,7 @@ var _types: Dictionary = {}
 
 func _ready() -> void:
 	if not FileAccess.file_exists(PATH):
-		push_error("EnemyDatabase: not found — " + PATH)
+		push_error("EnemyDatabase: file not found: " + PATH)
 		return
 	var f = FileAccess.open(PATH, FileAccess.READ)
 	if not f:

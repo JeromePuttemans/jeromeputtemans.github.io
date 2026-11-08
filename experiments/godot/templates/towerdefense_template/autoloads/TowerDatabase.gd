@@ -1,5 +1,5 @@
 # =============================================================================
-# TowerDatabase.gd — Autoload (Singleton)
+# TowerDatabase.gd (Autoload, Singleton)
 # =============================================================================
 # Loads data/towers.json on startup.
 # Provides get_type(id) and get_all() for the shop panel and tower logic.
@@ -12,7 +12,7 @@ var _types: Dictionary = {}   # id -> Dictionary
 
 func _ready() -> void:
 	if not FileAccess.file_exists(PATH):
-		push_error("TowerDatabase: not found — " + PATH)
+		push_error("TowerDatabase: file not found: " + PATH)
 		return
 	var f = FileAccess.open(PATH, FileAccess.READ)
 	if not f:
