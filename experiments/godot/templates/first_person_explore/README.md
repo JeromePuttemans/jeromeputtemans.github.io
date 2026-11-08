@@ -12,7 +12,7 @@ A basic template for creating first-person exploration games in Godot 4.
 ## Project Structure
 
 ```
-FirstPerson_Explore/
+first_person_explore/
 ├── project.godot          # Godot project configuration
 ├── scenes/
 │   ├── level.tscn         # Main level scene with player and environment
