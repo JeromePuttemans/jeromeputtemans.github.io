@@ -1,22 +1,32 @@
 # =============================================================================
-# CombatSystem.gd — Damage resolution (pure static functions).
+# CombatSystem.gd: damage resolution (pure static functions).
 # =============================================================================
-# FORMULA: damage = max(1, attacker.attack - defender.defense)
+# FORMULA:
+#   roll   = attack + random(-1, 0, +1)
+#   damage = max(1, roll - defense)
+#   critical hit (chance crit_chance): damage x 2, applied AFTER defense,
+#   so a crit stays strong against armored enemies.
 #
-# The minimum of 1 guarantees combat always progresses — no attack is ever
-# completely absorbed. This is intentional: roguelikes must avoid stalemates
-# where the player can never kill an enemy or vice versa.
+# Examples with the default data:
+#   player ATK 5 vs orc DEF 1  -> 3, 4 or 5 damage (crit: 6, 8 or 10)
+#   troll ATK 8 vs player DEF 1 -> 6, 7 or 8 damage
+#   rat ATK 3 vs player DEF 4   -> roll 2..4 - 4, at least 1 damage
 #
-# Extension ideas:
-#   - Random variance:  damage = randi_range(attack - 2, attack + 2) - defense
-#   - Critical hits:    if randf() < 0.1: damage *= 2
-#   - Status effects:   apply via Entity flags before calling resolve_attack
+# The minimum of 1 guarantees combat always progresses: no stalemate where
+# nobody can hurt anybody. The +/-1 variance keeps outcomes slightly
+# uncertain, so a fight at low HP stays tense.
 # =============================================================================
 
 class_name CombatSystem
 extends RefCounted
 
-## Resolves one attack from `attacker` against `defender`.
-## Calls defender.take_damage() and returns the actual damage dealt.
-static func resolve_attack(raw_attack: int, defender: Entity) -> int:
-	return defender.take_damage(raw_attack)
+## Resolves one attack and applies it. Returns {damage: int, crit: bool}.
+static func resolve(attack: int, defender: Entity, crit_chance: float,
+		rng: RandomNumberGenerator) -> Dictionary:
+	var roll: int = attack + rng.randi_range(-1, 1)
+	var damage: int = maxi(1, roll - defender.defense)
+	var crit: bool = crit_chance > 0.0 and rng.randf() < crit_chance
+	if crit:
+		damage *= 2
+	defender.take_damage(damage)
+	return {damage = damage, crit = crit}

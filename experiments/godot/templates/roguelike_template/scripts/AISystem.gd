@@ -1,81 +1,61 @@
 # =============================================================================
-# AISystem.gd — Enemy behavior (pure static functions).
+# AISystem.gd: enemy decision (pure static functions).
 # =============================================================================
-# ALGORITHM: Greedy chase AI with proximity attack.
+# Called by GameState for an enemy that is already alerted (awareness is
+# handled in GameState._enemy_act). Returns one action:
+#   {type = "attack"}               adjacent to the player (8 directions)
+#   {type = "shoot"}                ranged enemy with a clear line of sight
+#   {type = "move", pos = Vector2i} one step
+#   {type = "idle"}
 #
-# Each enemy tick:
-#   1. Compute Chebyshev distance to the player.
-#      Chebyshev: max(|dx|, |dy|) — diagonal moves cost the same as cardinal.
-#   2. If distance == 1: ATTACK (bump-to-attack, no movement).
-#   3. If distance > chase_range: IDLE (enemy is unaware of the player).
-#   4. Otherwise: move one step toward the player.
-#      Preferred: diagonal step (dx, dy) to close distance fastest.
-#      Fallback 1: horizontal step (dx, 0).
-#      Fallback 2: vertical step (0, dy).
-#      If all three options are blocked: IDLE this turn.
+# BEHAVIOURS ("ai" field in enemies.json):
+#   melee    walk down the shared DijkstraMap toward the player, attack when
+#            adjacent
+#   erratic  like melee, but half of its actions are a random step (bats:
+#            hard to pin down, yet they come at you)
+#   ranged   shoot when the player is within `range` tiles and in line of
+#            sight (FOVSystem.has_los); otherwise close in. Breaking line of
+#            sight around a corner is the counter-play.
 #
-# No pathfinding — enemies can get stuck in corridors behind other enemies.
-# For a template this is acceptable; A* can be added as an extension.
+# Distances use the Chebyshev metric max(|dx|, |dy|): a diagonal step costs
+# the same as a straight one, as for the player.
 # =============================================================================
 
 class_name AISystem
 extends RefCounted
 
-## Returns an action Dictionary for the given enemy:
-##   {"type": "attack"}
-##   {"type": "move",   "pos": Vector2i}
-##   {"type": "idle"}
-static func get_action(
-		enemy: EnemyEntity,
-		player: PlayerEntity,
-		dungeon: DungeonData,
-		enemy_positions: Dictionary) -> Dictionary:
+static func decide(enemy: EnemyEntity, player: PlayerEntity, dungeon: DungeonData,
+		enemy_positions: Dictionary, dmap: DijkstraMap, sees_player: bool,
+		rng: RandomNumberGenerator) -> Dictionary:
+	var dist: int = chebyshev(enemy.grid_pos, player.grid_pos)
 
-	var dist = _chebyshev(enemy.grid_pos, player.grid_pos)
+	if enemy.ai == "erratic" and rng.randf() < 0.5:
+		var p: Vector2i = _random_free_neighbor(enemy.grid_pos, dungeon, enemy_positions, player.grid_pos, rng)
+		if p != enemy.grid_pos:
+			return {type = "move", pos = p}
 
 	if dist <= 1:
-		return {"type": "attack"}
+		return {type = "attack"}
 
-	if dist > enemy.chase_range:
-		return {"type": "idle"}
+	if enemy.ai == "ranged" and sees_player and dist <= enemy.attack_range \
+			and FOVSystem.has_los(dungeon, enemy.grid_pos, player.grid_pos):
+		return {type = "shoot"}
 
-	# Determine preferred step direction
-	var dx = sign(player.grid_pos.x - enemy.grid_pos.x)
-	var dy = sign(player.grid_pos.y - enemy.grid_pos.y)
+	var step: Vector2i = dmap.step_toward(enemy.grid_pos, enemy_positions, player.grid_pos)
+	if step != enemy.grid_pos:
+		return {type = "move", pos = step}
+	return {type = "idle"}
 
-	# Build candidate moves (diagonal first for fastest approach)
-	var candidates: Array = []
-	if dx != 0 and dy != 0:
-		candidates = [
-			enemy.grid_pos + Vector2i(dx, dy),   # preferred: diagonal
-			enemy.grid_pos + Vector2i(dx,  0),   # fallback:  horizontal
-			enemy.grid_pos + Vector2i( 0, dy),   # fallback:  vertical
-		]
-	elif dx != 0:
-		candidates = [enemy.grid_pos + Vector2i(dx, 0)]
-	else:
-		candidates = [enemy.grid_pos + Vector2i(0, dy)]
+static func chebyshev(a: Vector2i, b: Vector2i) -> int:
+	return maxi(absi(a.x - b.x), absi(a.y - b.y))
 
-	for pos in candidates:
-		if _can_move_to(pos, dungeon, enemy_positions, player):
-			return {"type": "move", "pos": pos}
-
-	return {"type": "idle"}
-
-# Chebyshev distance: the number of king-moves between two grid cells.
-static func _chebyshev(a: Vector2i, b: Vector2i) -> int:
-	return max(abs(a.x - b.x), abs(a.y - b.y))
-
-## Returns true if an enemy can legally move to `pos`.
-static func _can_move_to(
-		pos: Vector2i,
-		dungeon: DungeonData,
-		enemy_positions: Dictionary,
-		player: PlayerEntity) -> bool:
-	if not dungeon.is_walkable(pos):
-		return false
-	if enemy_positions.has(pos):
-		return false   # Another enemy is already there
-	if pos == player.grid_pos:
-		return false   # Player's cell — attack branch handles this, not move
-	return true
+static func _random_free_neighbor(pos: Vector2i, dungeon: DungeonData, enemy_positions: Dictionary,
+		player_pos: Vector2i, rng: RandomNumberGenerator) -> Vector2i:
+	var options: Array[Vector2i] = []
+	for dir in DijkstraMap.DIRS:
+		var n: Vector2i = pos + dir
+		if dungeon.is_walkable(n) and not enemy_positions.has(n) and n != player_pos:
+			options.append(n)
+	if options.is_empty():
+		return pos
+	return options[rng.randi_range(0, options.size() - 1)]

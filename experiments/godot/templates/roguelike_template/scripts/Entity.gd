@@ -1,35 +1,38 @@
 # =============================================================================
-# Entity.gd — Base data class for any actor on the dungeon grid.
+# Entity.gd: base data class for any actor on the dungeon grid.
 # =============================================================================
 # Entities are pure data objects (RefCounted), NOT scene nodes.
 # DungeonView renders them from their data; game systems move them.
 #
-# This is a lightweight ECS-inspired pattern:
-#   Data  → Entity objects  (processed by CombatSystem, AISystem, etc.)
-#   View  → DungeonView._draw()  (reads Entity data, draws nothing itself)
+# Lightweight ECS-inspired split:
+#   Data  -> Entity objects  (changed by GameState, CombatSystem, AISystem)
+#   View  -> DungeonView     (reads Entity data, animates, never writes it)
 # =============================================================================
 
 class_name Entity
 extends RefCounted
 
-var id: String           = ""
-var display_name: String = ""
-var glyph: String        = "?"    # Single character for ASCII rendering
-var color: Color         = Color.WHITE
-var grid_pos: Vector2i   = Vector2i.ZERO
+var id:           String   = ""
+var display_name: String   = ""
+var glyph:        String   = "?"    # single character drawn on the token
+var color:        Color    = Color.WHITE
+var grid_pos:     Vector2i = Vector2i.ZERO
 
-var hp: int      = 1
-var hp_max: int  = 1
-var attack: int  = 1
+var hp:      int = 1
+var hp_max:  int = 1
+var attack:  int = 1
 var defense: int = 0
 
 func is_alive() -> bool:
 	return hp > 0
 
-## Applies incoming damage reduced by defense.
-## A minimum of 1 damage always lands so combat always progresses.
-## Returns the actual damage dealt.
-func take_damage(raw_attack: int) -> int:
-	var damage = max(1, raw_attack - defense)
-	hp = max(0, hp - damage)
+## Removes HP (damage already computed by CombatSystem). Returns it.
+func take_damage(damage: int) -> int:
+	hp = maxi(0, hp - damage)
 	return damage
+
+## Restores up to `amount` HP without exceeding hp_max. Returns HP gained.
+func heal(amount: int) -> int:
+	var before: int = hp
+	hp = mini(hp_max, hp + amount)
+	return hp - before

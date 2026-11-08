@@ -1,26 +1,52 @@
 {
 	"default_language": "en",
+
 	"dungeon_width": 50,
 	"dungeon_height": 30,
-	"tile_size": 20,
-	"max_rooms": 12,
+	"tile_size": 32,
+	"max_rooms": 14,
 	"room_min_size": 4,
-	"room_max_size": 10,
+	"room_max_size": 9,
+	"extra_corridors": 2,
 	"fov_radius": 8,
 	"total_floors": 5,
+
 	"player_hp_max": 30,
 	"player_attack": 5,
-	"player_defense": 2,
+	"player_defense": 1,
+	"player_crit_chance": 0.1,
+	"inventory_size": 6,
+
+	"energy_max": 100,
+	"energy_drain_every": 5,
+	"hp_regen_every": 5,
+	"starve_damage_every": 4,
+	"hungry_threshold": 25,
+
+	"xp_base": 10,
+	"xp_growth": 10,
+	"level_hp_gain": 6,
+	"level_heal_ratio": 0.3,
+
 	"enemies_per_room_min": 0,
 	"enemies_per_room_max": 2,
-	"colors": {
-		"wall_visible":   "3a3a5c",
-		"wall_explored":  "1e1e33",
-		"floor_visible":  "5c5c8a",
-		"floor_explored": "2a2a42",
-		"stairs":         "ffd700",
-		"player":         "ffffff",
-		"enemy_default":  "e05050",
-		"hidden":         "000000"
-	}
+	"enemies_bonus_per_floor": 0.25,
+	"enemy_hp_per_floor": 0.12,
+	"enemy_attack_per_floor": 0.75,
+	"enemy_safe_radius": 6,
+	"items_per_floor_min": 3,
+	"items_per_floor_max": 5,
+	"alert_memory_turns": 8,
+
+	"shake_decay": 2.2,
+	"shake_max_offset": 9.0,
+	"sfx_volume_db": -8.0,
+
+	"floor_themes": [
+		{ "name_key": "floor_name_1", "wall": "4b5468", "wall_top": "68728a", "floor": "394057", "floor_alt": "3d445c", "light": "ffd9a6" },
+		{ "name_key": "floor_name_2", "wall": "5a4a38", "wall_top": "7a664c", "floor": "3d372c", "floor_alt": "423b30", "light": "ffcf8a" },
+		{ "name_key": "floor_name_3", "wall": "4c3d63", "wall_top": "6a5689", "floor": "382f47", "floor_alt": "3c334c", "light": "d8c4ff" },
+		{ "name_key": "floor_name_4", "wall": "6a3a30", "wall_top": "8f5141", "floor": "452a24", "floor_alt": "4a2e27", "light": "ffb37a" },
+		{ "name_key": "floor_name_5", "wall": "5c5236", "wall_top": "857749", "floor": "3a3421", "floor_alt": "3f3824", "light": "ffe7a0" }
+	]
 }

@@ -1,5 +1,5 @@
 # =============================================================================
-# FOVSystem.gd — Field-of-vision computation via raycasting.
+# FOVSystem.gd: field-of-vision computation via raycasting.
 # =============================================================================
 # ALGORITHM: Bresenham raycasting.
 #
@@ -7,10 +7,10 @@
 #   1. Cast a ray from origin to the tile using Bresenham's line.
 #   2. Walk the line cell by cell (skipping origin and target).
 #   3. If any intermediate cell is a WALL, the target is not visible.
-#   4. Otherwise the target is visible — even if it IS a wall (you see its face).
+#   4. Otherwise the target is visible, even if it IS a wall (you see its face).
 #
 # Complexity: O(r²) targets × O(r) ray steps = O(r³).
-# With r=8: ~200 targets × 8 steps ≈ 1600 ops per turn — negligible.
+# With r=8: about 200 targets x 8 steps = 1600 operations per turn, negligible.
 #
 # Known limitation: raycasting allows "corner peeking" through diagonal
 # wall pairs. Shadowcasting algorithms eliminate this but are more complex.
@@ -47,6 +47,11 @@ static func compute(dungeon: DungeonData, origin: Vector2i, radius: int) -> Arra
 				result[target.x][target.y] = true
 
 	return result
+
+## Public line-of-sight test, also used by ranged enemies (AISystem):
+## an archer shoots only if no wall stands between it and the player.
+static func has_los(dungeon: DungeonData, from: Vector2i, to: Vector2i) -> bool:
+	return _has_los(dungeon, from, to)
 
 ## Returns true if there is a clear line of sight from `from` to `to`.
 ## Checks all intermediate cells; the target cell itself is always considered

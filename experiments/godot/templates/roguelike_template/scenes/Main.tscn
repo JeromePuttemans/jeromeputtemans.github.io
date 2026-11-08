@@ -1,111 +1,257 @@
-[gd_scene load_steps=5 format=3 uid="uid://dst46qqyiuyyi"]
+[gd_scene load_steps=8 format=3 uid="uid://dst46qqyiuyyi"]
 
 [ext_resource type="Script" uid="uid://bs1vkjmkhaj4h" path="res://scenes/Main.gd" id="1_main"]
 [ext_resource type="Script" uid="uid://lubeo1rlukob" path="res://scenes/ui/DungeonView.gd" id="2_dview"]
 [ext_resource type="Script" uid="uid://cxq01qdaqohl2" path="res://scenes/ui/HUD.gd" id="3_hud"]
 [ext_resource type="Script" uid="uid://l3yy44sbgq7q" path="res://scenes/ui/MessageLog.gd" id="4_mlog"]
+[ext_resource type="Script" path="res://scripts/GameCamera.gd" id="5_camera"]
+[ext_resource type="Script" path="res://scripts/Fx.gd" id="6_fx"]
+[ext_resource type="Script" path="res://scenes/ui/Minimap.gd" id="7_minimap"]
 
 [node name="Main" type="Node"]
 script = ExtResource("1_main")
 
-[node name="DungeonView" type="Node2D" parent="."]
-position = Vector2(0, 40)
+[node name="Camera" type="Camera2D" parent="."]
+anchor_mode = 0
+script = ExtResource("5_camera")
+
+[node name="World" type="Node2D" parent="."]
+
+[node name="DungeonView" type="Node2D" parent="World"]
 script = ExtResource("2_dview")
+
+[node name="Fx" type="Node2D" parent="World"]
+script = ExtResource("6_fx")
 
 [node name="UI" type="CanvasLayer" parent="."]
 
-[node name="HUD" type="HBoxContainer" parent="UI"]
-offset_right = 1000.0
-offset_bottom = 36.0
-theme_override_constants/separation = 16
-script = ExtResource("3_hud")
-
-[node name="FloorLabel" type="Label" parent="UI/HUD"]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_colors/font_color = Color(0.8, 0.8, 0.4, 1)
-theme_override_font_sizes/font_size = 14
-text = "Floor 1"
-
-[node name="HPLabel" type="Label" parent="UI/HUD"]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_colors/font_color = Color(0.9, 0.4, 0.4, 1)
-theme_override_font_sizes/font_size = 14
-text = "HP: 30/30"
-
-[node name="LangButton" type="Button" parent="UI/HUD"]
-custom_minimum_size = Vector2(44, 0)
-layout_mode = 2
-theme_override_font_sizes/font_size = 13
-text = "EN"
-
-[node name="ControlsLabel" type="Label" parent="UI"]
-offset_top = 636.0
-offset_right = 1000.0
-offset_bottom = 656.0
-theme_override_colors/font_color = Color(0.5, 0.5, 0.5, 1)
-theme_override_font_sizes/font_size = 11
-text = "Move: WASD / Arrows   Diagonal: Q E Z C   Wait: Space   Restart: R"
-
-[node name="MessageLog" type="VBoxContainer" parent="UI"]
-offset_top = 656.0
-offset_right = 1000.0
-offset_bottom = 740.0
-script = ExtResource("4_mlog")
-
-[node name="Msg0" type="Label" parent="UI/MessageLog"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.75, 0.75, 0.75, 1)
-theme_override_font_sizes/font_size = 12
-
-[node name="Msg1" type="Label" parent="UI/MessageLog"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.75, 0.75, 0.75, 1)
-theme_override_font_sizes/font_size = 12
-
-[node name="Msg2" type="Label" parent="UI/MessageLog"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.75, 0.75, 0.75, 1)
-theme_override_font_sizes/font_size = 12
-
-[node name="Msg3" type="Label" parent="UI/MessageLog"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.75, 0.75, 0.75, 1)
-theme_override_font_sizes/font_size = 12
-
-[node name="Msg4" type="Label" parent="UI/MessageLog"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.85, 0.85, 0.85, 1)
-theme_override_font_sizes/font_size = 12
-
-[node name="Overlay" type="ColorRect" parent="UI"]
-visible = false
+[node name="Vignette" type="ColorRect" parent="UI"]
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-color = Color(0, 0, 0, 0.82)
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
 
-[node name="VBox" type="VBoxContainer" parent="UI/Overlay"]
+[node name="HUD" type="Control" parent="UI"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("3_hud")
+
+[node name="SidePanel" type="PanelContainer" parent="UI/HUD"]
+layout_mode = 1
+anchors_preset = 11
+anchor_left = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -288.0
+offset_top = 8.0
+offset_right = -8.0
+offset_bottom = -8.0
+grow_horizontal = 0
+grow_vertical = 2
+
+[node name="VBox" type="VBoxContainer" parent="UI/HUD/SidePanel"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 7
+
+[node name="Header" type="HBoxContainer" parent="UI/HUD/SidePanel/VBox"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 6
+
+[node name="FloorTitle" type="Label" parent="UI/HUD/SidePanel/VBox/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Floor 1/5"
+
+[node name="SoundButton" type="Button" parent="UI/HUD/SidePanel/VBox/Header"]
+custom_minimum_size = Vector2(36, 30)
+layout_mode = 2
+focus_mode = 0
+tooltip_text = "M"
+
+[node name="LangButton" type="Button" parent="UI/HUD/SidePanel/VBox/Header"]
+custom_minimum_size = Vector2(44, 30)
+layout_mode = 2
+focus_mode = 0
+text = "EN"
+
+[node name="FloorName" type="Label" parent="UI/HUD/SidePanel/VBox"]
+layout_mode = 2
+text = "The Cellars"
+
+[node name="Bars" type="VBoxContainer" parent="UI/HUD/SidePanel/VBox"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 5
+
+[node name="LevelRow" type="HBoxContainer" parent="UI/HUD/SidePanel/VBox"]
+layout_mode = 2
+mouse_filter = 2
+
+[node name="LevelLabel" type="Label" parent="UI/HUD/SidePanel/VBox/LevelRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Level 1"
+
+[node name="StatsLabel" type="Label" parent="UI/HUD/SidePanel/VBox/LevelRow"]
+layout_mode = 2
+text = "ATK 5   DEF 1"
+
+[node name="InvTitle" type="Label" parent="UI/HUD/SidePanel/VBox"]
+layout_mode = 2
+text = "INVENTORY"
+
+[node name="InvGrid" type="GridContainer" parent="UI/HUD/SidePanel/VBox"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/h_separation = 6
+theme_override_constants/v_separation = 6
+columns = 2
+
+[node name="LookTitle" type="Label" parent="UI/HUD/SidePanel/VBox"]
+layout_mode = 2
+text = "LOOK"
+
+[node name="LookPanel" type="PanelContainer" parent="UI/HUD/SidePanel/VBox"]
+custom_minimum_size = Vector2(0, 92)
+layout_mode = 2
+mouse_filter = 2
+
+[node name="Row" type="HBoxContainer" parent="UI/HUD/SidePanel/VBox/LookPanel"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 8
+
+[node name="IconSlot" type="Control" parent="UI/HUD/SidePanel/VBox/LookPanel/Row"]
+custom_minimum_size = Vector2(40, 40)
+layout_mode = 2
+size_flags_vertical = 0
+mouse_filter = 2
+
+[node name="Text" type="VBoxContainer" parent="UI/HUD/SidePanel/VBox/LookPanel/Row"]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+theme_override_constants/separation = 2
+
+[node name="LookName" type="Label" parent="UI/HUD/SidePanel/VBox/LookPanel/Row/Text"]
+layout_mode = 2
+autowrap_mode = 3
+
+[node name="LookText" type="Label" parent="UI/HUD/SidePanel/VBox/LookPanel/Row/Text"]
+layout_mode = 2
+autowrap_mode = 3
+
+[node name="Minimap" type="Control" parent="UI/HUD/SidePanel/VBox"]
+custom_minimum_size = Vector2(256, 154)
+layout_mode = 2
+mouse_filter = 2
+script = ExtResource("7_minimap")
+
+[node name="Controls" type="Label" parent="UI/HUD/SidePanel/VBox"]
+layout_mode = 2
+autowrap_mode = 3
+
+[node name="LogPanel" type="PanelContainer" parent="UI/HUD"]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 8.0
+offset_top = -116.0
+offset_right = -304.0
+offset_bottom = -8.0
+grow_horizontal = 2
+grow_vertical = 0
+mouse_filter = 2
+
+[node name="MessageLog" type="VBoxContainer" parent="UI/HUD/LogPanel"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 0
+script = ExtResource("4_mlog")
+
+[node name="Banner" type="VBoxContainer" parent="UI/HUD"]
+visible = false
 layout_mode = 0
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -220.0
-offset_top = -60.0
-offset_right = 220.0
-offset_bottom = 60.0
+offset_right = 900.0
+offset_bottom = 90.0
+mouse_filter = 2
 alignment = 1
 
-[node name="TitleLabel" type="Label" parent="UI/Overlay/VBox"]
+[node name="Title" type="Label" parent="UI/HUD/Banner"]
 layout_mode = 2
-theme_override_colors/font_color = Color(1, 0.85, 0.3, 1)
-theme_override_font_sizes/font_size = 36
+text = "FLOOR 1/5"
 horizontal_alignment = 1
 
-[node name="SubLabel" type="Label" parent="UI/Overlay/VBox"]
+[node name="Sub" type="Label" parent="UI/HUD/Banner"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.8, 0.8, 0.8, 1)
-theme_override_font_sizes/font_size = 16
+text = "The Cellars"
 horizontal_alignment = 1
+
+[node name="Fade" type="ColorRect" parent="UI/HUD"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0, 0, 0, 0)
+
+[node name="EndOverlay" type="ColorRect" parent="UI/HUD"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.02, 0.02, 0.04, 0.8)
+
+[node name="Center" type="CenterContainer" parent="UI/HUD/EndOverlay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="Panel" type="PanelContainer" parent="UI/HUD/EndOverlay/Center"]
+layout_mode = 2
+
+[node name="VBox" type="VBoxContainer" parent="UI/HUD/EndOverlay/Center/Panel"]
+custom_minimum_size = Vector2(480, 0)
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 14
+
+[node name="Title" type="Label" parent="UI/HUD/EndOverlay/Center/Panel/VBox"]
+layout_mode = 2
+text = "YOU DIED"
+horizontal_alignment = 1
+
+[node name="Cause" type="Label" parent="UI/HUD/EndOverlay/Center/Panel/VBox"]
+layout_mode = 2
+horizontal_alignment = 1
+autowrap_mode = 3
+
+[node name="Stats" type="Label" parent="UI/HUD/EndOverlay/Center/Panel/VBox"]
+layout_mode = 2
+horizontal_alignment = 1
+
+[node name="RestartButton" type="Button" parent="UI/HUD/EndOverlay/Center/Panel/VBox"]
+custom_minimum_size = Vector2(0, 46)
+layout_mode = 2
+focus_mode = 0
+text = "Play again"

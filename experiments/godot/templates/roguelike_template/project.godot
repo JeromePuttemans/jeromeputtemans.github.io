@@ -19,9 +19,19 @@ config/features=PackedStringArray("4.4", "GL Compatibility")
 ConfigManager="*res://autoloads/ConfigManager.gd"
 StringManager="*res://autoloads/StringManager.gd"
 EnemyDatabase="*res://autoloads/EnemyDatabase.gd"
+ItemDatabase="*res://autoloads/ItemDatabase.gd"
+Sfx="*res://autoloads/Sfx.gd"
 GameState="*res://autoloads/GameState.gd"
 
 [display]
 
-window/size/viewport_width=1000
-window/size/viewport_height=740
+window/size/viewport_width=1280
+window/size/viewport_height=720
+window/stretch/mode="canvas_items"
+window/stretch/aspect="keep"
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+environment/defaults/default_clear_color=Color(0.035, 0.04, 0.06, 1)

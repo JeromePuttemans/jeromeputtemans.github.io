@@ -1,5 +1,5 @@
 # =============================================================================
-# StringManager.gd — Autoload (Singleton)
+# StringManager.gd (Autoload, Singleton)
 # =============================================================================
 # Loads language files from data/strings_<lang>.json and provides
 # {placeholder} substitution.
@@ -10,9 +10,9 @@
 #      No other change is required.
 #
 # Usage:
-#   StringManager.t("hp_label", {current = 18, max = 30})  → "HP: 18/30"
+#   StringManager.t("floor_label", {value = 2, total = 5})  gives "Floor 2/5"
 #   StringManager.set_language("fr")
-#   StringManager.t("hp_label", {current = 18, max = 30})  → "PV : 18/30"
+#   StringManager.t("floor_label", {value = 2, total = 5})  gives "Étage 2/5"
 #
 # UI components that display text must connect to language_changed and
 # call their own refresh method to update all labels instantly.
@@ -29,10 +29,10 @@ const FALLBACK_LANG = "en"
 
 var _current_lang: String = FALLBACK_LANG
 var _strings: Dictionary  = {}
-var _fallback: Dictionary = {}   # Always EN — used when a key is missing in current lang
+var _fallback: Dictionary = {}   # Always EN: used when a key is missing in the current language
 
 func _ready() -> void:
-	# Load EN as the fallback first — guarantees all keys are always resolvable
+	# Load EN as the fallback first: every key stays resolvable
 	_fallback = _load_file(FALLBACK_LANG)
 	_strings  = _fallback
 	_current_lang = FALLBACK_LANG
@@ -67,6 +67,22 @@ func t(key: String, replacements: Dictionary = {}) -> String:
 		s = s.replace("{%s}" % placeholder, str(replacements[placeholder]))
 	return s
 
+## True if the key exists in the current language or in the fallback.
+func has_key(key: String) -> bool:
+	return _strings.has(key) or _fallback.has(key)
+
+## Localised string if the key exists, otherwise the given fallback text.
+func t_or(key: String, fallback: String) -> String:
+	return t(key) if has_key(key) else fallback
+
+## Upper-cases the first letter: "le rat" gives "Le rat", "l'orc" gives "L'orc".
+## Enemy names are stored with their article so sentences read correctly in
+## French; the capitalised form starts a sentence ({Name} placeholders).
+func capitalize_first(text: String) -> String:
+	if text.is_empty():
+		return text
+	return text.substr(0, 1).to_upper() + text.substr(1)
+
 # =============================================================================
 # PRIVATE
 # =============================================================================
@@ -74,11 +90,11 @@ func t(key: String, replacements: Dictionary = {}) -> String:
 func _load_file(lang: String) -> Dictionary:
 	var path = STRINGS_DIR + "strings_" + lang + ".json"
 	if not FileAccess.file_exists(path):
-		push_error("StringManager: file not found → " + path)
+		push_error("StringManager: file not found: " + path)
 		return {}
 	var file = FileAccess.open(path, FileAccess.READ)
 	if not file:
-		push_error("StringManager: cannot open → " + path)
+		push_error("StringManager: cannot open " + path)
 		return {}
 	var json = JSON.new()
 	if json.parse(file.get_as_text()) != OK:

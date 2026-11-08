@@ -1,32 +1,38 @@
 [
 	{
-		"id": "rat",
-		"display_name": "Rat",
-		"glyph": "r",
-		"color": "aa7733",
-		"hp": 5,
-		"attack": 2,
-		"defense": 0,
-		"chase_range": 6
+		"id": "rat", "display_name": "Rat", "glyph": "r", "color": "c08a4a",
+		"hp": 6, "attack": 3, "defense": 0, "xp": 2,
+		"speed": 1.0, "ai": "melee", "chase_range": 6,
+		"min_floor": 1, "max_floor": 2, "weight": 5
 	},
 	{
-		"id": "orc",
-		"display_name": "Orc",
-		"glyph": "o",
-		"color": "44aa44",
-		"hp": 12,
-		"attack": 4,
-		"defense": 1,
-		"chase_range": 8
+		"id": "bat", "display_name": "Bat", "glyph": "b", "color": "9a7fd1",
+		"hp": 4, "attack": 2, "defense": 0, "xp": 2,
+		"speed": 2.0, "ai": "erratic", "chase_range": 8,
+		"min_floor": 1, "max_floor": 3, "weight": 3
 	},
 	{
-		"id": "troll",
-		"display_name": "Troll",
-		"glyph": "T",
-		"color": "cc3333",
-		"hp": 20,
-		"attack": 7,
-		"defense": 2,
-		"chase_range": 10
+		"id": "archer", "display_name": "Goblin archer", "glyph": "g", "color": "8fc94a",
+		"hp": 8, "attack": 2, "defense": 0, "xp": 5,
+		"speed": 1.0, "ai": "ranged", "chase_range": 8, "range": 5, "ranged_attack": 3,
+		"min_floor": 2, "max_floor": 5, "weight": 3
+	},
+	{
+		"id": "orc", "display_name": "Orc", "glyph": "o", "color": "4fb05a",
+		"hp": 14, "attack": 5, "defense": 1, "xp": 6,
+		"speed": 1.0, "ai": "melee", "chase_range": 8,
+		"min_floor": 2, "max_floor": 5, "weight": 5
+	},
+	{
+		"id": "troll", "display_name": "Troll", "glyph": "T", "color": "d0514a",
+		"hp": 26, "attack": 8, "defense": 2, "xp": 14,
+		"speed": 0.5, "ai": "melee", "chase_range": 10,
+		"min_floor": 3, "max_floor": 5, "weight": 2
+	},
+	{
+		"id": "warden", "display_name": "The Warden", "glyph": "W", "color": "f0c040",
+		"hp": 80, "attack": 12, "defense": 3, "xp": 50,
+		"speed": 1.0, "ai": "melee", "chase_range": 30, "boss": true,
+		"min_floor": 99, "max_floor": 99, "weight": 0
 	}
 ]
