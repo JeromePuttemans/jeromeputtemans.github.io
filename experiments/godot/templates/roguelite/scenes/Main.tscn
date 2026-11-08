@@ -1,12 +1,24 @@
-[gd_scene load_steps=3 format=3 uid="UID_MAIN"]
-[ext_resource type="Script" path="res://scripts/GridManager.gd" id=0]
-[ext_resource type="Script" path="res://scripts/Player.gd" id=1]
-[ext_resource type="Script" path="res://scripts/HUD.gd" id=2]
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/Main.gd" id="1_main"]
+[ext_resource type="Script" path="res://scripts/GridManager.gd" id="2_grid"]
+[ext_resource type="Script" path="res://scripts/Player.gd" id="3_player"]
+[ext_resource type="Script" path="res://scripts/HUD.gd" id="4_hud"]
 
 [node name="Main" type="Node3D"]
+script = ExtResource("1_main")
+
 [node name="GridManager" type="Node3D" parent="."]
-script = ExtResource(0)
+script = ExtResource("2_grid")
+
 [node name="Player" type="Node3D" parent="."]
-script = ExtResource(1)
+script = ExtResource("3_player")
+
+[node name="CameraRig" type="Node3D" parent="."]
+
+[node name="Camera3D" type="Camera3D" parent="CameraRig"]
+current = true
+fov = 50.0
+
 [node name="HUD" type="CanvasLayer" parent="."]
-script = ExtResource(2)
+script = ExtResource("4_hud")

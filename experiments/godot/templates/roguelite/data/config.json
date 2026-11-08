@@ -1,0 +1,28 @@
+{
+	"energy_base": 20,
+	"energy_per_upgrade": 4,
+	"move_cost": 1,
+
+	"wall_chance_base": 0.3,
+	"wall_chance_per_level": 0.02,
+	"wall_chance_max": 0.5,
+
+	"resource_chance_base": 0.1,
+	"resource_chance_per_upgrade": 0.03,
+	"resource_energy": 5,
+	"resource_fragments": 1,
+
+	"trap_chance_base": 0.06,
+	"trap_chance_per_level": 0.01,
+	"trap_damage": 5,
+
+	"bomb_cost_base": 6,
+	"bomb_cost_min": 2,
+
+	"core_distance_base": 3,
+	"core_distance_per_level": 2,
+	"level_fragments": 2,
+
+	"upgrade_costs": [3, 5, 8, 12, 17, 23],
+	"upgrade_max_level": 6
+}

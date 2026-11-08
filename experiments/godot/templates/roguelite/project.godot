@@ -14,18 +14,31 @@ compatibility/default_parent_skeleton_in_mesh_instance_3d=true
 
 [application]
 
+config/name="Roguelite Puzzle 3D"
+run/main_scene="res://scenes/Main.tscn"
 config/features=PackedStringArray("4.7")
+config/icon="res://icon.png"
 
 [autoload]
 
-GameManager="res://scripts/GameManager.gd"
+Strings="*res://scripts/Strings.gd"
+Sfx="*res://scripts/Sfx.gd"
+GameManager="*res://scripts/GameManager.gd"
 
-[config]
+[display]
 
-application/config/icon="res://icon.png"
-application/config/name="Roguelite Puzzle 3D"
-application/run/main_scene="res://scenes/Main.tscn"
+window/size/viewport_width=1280
+window/size/viewport_height=720
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
 
 [editor]
 
 project/settings_visible_categories=["Rendering", "Physics", "Audio", "Input", "Network", "Navigation"]
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+environment/defaults/default_clear_color=Color(0.03, 0.04, 0.07, 1)
+anti_aliasing/quality/msaa_3d=2

@@ -1,179 +1,152 @@
+class_name PlayerPawn
 extends Node3D
 
-# Player: Handles player movement, bomb usage, and interaction with cubes.
-# Assumes the player is a child of MainScene alongside GridManager and HUD.
+# Player: input, grid movement, room effects, bomb.
+#
+# KEYS are read by PHYSICAL position (layout independent):
+#   WASD block (ZQSD on AZERTY): front / left / back / right
+#   E: up, Q (A on AZERTY): down. Arrows and Page Up / Page Down also work.
+#   Space: bomb.
+# One move = one room = move_cost energy. Entering an empty cell creates the
+# room (GridManager.enter), then its effect applies:
+#   energy crystal  +resource_energy energy, +resource_fragments fragment
+#   trap            -trap_damage energy
+#   core            collected: the goal becomes the teleporter
+#   teleporter      with the core: level complete
+# After each move: 0 energy ends the run, and so does being walled in (no
+# open side) without enough energy for a bomb.
 
-# Signals
-signal moved(to_position)
-signal bomb_used
-signal hp_changed(amount)
-signal fragments_changed(amount)
-signal cubes_created_changed(amount)
+signal moved(cell: Vector3i)
+signal bumped(dir: Vector3i)
+signal bombed(cell: Vector3i)
 
-# References
-var grid_manager : Node3D
-var game_manager : Node3D
+const MOVE_TIME: float = 0.13
 
-# State
-var current_position : Vector3i = Vector3i.ZERO
-var is_moving : bool = false
-var movement_speed : float = 0.1  # seconds per tile
+const PHYSICAL_KEYS: Dictionary = {
+	KEY_W: Vector3i(0, 0, -1), KEY_S: Vector3i(0, 0, 1),
+	KEY_A: Vector3i(-1, 0, 0), KEY_D: Vector3i(1, 0, 0),
+	KEY_E: Vector3i(0, 1, 0), KEY_Q: Vector3i(0, -1, 0)}
+const KEYCODE_KEYS: Dictionary = {
+	KEY_UP: Vector3i(0, 0, -1), KEY_DOWN: Vector3i(0, 0, 1),
+	KEY_LEFT: Vector3i(-1, 0, 0), KEY_RIGHT: Vector3i(1, 0, 0),
+	KEY_PAGEUP: Vector3i(0, 1, 0), KEY_PAGEDOWN: Vector3i(0, -1, 0)}
 
-# Input mapping (ZQSD for horizontal, A/E for vertical, Space for bomb)
-# Using string-based key constants that work in Godot 4
-const MOVE_FRONT = "z"
-const MOVE_BACK = "s"
-const MOVE_LEFT = "q"
-const MOVE_RIGHT = "d"
-const MOVE_DOWN = "a"
-const MOVE_UP = "e"
-const BOMB_KEY = "space"
+@export var grid_path: NodePath = ^"../GridManager"
 
-# Direction vectors for movement
-const VEC_FRONT = Vector3i(0, 0, -1)
-const VEC_BACK = Vector3i(0, 0, 1)
-const VEC_LEFT = Vector3i(-1, 0, 0)
-const VEC_RIGHT = Vector3i(1, 0, 0)
-const VEC_DOWN = Vector3i(0, -1, 0)
-const VEC_UP = Vector3i(0, 1, 0)
+var cell: Vector3i = Vector3i.ZERO
+var moving: bool = false
+var _grid: GridManager = null
+var _orb: MeshInstance3D = null
+var _time: float = 0.0
 
 func _ready() -> void:
-	# Get references to managers
-	grid_manager = get_node_or_null("../GridManager")
-	game_manager = get_node_or_null("/root/GameManager")
-	
-	if not grid_manager:
-		push_error("GridManager not found! Ensure Player is child of MainScene.")
-	if not game_manager:
-		push_error("GameManager not found! Ensure it's autoloaded.")
-	
-	# Start at teleporter position
-	var teleporter_pos = grid_manager.get_teleporter_position()
-	current_position = teleporter_pos
-	global_position = teleporter_pos  # Assuming 1 unit = 1 cube size
-	
-	# Connect to game manager signals
-	if game_manager:
-		game_manager.connect("hp_changed", Callable(self, "_on_game_manager_hp_changed"))
-		game_manager.connect("fragments_changed", Callable(self, "_on_game_manager_fragments_changed"))
-	
-	# Initial HUD update
-	_update_hud()
+	_grid = get_node(grid_path) as GridManager
+	_orb = MeshInstance3D.new()
+	var sphere := SphereMesh.new()
+	sphere.radius = 0.16
+	sphere.height = 0.32
+	_orb.mesh = sphere
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(0.6, 1.0, 1.0)
+	mat.emission_enabled = true
+	mat.emission = Color(0.3, 0.95, 1.0)
+	mat.emission_energy_multiplier = 2.0
+	_orb.material_override = mat
+	add_child(_orb)
+	var light := OmniLight3D.new()
+	light.light_color = Color(0.5, 0.95, 1.0)
+	light.light_energy = 1.4
+	light.omni_range = 4.0
+	add_child(light)
 
-func _unready() -> void:
-	if game_manager:
-		game_manager.disconnect("hp_changed", Callable(self, "_on_game_manager_hp_changed"))
-		game_manager.disconnect("fragments_changed", Callable(self, "_on_game_manager_fragments_changed"))
+func reset_to(p: Vector3i) -> void:
+	cell = p
+	position = Vector3(p)
+	moving = false
 
-func _input(event: InputEvent) -> void:
-	if is_moving:
+func _process(delta: float) -> void:
+	_time += delta
+	_orb.position.y = sin(_time * 3.0) * 0.05
+
+func _unhandled_input(event: InputEvent) -> void:
+	var key: InputEventKey = event as InputEventKey
+	if key == null or not key.pressed or not GameManager.running or moving:
 		return
-	
-	if event is InputEventKey and event.pressed:
-		match event.keycode:
-			KEY_Z: _attempt_move(VEC_FRONT)  # Z key
-			KEY_S: _attempt_move(VEC_BACK)   # S key
-			KEY_Q: _attempt_move(VEC_LEFT)   # Q key
-			KEY_D: _attempt_move(VEC_RIGHT)  # D key
-			KEY_A: _attempt_move(VEC_DOWN)   # A key
-			KEY_E: _attempt_move(VEC_UP)     # E key
-			KEY_SPACE: _use_bomb()           # Space key
-
-func _attempt_move(direction: Vector3i) -> void:
-	var target_pos = current_position + direction
-	
-	# Check if movement is allowed via GridManager
-	if grid_manager.can_move_from_to(current_position, target_pos):
-		# Start movement
-		is_moving = true
-		var tween = create_tween()
-		tween.tween_property(self, "global_position", target_pos, movement_speed)
-		tween.tween_callback(Callable(self, "_on_movement_finished"))
-		tween.set_trans(Tween.TRANS_LINEAR)
-		tween.set_ease(Tween.EASE_IN_OUT)
-		
-		# Update position after tween completes (we'll set it in callback)
-		# But we need to update current_position immediately for cube interaction?
-		# We'll update current_position now to reflect the new grid position
-		current_position = target_pos
-		
-		# Check if cube exists at new position; if not, generate one
-		if not grid_manager.has_cube_at(current_position):
-			grid_manager.place_random_cube_at(current_position)
-		
-		# Handle cube interactions (resource/destructor)
-		_handle_cube_interaction()
-		
-		# Emit movement signal
-		emit_signal("moved", current_position)
+	if key.keycode == KEY_SPACE and not key.echo:
+		use_bomb()
+	elif KEYCODE_KEYS.has(key.keycode):
+		try_move(KEYCODE_KEYS[key.keycode] as Vector3i)
+	elif PHYSICAL_KEYS.has(key.physical_keycode):
+		try_move(PHYSICAL_KEYS[key.physical_keycode] as Vector3i)
 	else:
-		# Movement blocked - optional feedback
-		pass
-
-func _on_movement_finished() -> void:
-	is_moving = false
-	# Ensure exact position (avoid floating point errors)
-	global_position = current_position
-	_update_hud()
-
-func _handle_cube_interaction() -> void:
-	var cube_data = grid_manager.get_cube_data(current_position)
-	if not cube_data:
 		return
-	
-	match cube_data["type"]:
-		grid_manager.RESOURCE_TYPE:
-			# Give 10 HP and 1 fragment
-			game_manager.modify_hp(10)
-			game_manager.add_fragments(1)
-			# Convert to neutral after collection
-			grid_manager.set_cube_type(current_position, grid_manager.NEUTRAL_TYPE)
-			emit_signal("cubes_created_changed", -1)  # One less special cube
-		grid_manager.DESTRUCTOR_TYPE:
-			# Take 20 HP
-			game_manager.modify_hp(-20)
-			# Convert to neutral after hazard
-			grid_manager.set_cube_type(current_position, grid_manager.NEUTRAL_TYPE)
-			emit_signal("cubes_created_changed", -1)
-		default:
-			# Neutral, teleporter, or energy ball - no effect
-			pass
+	get_viewport().set_input_as_handled()
 
-func _use_bomb() -> void:
-	if not game_manager:
+func try_move(dir: Vector3i) -> void:
+	if not _grid.can_move(cell, dir):
+		bumped.emit(dir)
+		GameManager.say(Strings.t("msg_wall"), "warn")
+		Sfx.play("bump", 0.05, -4.0)
+		var t := create_tween()
+		t.tween_property(self, "position", Vector3(cell) + Vector3(dir) * 0.12, 0.05)
+		t.tween_property(self, "position", Vector3(cell), 0.08)
 		return
-	
-	var hp_cost = game_manager.bomb_cost_hp
-	if game_manager.current_hp >= hp_cost:
-		game_manager.modify_hp(-hp_cost)
-		grid_manager.place_bomb_at(current_position)
-		emit_signal("bomb_used")
-		# Bomb might have destroyed cubes - update HUD for cubes created
-		emit_signal("cubes_created_changed", 0)  # Trigger HUD refresh
-	else:
-		# Not enough HP - optional feedback (flash screen, sound)
-		pass
+	cell += dir
+	if _grid.enter(cell):
+		GameManager.rooms_explored += 1
+	GameManager.spend_energy(int(GameManager.num("move_cost")))
+	moving = true
+	Sfx.play("step", 0.12, -6.0)
+	var tween := create_tween()
+	tween.tween_property(self, "position", Vector3(cell), MOVE_TIME).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tween.tween_callback(_arrive)
 
-func _on_game_manager_hp_changed(current_hp: int, max_hp: int) -> void:
-	_update_hud()
+func _arrive() -> void:
+	moving = false
+	moved.emit(cell)
+	match _grid.room_type(cell):
+		GridManager.Type.RESOURCE:
+			var e: int = int(GameManager.num("resource_energy"))
+			var f: int = int(GameManager.num("resource_fragments"))
+			GameManager.add_energy(e)
+			GameManager.add_fragments(f)
+			_grid.set_neutral(cell)
+			GameManager.say(Strings.t("msg_resource", {energy = e, frag = f}), "good")
+			Sfx.play("pickup", 0.05)
+		GridManager.Type.TRAP:
+			var dmg: int = int(GameManager.num("trap_damage"))
+			GameManager.spend_energy(dmg)
+			_grid.set_neutral(cell)
+			GameManager.say(Strings.t("msg_trap", {value = dmg}), "bad")
+			Sfx.play("hurt", 0.05)
+		GridManager.Type.CORE:
+			if not GameManager.core_collected:
+				GameManager.collect_core()
+				_grid.set_neutral(cell)   # the core is carried away: its room empties
+				GameManager.say(Strings.t("msg_core"), "good")
+				Sfx.play("levelup", 0.0)
+		GridManager.Type.TELEPORTER:
+			if GameManager.core_collected:
+				Sfx.play("stairs", 0.0)
+				GameManager.complete_level()
+				return
+	_check_end()
 
-func _on_game_manager_fragments_changed(fragments: int) -> void:
-	_update_hud()
+func use_bomb() -> void:
+	var cost: int = GameManager.bomb_cost()
+	if GameManager.energy < cost:
+		GameManager.say(Strings.t("msg_no_bomb", {value = cost}), "warn")
+		Sfx.play("error", 0.0)
+		return
+	GameManager.spend_energy(cost)
+	_grid.bomb(cell)
+	bombed.emit(cell)
+	GameManager.say(Strings.t("msg_bomb", {value = cost}), "info")
+	Sfx.play("thunder", 0.0)
+	_check_end()
 
-func _update_hud() -> void:
-	var hud = get_node_or_null("../HUD")
-	if hud:
-		hud.update_display(
-			game_manager.current_hp,
-			game_manager.max_hp,
-			game_manager.fragments,
-			grid_manager.get_cube_count()  # Assuming GridManager has this method
-		)
-
-# Helper methods for external calls (if needed)
-func get_grid_position() -> Vector3i:
-	return current_position
-
-func set_grid_position(pos: Vector3i) -> void:
-	current_position = pos
-	global_position = pos
+func _check_end() -> void:
+	if GameManager.energy <= 0:
+		GameManager.end_run("over_energy")
+	elif _grid.open_dirs(cell).is_empty() and GameManager.energy < GameManager.bomb_cost():
+		GameManager.end_run("over_trapped")
