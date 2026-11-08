@@ -327,7 +327,7 @@ animations ne bloquent jamais la saisie : on peut enchaîner les touches, le ren
 ## Architecture
 
 ```
-roguelike_template/
+roguelike/
 ├── data/
 │   ├── config.json        réglages globaux et thèmes d'étage
 │   ├── enemies.json       types d'ennemis

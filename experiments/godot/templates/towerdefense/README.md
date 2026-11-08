@@ -295,7 +295,7 @@ code de jeu ne dépend jamais de la couche d'effets.
 ## Architecture
 
 ```
-towerdefense_template/
+towerdefense/
 ├── data/
 │   ├── config.json       constantes globales de jeu
 │   ├── towers.json       types de tours et leurs améliorations

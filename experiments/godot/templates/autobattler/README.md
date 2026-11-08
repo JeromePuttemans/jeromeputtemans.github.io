@@ -143,7 +143,7 @@ to game logic.
 ## File Structure
 
 ```
-autobattler_template/
+autobattler/
 ├── data/
 │   ├── config.json        ← all game settings (tunable without code)
 │   ├── strings_en.json    ← English UI strings

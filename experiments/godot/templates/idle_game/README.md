@@ -114,7 +114,7 @@ of the display layer — producers accumulate whether or not any UI node exists.
 ## File Structure
 
 ```
-idle_game_template/
+idle_game/
 ├── data/
 │   ├── config.json        ← all game settings (tunable without code)
 │   ├── strings_en.json    ← English UI strings

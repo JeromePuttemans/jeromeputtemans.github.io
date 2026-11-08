@@ -131,7 +131,7 @@ anywhere in the scene or scripts.
 ## File Structure
 
 ```
-platformer_template/
+platformer/
 ├── data/
 │   ├── config.json        ← all gameplay constants
 │   ├── strings_en.json    ← English UI strings
