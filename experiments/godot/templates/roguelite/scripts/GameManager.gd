@@ -74,7 +74,7 @@ func num(key: String) -> float:
 
 ## What an upgrade gives at a given level: max energy, bomb cost, or chance
 ## (in percent) that a new room holds an energy crystal. The choice cards
-## show it for the current and the next level ("20 -> 24").
+## show it for the current and the next level ("from 20 to 24").
 func upgrade_value(id: String, lvl: int) -> int:
 	match id:
 		"energy":

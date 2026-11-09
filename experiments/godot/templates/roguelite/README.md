@@ -119,11 +119,11 @@ Chaque carte dit ce que fait l'amélioration et chiffre ce que vous gagnez. Choi
 cliquez sur son bouton **Choisir**, ou pressez `1`, `2` ou `3`. Le niveau suivant commence
 aussitôt, avec l'énergie au maximum.
 
-| Touche | Amélioration | Effet de chaque niveau | Exemple de carte, au premier choix | Niveaux |
+| Touche | Amélioration | Effet de chaque niveau | Gain affiché sur la carte, au premier choix | Niveaux |
 | :---: | :--- | :--- | :--- | :---: |
-| `1` | Réserve | Énergie maximale +4 au début de chaque niveau | « Énergie maximale : 20 → 24 » | 6 |
-| `2` | Détonateur | La bombe coûte 1 énergie de moins | « Coût de la bombe : 6 → 5 énergie » | 4 |
-| `3` | Prospecteur | Part des nouvelles salles qui contiennent un cristal d'énergie : +3 points | « Salles avec cristal : 10 % → 13 % » | 6 |
+| `1` | Réserve | Énergie maximale +4 au début de chaque niveau | Énergie maximale de 20 à 24 | 6 |
+| `2` | Détonateur | La bombe coûte 1 énergie de moins | Coût de la bombe de 6 à 5 énergie | 4 |
+| `3` | Prospecteur | Part des nouvelles salles qui contiennent un cristal d'énergie : +3 points | Salles avec cristal de 10 % à 13 % | 6 |
 
 Les améliorations agissent toutes seules : il n'y a rien à activer pendant la partie. Elles
 sont gratuites et permanentes, et la mort ne les retire pas. L'écran de fin n'en propose

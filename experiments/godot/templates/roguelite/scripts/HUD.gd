@@ -6,7 +6,8 @@ extends CanvasLayer
 #
 # UPGRADE CHOICE: after each delivered core (GameManager.upgrade_offered),
 #   three cards, one per upgrade, each with what it does and its effect in
-#   numbers for the next level ("Rooms with a crystal: 10 % -> 13 %"). Click
+#   numbers for the next level ("Rooms with a crystal", then "10% to 13%"
+#   on its own line). Click
 #   a card's button or press 1, 2, 3 (number row by physical position, or
 #   keypad). A maxed upgrade's card is disabled. The end screen offers no
 #   upgrade: it sums up the run and lists the upgrades kept.
@@ -318,6 +319,10 @@ func _refresh_over() -> void:
 	_over_kept.visible = not kept.is_empty()
 
 ## Cards: effect for the NEXT level, so the player sees what the pick buys.
+## Texts stay in Latin-1: the web build has no system font fallback, and a
+## character missing from the built-in font (an arrow, for one) shows as a box.
+## The web build also wraps at non-breaking spaces: each effect text puts the
+## change on its own line, short enough to fit the card.
 func _refresh_choice() -> void:
 	_choice_title.text = Strings.t("choice_title", {value = GameManager.level - 1})
 	_choice_text.text = Strings.t("choice_text")
