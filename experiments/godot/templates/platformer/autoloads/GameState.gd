@@ -1,82 +1,96 @@
 # =============================================================================
-# GameState.gd — Autoload (Singleton)
+# GameState.gd — Autoload (Singleton): the run in progress
 # =============================================================================
-# Central authority for score, lives, current level and game phase.
-# The game loop (Main.gd) connects to the signals emitted here and acts on
-# them — no UI or Node logic lives inside GameState itself.
+# Holds the levels (parsed once from data/levels.json) and the state of the
+# level being played: clock, falls, fireflies and acorns taken, respawn
+# point. The UI listens to its signals, Level and Main call its methods.
 #
-# PHASE MACHINE:
-#   PLAYING  — normal play
-#   DEAD     — player hit; respawn timer running in Main.gd
-#   GAME_OVER — lives exhausted
-#   WIN       — all levels cleared
+# PHASES: MENU (title, level select) -> PLAYING <-> PAUSED -> COMPLETE
+#   (results screen) -> PLAYING (next level) or FINAL (after the last one).
 # =============================================================================
 
 extends Node
 
-enum Phase { PLAYING, DEAD, GAME_OVER, WIN }
+enum Phase { MENU, PLAYING, PAUSED, COMPLETE, FINAL }
 
-signal score_changed(value: int)
-signal lives_changed(value: int)
-signal phase_changed(new_phase: Phase)
-signal player_died()
-signal level_complete()
-signal game_over()
-signal game_won()
+signal phase_changed(phase: Phase)
+signal level_started(index: int)
+signal pickups_changed()
+signal deaths_changed(count: int)
 
-var score:         int   = 0
-var lives:         int   = 3
-var current_level: int   = 0   # 0-based index into the levels array
-var total_levels:  int   = 0   # set by Main after loading levels.json
-var phase:         Phase = Phase.PLAYING
+var levels: Array[LevelData] = []
+var phase: Phase = Phase.MENU
+var level_index: int = 0
+var time: float = 0.0
+var deaths: int = 0
+var fireflies: Dictionary = {}
+var acorns: Dictionary = {}
+var checkpoint := Vector2.ZERO
+var _clock_running: bool = false
 
-## Resets all state for a fresh game start.
-func new_game() -> void:
-	score         = 0
-	lives         = ConfigManager.get_int("max_lives", 0)
-	current_level = 0
-	phase         = Phase.PLAYING
-	emit_signal("score_changed", score)
-	emit_signal("lives_changed", lives)
-	emit_signal("phase_changed", phase)
+func _ready() -> void:
+	var raw: Variant = ConfigManager.load_json("res://data/levels.json")
+	if raw is Array:
+		for entry in raw as Array:
+			levels.append(LevelData.from_dict(entry as Dictionary))
 
-## Called by Player on collision with an enemy (non-stomp contact).
-func player_die() -> void:
-	if phase != Phase.PLAYING:
-		return
-	lives -= 1
-	emit_signal("lives_changed", lives)
-	if lives <= 0:
-		phase = Phase.GAME_OVER
-		emit_signal("phase_changed", phase)
-		emit_signal("game_over")
-	else:
-		phase = Phase.DEAD
-		emit_signal("phase_changed", phase)
-		emit_signal("player_died")
+func current() -> LevelData:
+	return levels[level_index]
 
-## Called by Exit when the player reaches it.
-func complete_level() -> void:
-	if phase != Phase.PLAYING:
-		return
-	current_level += 1
-	if current_level >= total_levels:
-		phase = Phase.WIN
-		emit_signal("phase_changed", phase)
-		emit_signal("game_won")
-	else:
-		emit_signal("level_complete")
+func set_phase(value: Phase) -> void:
+	phase = value
+	phase_changed.emit(phase)
 
-## Adds points to the score and notifies listeners.
-func add_score(points: int) -> void:
-	score += points
-	emit_signal("score_changed", score)
+func begin_level(index: int) -> void:
+	level_index = clampi(index, 0, levels.size() - 1)
+	time = 0.0
+	deaths = 0
+	fireflies.clear()
+	acorns.clear()
+	_clock_running = true
+	set_phase(Phase.PLAYING)
+	level_started.emit(level_index)
+	pickups_changed.emit()
+	deaths_changed.emit(deaths)
 
-## Resets phase to PLAYING after a respawn.
-## Must be called by Main before rebuilding the level so the death guard
-## in player_die() does not block the next death event.
-func resume_playing() -> void:
-	if phase != Phase.DEAD:
-		return
-	phase = Phase.PLAYING
-	emit_signal("phase_changed", phase)
+func add_time(delta: float) -> void:
+	if _clock_running:
+		time += delta
+
+func stop_clock() -> void:
+	_clock_running = false
+
+func collect_firefly(index: int) -> void:
+	fireflies[index] = true
+	pickups_changed.emit()
+
+func collect_acorn(index: int) -> void:
+	acorns[index] = true
+	pickups_changed.emit()
+
+func add_death() -> void:
+	deaths += 1
+	deaths_changed.emit(deaths)
+
+## Builds the results of the level, merges them into the save.
+func finish_level() -> Dictionary:
+	var data: LevelData = current()
+	var found: Array = acorns.keys()
+	var previous: Dictionary = SaveManager.record(data.id)
+	var result: Dictionary = {
+		index = level_index, time = time, deaths = deaths,
+		fireflies = fireflies.size(), firefly_total = data.firefly_total,
+		acorns = found, acorn_total = data.acorn_total,
+		previous_best = float(previous.get("best_time", -1.0)),
+	}
+	result["new_record"] = SaveManager.store_result(data.id, levels.size(), result) and previous.has("best_time")
+	result["first_clear"] = not previous.has("best_time")
+	set_phase(Phase.COMPLETE)
+	return result
+
+func is_last_level() -> bool:
+	return level_index >= levels.size() - 1
+
+static func format_time(seconds: float) -> String:
+	var total: int = int(seconds * 100.0)
+	return "%d:%02d.%02d" % [floori(total / 6000.0), floori(total / 100.0) % 60, total % 100]
