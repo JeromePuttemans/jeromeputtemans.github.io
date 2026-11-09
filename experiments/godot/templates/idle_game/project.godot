@@ -10,7 +10,8 @@ config_version=5
 
 [application]
 
-config/name="IdleGame_Template"
+config/name="Idle Game"
+config/description="Crystal Heart: an idle game about a crystal heart."
 run/main_scene="res://scenes/Main.tscn"
 config/features=PackedStringArray("4.4", "GL Compatibility")
 
@@ -18,8 +19,24 @@ config/features=PackedStringArray("4.4", "GL Compatibility")
 
 ConfigManager="*res://autoloads/ConfigManager.gd"
 StringManager="*res://autoloads/StringManager.gd"
+Sfx="*res://autoloads/Sfx.gd"
 ResourceManager="*res://autoloads/ResourceManager.gd"
+PrestigeManager="*res://autoloads/PrestigeManager.gd"
+BoostManager="*res://autoloads/BoostManager.gd"
 ProducerManager="*res://autoloads/ProducerManager.gd"
+Utils="*res://autoloads/Utils.gd"
 SaveManager="*res://autoloads/SaveManager.gd"
 GameManager="*res://autoloads/GameManager.gd"
-Utils="*res://autoloads/Utils.gd"
+
+[display]
+
+window/size/viewport_width=1280
+window/size/viewport_height=720
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+environment/defaults/default_clear_color=Color(0.043, 0.047, 0.11, 1)

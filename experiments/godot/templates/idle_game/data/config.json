@@ -1,9 +1,42 @@
 {
-	"default_language": "en",
-	"main_resource": "gold",
-	"resources": ["gold"],
-	"auto_save_interval_seconds": 30.0,
+	"default_language": "auto",
+	"main_resource": "shards",
+	"resources": [
+		"shards"
+	],
+	"auto_save_interval_seconds": 15.0,
 	"offline_cap_hours": 8.0,
 	"offline_factor": 0.5,
-	"click_base_value": 1.0
+	"offline_min_seconds": 60.0,
+	"click_base_value": 1.0,
+	"crit_chance": 0.05,
+	"crit_multiplier": 5.0,
+	"milestones": [
+		25,
+		50,
+		100,
+		150,
+		200,
+		300,
+		400,
+		500
+	],
+	"milestone_multiplier": 2.0,
+	"reveal_ratio": 0.5,
+	"heat_per_click": 0.03,
+	"heat_decay_per_second": 0.12,
+	"heat_decay_delay": 1.0,
+	"frenzy_duration": 8.0,
+	"frenzy_multiplier": 2.0,
+	"meteor_first_delay": 30.0,
+	"meteor_interval_min": 60.0,
+	"meteor_interval_max": 120.0,
+	"meteor_lifetime": 7.0,
+	"meteor_rain_seconds": 30.0,
+	"meteor_rain_min_clicks": 30.0,
+	"meteor_eruption_multiplier": 3.0,
+	"meteor_eruption_duration": 12.0,
+	"prestige_threshold": 1000000.0,
+	"prestige_bonus_per_prism": 0.1,
+	"prestige_exponent": 0.3333333
 }

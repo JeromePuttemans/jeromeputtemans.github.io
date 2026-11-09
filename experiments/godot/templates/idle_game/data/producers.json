@@ -1,34 +1,66 @@
 [
 	{
-		"id": "cursor",
-		"display_name": "Cursor",
-		"description": "Clicks automatically",
-		"base_cost": 10.0,
+		"id": "gleaner",
+		"base_cost": 12,
 		"cost_growth_rate": 1.15,
-		"base_production": 0.1
+		"base_production": 0.15,
+		"color": "#6fe3ff",
+		"sides": 3
 	},
 	{
-		"id": "mine",
-		"display_name": "Mine",
-		"description": "Extracts ore from the ground",
-		"base_cost": 100.0,
+		"id": "drill",
+		"base_cost": 110,
 		"cost_growth_rate": 1.15,
-		"base_production": 0.5
+		"base_production": 1.2,
+		"color": "#5fd6a0",
+		"sides": 4
 	},
 	{
-		"id": "factory",
-		"display_name": "Factory",
-		"description": "Transforms raw resources into gold",
-		"base_cost": 1000.0,
+		"id": "cutter",
+		"base_cost": 1200,
 		"cost_growth_rate": 1.15,
-		"base_production": 4.0
+		"base_production": 9.0,
+		"color": "#9be36f",
+		"sides": 5
 	},
 	{
-		"id": "city",
-		"display_name": "City",
-		"description": "Generates gold at massive scale",
-		"base_cost": 10000.0,
+		"id": "refinery",
+		"base_cost": 13000,
 		"cost_growth_rate": 1.15,
-		"base_production": 40.0
+		"base_production": 62.0,
+		"color": "#ffd34d",
+		"sides": 6
+	},
+	{
+		"id": "resonator",
+		"base_cost": 150000,
+		"cost_growth_rate": 1.15,
+		"base_production": 420.0,
+		"color": "#ffa04d",
+		"sides": 7
+	},
+	{
+		"id": "forge",
+		"base_cost": 1700000.0,
+		"cost_growth_rate": 1.15,
+		"base_production": 2800.0,
+		"color": "#ff6b8a",
+		"sides": 8
+	},
+	{
+		"id": "lens",
+		"base_cost": 21000000.0,
+		"cost_growth_rate": 1.15,
+		"base_production": 19000.0,
+		"color": "#c77dff",
+		"sides": 9
+	},
+	{
+		"id": "heart",
+		"base_cost": 260000000.0,
+		"cost_growth_rate": 1.15,
+		"base_production": 130000.0,
+		"color": "#ffffff",
+		"sides": 10
 	}
 ]

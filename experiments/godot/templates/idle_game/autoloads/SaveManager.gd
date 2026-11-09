@@ -1,78 +1,65 @@
 # =============================================================================
 # SaveManager.gd — Autoload (Singleton)
 # =============================================================================
-# Handles serialization and deserialization of the full game state.
+# JSON save of the irreducible state only:
+#   resources (current, run total, lifetime), owned producers, purchased
+#   upgrades, prisms, statistics, settings (language, buy mode), timestamp.
+# Multipliers and production are derived, never saved: they are recomputed
+# from the purchases on load.
 #
-# FORMAT: JSON via FileAccess — human-readable, universally portable.
-# Alternatives: ConfigFile (simpler, Godot-native), binary (faster, opaque).
+# VERSION: saves carry "version". A file from the former template (version 1,
+# gold economy) does not fit this economy and is ignored: the game starts
+# fresh. The file name differs from the former one anyway.
 #
-# Save file location ("user://"):
-#   Windows : %APPDATA%/Godot/app_userdata/<project_name>/
-#   Linux   : ~/.local/share/godot/app_userdata/<project_name>/
-#   macOS   : ~/Library/Application Support/Godot/app_userdata/<project_name>/
+# Location of user://: %APPDATA%/Godot/app_userdata/<project name>/ on
+# Windows; in the browser, the local storage of the site.
 # =============================================================================
 
 extends Node
 
-const SAVE_PATH = "user://savegame.json"
-
 signal game_saved()
-signal game_loaded()
 
-## Serializes the full game state and writes it to disk.
+const SAVE_PATH: String = "user://idle_crystal_save.json"
+const SAVE_VERSION: int = 2
+
 func save_game() -> void:
-	var save_data = {
-		"version": 1,
+	var data: Dictionary = {
+		"version": SAVE_VERSION,
 		"timestamp": Time.get_unix_time_from_system(),
 		"resources": ResourceManager.to_dict(),
-		"producers": ProducerManager.to_dict()
-	}
-	var file = FileAccess.open(SAVE_PATH, FileAccess.WRITE)
-	if file:
-		file.store_string(JSON.stringify(save_data, "\t"))
-		file.close()
-		emit_signal("game_saved")
-		print("Game saved.")
-	else:
-		push_error("SaveManager: cannot write to %s (error: %d)" % [SAVE_PATH, FileAccess.get_open_error()])
+		"producers": ProducerManager.to_dict(),
+		"prestige": PrestigeManager.to_dict(),
+		"stats": GameManager.stats.duplicate(),
+		"settings": {"language": StringManager.get_language(), "buy_mode": GameManager.buy_mode}}
+	var file: FileAccess = FileAccess.open(SAVE_PATH, FileAccess.WRITE)
+	if file == null:
+		push_error("SaveManager: cannot write %s (error %d)" % [SAVE_PATH, FileAccess.get_open_error()])
+		return
+	file.store_string(JSON.stringify(data, "\t"))
+	game_saved.emit()
 
-## Loads the save file and restores game state.
-## Returns the save timestamp on success, or -1.0 on failure.
-## Returning the timestamp allows GameManager to compute offline progress.
+## Restores the saved state. Returns the save timestamp, or -1 without a
+## usable save (then nothing is touched).
 func load_game() -> float:
 	if not FileAccess.file_exists(SAVE_PATH):
-		print("No save file found, starting fresh.")
 		return -1.0
-
-	var file = FileAccess.open(SAVE_PATH, FileAccess.READ)
-	if not file:
-		push_error("SaveManager: cannot read " + SAVE_PATH)
+	var data: Variant = ConfigManager.load_json(SAVE_PATH)
+	if not data is Dictionary:
 		return -1.0
-
-	var json = JSON.new()
-	if json.parse(file.get_as_text()) != OK:
-		# Do NOT touch any manager — avoid a partially corrupt state.
-		push_error("SaveManager: invalid JSON at line %d — save ignored." % json.get_error_line())
+	var save: Dictionary = data as Dictionary
+	if int(save.get("version", 1)) != SAVE_VERSION:
 		return -1.0
+	ResourceManager.from_dict(save.get("resources", {}) as Dictionary)
+	PrestigeManager.from_dict(save.get("prestige", {}) as Dictionary)
+	ProducerManager.from_dict(save.get("producers", {}) as Dictionary)
+	var stats: Dictionary = save.get("stats", {}) as Dictionary
+	for key in stats:
+		GameManager.stats[key] = stats[key]
+	var settings: Dictionary = save.get("settings", {}) as Dictionary
+	StringManager.set_language(str(settings.get("language", StringManager.get_language())))
+	GameManager.buy_mode = int(settings.get("buy_mode", 1))
+	return float(save.get("timestamp", -1.0))
 
-	var save_data = json.get_data()
-	if not save_data is Dictionary:
-		push_error("SaveManager: unexpected save format.")
-		return -1.0
-
-	ResourceManager.from_dict(save_data.get("resources", {}))
-	ProducerManager.from_dict(save_data.get("producers", {}))
-
-	emit_signal("game_loaded")
-	print("Game loaded.")
-	return save_data.get("timestamp", -1.0)
-
-## Deletes the save file. Useful for a "New Game" button.
 func delete_save() -> void:
 	if FileAccess.file_exists(SAVE_PATH):
-		var dir = DirAccess.open("user://")
-		if dir:
-			dir.remove("savegame.json")
-			print("Save deleted.")
-		else:
-			push_error("SaveManager: cannot access user://")
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(SAVE_PATH))
