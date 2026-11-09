@@ -1,141 +1,102 @@
 # =============================================================================
-# Board.gd — Manages the player board and bench slot arrays.
+# Board.gd — The player's half of the arena and the bench
 # =============================================================================
-# The board is a flat Array of (cols × rows) slots.
-# The bench is a flat Array of bench_size slots.
-# Both arrays store Unit references or null for empty slots.
-#
-# SLOT INDEXING (board):
-#   index = row * cols + col
-#   This is row-major order — iterating by index visits left-to-right, top-to-bottom.
+# cells: Dictionary Vector2i(col, row) -> Unit, for the cols x rows player
+#   half (row 0 is the front line, next to the enemy). A dictionary keeps
+#   lookups O(1) and empty cells free.
+# bench: fixed-size Array of Unit or null.
+# A location is {"zone": "board", "cell": Vector2i} or
+# {"zone": "bench", "index": int}; move() swaps when the target is taken.
+# In battle, board row r becomes arena row (rows + r): the player fights
+# from the bottom half, the enemy from the top half.
 # =============================================================================
 
 class_name Board
 extends RefCounted
 
-var cols:       int = 4
-var rows:       int = 2
-var bench_size: int = 8
+var cols: int = 7
+var rows: int = 4
+var cells: Dictionary = {}
+var bench: Array = []
 
-# Each element is a Unit or null.
-var board_slots: Array = []
-var bench_slots: Array = []
+func _init(board_cols: int, board_rows: int, bench_size: int) -> void:
+	cols = board_cols
+	rows = board_rows
+	bench.resize(bench_size)
+	bench.fill(null)
 
-func _init(c: int, r: int, b: int) -> void:
-	cols       = c
-	rows       = r
-	bench_size = b
-	board_slots.resize(cols * rows)
-	board_slots.fill(null)
-	bench_slots.resize(bench_size)
-	bench_slots.fill(null)
-
-# =============================================================================
-# BOARD HELPERS
-# =============================================================================
-
-func board_index(col: int, row: int) -> int:
-	return row * cols + col
-
-func get_board_unit(col: int, row: int) -> Variant:
-	var idx = board_index(col, row)
-	if idx < 0 or idx >= board_slots.size():
-		return null
-	return board_slots[idx]
-
-func set_board_unit(col: int, row: int, unit: Variant) -> void:
-	var idx = board_index(col, row)
-	if idx >= 0 and idx < board_slots.size():
-		board_slots[idx] = unit
-
-## Returns an Array of all non-null units on the board.
-func get_board_units() -> Array:
-	var result: Array = []
-	for u in board_slots:
-		if u != null:
-			result.append(u)
+func board_units() -> Array[Unit]:
+	var result: Array[Unit] = []
+	for c in cells:
+		result.append(cells[c] as Unit)
+	result.sort_custom(func(a: Unit, b: Unit) -> bool: return a.instance_id < b.instance_id)
 	return result
 
-## Returns the first empty board slot index, or -1 if the board is full.
-func first_empty_board_slot() -> int:
-	for i in board_slots.size():
-		if board_slots[i] == null:
-			return i
-	return -1
-
-func is_board_full() -> bool:
-	return first_empty_board_slot() == -1
-
-# =============================================================================
-# BENCH HELPERS
-# =============================================================================
-
-## Returns an Array of all non-null units on the bench.
-func get_bench_units() -> Array:
-	var result: Array = []
-	for u in bench_slots:
+func bench_units() -> Array[Unit]:
+	var result: Array[Unit] = []
+	for u in bench:
 		if u != null:
-			result.append(u)
+			result.append(u as Unit)
 	return result
 
-## Returns the first empty bench slot index, or -1 if the bench is full.
-func first_empty_bench_slot() -> int:
-	for i in bench_slots.size():
-		if bench_slots[i] == null:
+func all_units() -> Array[Unit]:
+	var result: Array[Unit] = board_units()
+	result.append_array(bench_units())
+	return result
+
+func board_count() -> int:
+	return cells.size()
+
+func first_free_bench() -> int:
+	for i in bench.size():
+		if bench[i] == null:
 			return i
 	return -1
 
-func is_bench_full() -> bool:
-	return first_empty_bench_slot() == -1
-
-## Finds which bench slot holds the given unit. Returns -1 if not found.
-func find_bench_slot(unit: Unit) -> int:
-	for i in bench_slots.size():
-		if bench_slots[i] == unit:
-			return i
-	return -1
-
-## Finds which board slot index holds the given unit. Returns -1 if not found.
-func find_board_slot(unit: Unit) -> int:
-	for i in board_slots.size():
-		if board_slots[i] == unit:
-			return i
-	return -1
-
-## Moves a unit from bench to the first available board slot.
-## Returns true on success, false if board is full or unit not on bench.
-func move_bench_to_board(unit: Unit) -> bool:
-	var bench_idx = find_bench_slot(unit)
-	if bench_idx == -1:
-		return false
-	var board_idx = first_empty_board_slot()
-	if board_idx == -1:
-		return false
-	bench_slots[bench_idx] = null
-	board_slots[board_idx] = unit
-	return true
-
-## Moves a unit from board to the first available bench slot.
-## Returns true on success, false if bench is full or unit not on board.
-func move_board_to_bench(unit: Unit) -> bool:
-	var board_idx = find_board_slot(unit)
-	if board_idx == -1:
-		return false
-	var bench_idx = first_empty_bench_slot()
-	if bench_idx == -1:
-		return false
-	board_slots[board_idx] = null
-	bench_slots[bench_idx] = unit
-	return true
-
-## Removes a unit from wherever it is (board or bench). Returns true if found.
-func remove_unit(unit: Unit) -> bool:
-	for i in board_slots.size():
-		if board_slots[i] == unit:
-			board_slots[i] = null
-			return true
-	for i in bench_slots.size():
-		if bench_slots[i] == unit:
-			bench_slots[i] = null
-			return true
+func is_valid(location: Dictionary) -> bool:
+	if location.get("zone", "") == "board":
+		var c: Vector2i = location.get("cell", Vector2i(-1, -1)) as Vector2i
+		return c.x >= 0 and c.y >= 0 and c.x < cols and c.y < rows
+	if location.get("zone", "") == "bench":
+		var i: int = int(location.get("index", -1))
+		return i >= 0 and i < bench.size()
 	return false
+
+func unit_at(location: Dictionary) -> Unit:
+	if not is_valid(location):
+		return null
+	if location["zone"] == "board":
+		return cells.get(location["cell"]) as Unit
+	return bench[int(location["index"])] as Unit
+
+func location_of(unit: Unit) -> Dictionary:
+	for c in cells:
+		if cells[c] == unit:
+			return {"zone": "board", "cell": c}
+	for i in bench.size():
+		if bench[i] == unit:
+			return {"zone": "bench", "index": i}
+	return {}
+
+func put(unit: Unit, location: Dictionary) -> void:
+	if location["zone"] == "board":
+		if unit == null:
+			cells.erase(location["cell"])
+		else:
+			cells[location["cell"]] = unit
+	else:
+		bench[int(location["index"])] = unit
+
+func remove(unit: Unit) -> bool:
+	var location: Dictionary = location_of(unit)
+	if location.is_empty():
+		return false
+	put(null, location)
+	return true
+
+## Moves a unit to a location, swapping with the unit already there.
+func move(unit: Unit, to: Dictionary) -> void:
+	var from: Dictionary = location_of(unit)
+	var other: Unit = unit_at(to)
+	put(other, from)
+	put(unit, to)

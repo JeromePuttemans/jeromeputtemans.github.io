@@ -1,64 +1,119 @@
 # =============================================================================
-# Unit.gd — Pure data class representing one unit on the board or bench.
+# Unit.gd — One unit: its type, star level and battle state
 # =============================================================================
-# Units are RefCounted objects — no Node, no scene dependency.
-# BoardView reads their data to draw them; RoundManager and BattleSimulator
-# read and mutate them during battle.
+# A Unit is a RefCounted object (no Node): the board, the bench, the battle
+# simulator and the views all share the same instances.
 #
-# INSTANCE ID:
-#   Each Unit receives a unique integer id at creation so the UI can track
-#   individual units even when multiple instances share the same type_id.
+# STARS: three identical units of the same star merge into one of the next
+#   star (RoundManager). Each star multiplies hp and attack by
+#   star_stat_multiplier (1.8) and ability values by star_ability_multiplier
+#   (1.5): a 2-star unit has 1.8 x the hp of a 1-star, a 3-star 3.24 x.
+# BATTLE STATE: prepare_for_battle() copies the base stats into the battle
+#   fields; TraitSystem then adds the synergy bonuses. The battle fields are
+#   rewritten at every battle, so a unit always starts fresh.
 # =============================================================================
 
 class_name Unit
 extends RefCounted
 
-# Monotonically increasing counter; shared across all Unit instances.
 static var _next_id: int = 0
 
-var instance_id: int     = 0
-var type_id:     String  = ""
-var display_name: String = ""
-var glyph:       String  = "?"
-var color:       Color   = Color.WHITE
+var instance_id: int = 0
+var type_id: String = ""
+var tier: int = 1
+var traits: Array[String] = []
+var star: int = 1
+var is_boss: bool = false
+var stat_scale: float = 1.0   # enemies grow a little stronger every round
+var data: Dictionary = {}
 
-# Base stats (read from UnitDatabase, never modified)
-var hp_max:  int = 1
-var attack:  int = 1
-var defense: int = 0
-var speed:   int = 1   # Lower acts first in battle (initiative order)
-
-# Combat state — reset to base values at the start of each battle
-var hp_current: int = 1
+# Battle state (rewritten by prepare_for_battle and TraitSystem)
+var team: int = 0             # 0 = player, 1 = enemy
+var cell: Vector2i = Vector2i.ZERO
+var move_from: Vector2i = Vector2i.ZERO
+var move_left: float = 0.0
+var move_duration: float = 1.0
+var alive: bool = true
+var hp_max: float = 1.0
+var hp: float = 1.0
+var attack: float = 1.0
+var attack_speed: float = 1.0
+var range_cells: int = 1
+var armor: float = 0.0
+var mana_max: float = 0.0
+var mana: float = 0.0
+var mana_gain: float = 1.0
+var crit: float = 0.0
+var damage_bonus: float = 0.0
+var regen: float = 0.0
+var shield: float = 0.0
+var stun_left: float = 0.0
+var attack_cooldown: float = 0.0
+var damage_dealt: float = 0.0
 
 func _init() -> void:
-	instance_id   = _next_id
-	_next_id     += 1
+	instance_id = _next_id
+	_next_id += 1
 
-## Populates this Unit from a raw type Dictionary loaded from units.json.
-func setup_from_data(data: Dictionary) -> void:
-	type_id      = data.get("id",           "unknown")
-	display_name = data.get("display_name", "Unit")
-	glyph        = data.get("glyph",        "?")
-	hp_max       = data.get("hp",           1)
-	attack       = data.get("attack",       1)
-	defense      = data.get("defense",      0)
-	speed        = data.get("speed",        1)
-	hp_current   = hp_max
+func setup(unit_data: Dictionary, star_level: int) -> void:
+	data = unit_data
+	type_id = str(data.get("id", ""))
+	tier = int(data.get("tier", 1))
+	is_boss = bool(data.get("boss", false))
+	star = star_level
+	traits.clear()
+	for t in data.get("traits", []) as Array:
+		traits.append(str(t))
 
-	var hex: String = data.get("color", "ffffff")
-	color = Color("#" + hex if not hex.begins_with("#") else hex)
+func star_factor() -> float:
+	return pow(ConfigManager.get_float("star_stat_multiplier", 1.8), star - 1)
 
-## Resets combat state so the unit enters each battle at full strength.
-func reset_for_battle() -> void:
-	hp_current = hp_max
+func ability_factor() -> float:
+	return pow(ConfigManager.get_float("star_ability_multiplier", 1.5), star - 1)
 
-func is_alive() -> bool:
-	return hp_current > 0
+func base_hp() -> float:
+	return float(data.get("hp", 1)) * star_factor() * stat_scale
 
-## Applies incoming damage reduced by defense (minimum 1 always lands).
-## Returns the actual damage dealt.
-func take_damage(raw_attack: int) -> int:
-	var damage = max(1, raw_attack - defense)
-	hp_current = max(0, hp_current - damage)
-	return damage
+func base_attack() -> float:
+	return float(data.get("attack", 1)) * star_factor() * stat_scale
+
+func base_range() -> int:
+	return int(data.get("range", 1))
+
+func is_ranged() -> bool:
+	return base_range() > 1
+
+func ability() -> Dictionary:
+	return data.get("ability", {}) as Dictionary
+
+## Gold value: 1 copy of a tier-2 unit is worth 2, a 2-star (3 copies) 6.
+func sell_value() -> int:
+	return tier * int(pow(3.0, star - 1))
+
+func prepare_for_battle(side: int, start_cell: Vector2i) -> void:
+	team = side
+	cell = start_cell
+	move_from = start_cell
+	move_left = 0.0
+	alive = true
+	hp_max = base_hp()
+	attack = base_attack()
+	attack_speed = float(data.get("attack_speed", 1.0))
+	range_cells = base_range()
+	armor = float(data.get("armor", 0))
+	mana_max = float(data.get("mana", 0))
+	mana = 0.0
+	mana_gain = 1.0
+	crit = 0.0
+	damage_bonus = 0.0
+	regen = 0.0
+	shield = 0.0
+	stun_left = 0.0
+	damage_dealt = 0.0
+	hp = hp_max
+
+## Visual position between two cells while moving (0 = start, 1 = arrived).
+func move_progress() -> float:
+	if move_left <= 0.0:
+		return 1.0
+	return 1.0 - move_left / maxf(move_duration, 0.001)

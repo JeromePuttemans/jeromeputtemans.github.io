@@ -1,49 +1,49 @@
 # =============================================================================
 # ConfigManager.gd — Autoload (Singleton)
 # =============================================================================
-# Loads data/config.json and exposes typed getters.
-# Must be FIRST in the autoload list — all other singletons depend on it.
-# Fallback values are intentionally neutral (0 / "" / BLACK) so a missing
-# config causes visible inactivity rather than silently wrong behaviour.
+# Loads data/config.json and exposes typed getters. First autoload: every
+# other script reads its tuning values here, so no game constant is written
+# in code. Fallback values are neutral: a missing key shows up as visible
+# inactivity rather than silently wrong gameplay.
 # =============================================================================
 
 extends Node
 
-const CONFIG_PATH = "res://data/config.json"
+const CONFIG_PATH: String = "res://data/config.json"
+
 var _config: Dictionary = {}
 
 func _ready() -> void:
-	_load()
+	var data: Variant = load_json(CONFIG_PATH)
+	if data is Dictionary:
+		_config = data as Dictionary
 
-func _load() -> void:
-	if not FileAccess.file_exists(CONFIG_PATH):
-		push_error("ConfigManager: file not found → " + CONFIG_PATH)
-		return
-	var file = FileAccess.open(CONFIG_PATH, FileAccess.READ)
-	if not file:
-		push_error("ConfigManager: cannot open → " + CONFIG_PATH)
-		return
-	var json = JSON.new()
+func get_int(key: String, fallback: int = 0) -> int:
+	return int(_config.get(key, fallback))
+
+func get_float(key: String, fallback: float = 0.0) -> float:
+	return float(_config.get(key, fallback))
+
+func get_string(key: String, fallback: String = "") -> String:
+	return str(_config.get(key, fallback))
+
+func get_array(key: String) -> Array:
+	var value: Variant = _config.get(key, [])
+	return value as Array if value is Array else []
+
+func get_dict(key: String) -> Dictionary:
+	var value: Variant = _config.get(key, {})
+	return value as Dictionary if value is Dictionary else {}
+
+static func load_json(path: String) -> Variant:
+	if not FileAccess.file_exists(path):
+		push_error("JSON file not found: " + path)
+		return null
+	var file: FileAccess = FileAccess.open(path, FileAccess.READ)
+	if file == null:
+		return null
+	var json := JSON.new()
 	if json.parse(file.get_as_text()) != OK:
-		push_error("ConfigManager: JSON parse error at line %d" % json.get_error_line())
-		return
-	_config = json.get_data()
-
-func get_int(key: String, default: int = 0) -> int:
-	return int(_config.get(key, default))
-
-func get_float(key: String, default: float = 0.0) -> float:
-	return float(_config.get(key, default))
-
-func get_string(key: String, default: String = "") -> String:
-	return str(_config.get(key, default))
-
-func get_color(key: String, default: Color = Color.BLACK) -> Color:
-	var hex: String = _config.get("colors", {}).get(key, "")
-	if hex.is_empty():
-		return default
-	return Color("#" + hex if not hex.begins_with("#") else hex)
-
-## Returns the full raw config Dictionary for batch access (e.g. BattleSimulator).
-func get_raw() -> Dictionary:
-	return _config
+		push_error("JSON error in %s at line %d" % [path, json.get_error_line()])
+		return null
+	return json.get_data()

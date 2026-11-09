@@ -1,19 +1,87 @@
 {
-	"default_language":            "en",
-	"board_cols":                  4,
-	"board_rows":                  2,
-	"bench_size":                  8,
-	"tile_size":                   72,
-	"shop_size":                   5,
-	"shop_refresh_cost":           2,
-	"unit_buy_cost":               3,
-	"unit_sell_value":             1,
-	"player_hp_start":             20,
-	"rounds_total":                8,
-	"gold_per_round":              5,
-	"interest_cap":                3,
-	"battle_tick_delay_ms":        150,
-	"base_damage_to_player":       2,
-	"enemy_team_size_min":         2,
-	"enemy_team_size_max":         4
+	"default_language": "auto",
+	"board_cols": 7,
+	"board_rows": 4,
+	"bench_size": 8,
+	"player_hp_start": 36,
+	"rounds_total": 15,
+	"boss_rounds": [
+		5,
+		10,
+		15
+	],
+	"boss_hp_multipliers": [
+		1.0,
+		1.4,
+		1.8
+	],
+	"income_base": 5,
+	"interest_step": 10,
+	"interest_cap": 5,
+	"win_bonus": 1,
+	"shop_size": 5,
+	"reroll_cost": 2,
+	"start_level": 3,
+	"max_level": 8,
+	"level_costs": [
+		4,
+		6,
+		8,
+		10,
+		12
+	],
+	"shop_odds": {
+		"3": [
+			75,
+			25,
+			0
+		],
+		"4": [
+			60,
+			35,
+			5
+		],
+		"5": [
+			45,
+			40,
+			15
+		],
+		"6": [
+			30,
+			45,
+			25
+		],
+		"7": [
+			20,
+			45,
+			35
+		],
+		"8": [
+			15,
+			40,
+			45
+		]
+	},
+	"merge_count": 3,
+	"star_stat_multiplier": 1.8,
+	"star_ability_multiplier": 1.5,
+	"damage_base": 2,
+	"damage_per_survivor": 1,
+	"damage_per_stage": 1,
+	"battle_timeout": 40.0,
+	"move_time": 0.42,
+	"mana_per_attack": 10,
+	"mana_per_hit": 5,
+	"crit_multiplier": 2.0,
+	"projectile_speed": 9.0,
+	"enemy_count_base": 2,
+	"enemy_count_per_round": 0.4,
+	"enemy_stat_growth": 0.012,
+	"enemy_star2_start": 5,
+	"enemy_star2_per_round": 0.06,
+	"enemy_star3_start": 14,
+	"enemy_star3_per_round": 0.08,
+	"enemy_level_step": 2.5,
+	"result_delay": 2.2,
+	"boss_slots": 3
 }

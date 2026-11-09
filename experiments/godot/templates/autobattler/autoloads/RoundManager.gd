@@ -1,301 +1,300 @@
 # =============================================================================
 # RoundManager.gd — Autoload (Singleton)
 # =============================================================================
-# Owns the game state and drives the PREP → BATTLE → RESULT → PREP loop.
+# Game state and the PREP -> BATTLE -> RESULT loop.
 #
-# STATE MACHINE:
-#   PREP    — player buys/places/sells units, opens the shop
-#   BATTLE  — one attack executed per Timer tick (no pre-computation batch)
-#   RESULT  — outcome applied to player HP; 1.5 s pause then next PREP
-#   GAME_OVER / VICTORY — terminal states (restart via new_game())
+#   PREP     shop, bench, board; the enemy lineup of the round is already
+#            shown on the top half, so the player can answer it
+#   BATTLE   BattleSimulator advanced in fixed steps of STEP seconds (x the
+#            battle speed); its events are forwarded through battle_event
+#   RESULT   banner for result_delay seconds, then the next round
+#   GAME_OVER / VICTORY   terminal, new_game() restarts
 #
-# WHY ONE ATTACK PER TICK (not BattleSimulator.run()):
-#   run() is a synchronous while loop on the main thread.
-#   With high-HP units it can iterate 200+ times before returning,
-#   blocking Godot's event loop long enough to trigger the "not responding"
-#   freeze popup. Instead, _on_battle_tick() does exactly one step and
-#   returns, keeping each Timer callback well under 1 ms.
-#
-# ECONOMY:
-#   Each round the player receives gold_per_round + interest.
-#   Interest = min(gold_held / 10, interest_cap).
+# ECONOMY at the start of every round after the first:
+#   income = income_base + interest + win_bonus (if the last battle was won)
+#   interest = min(floor(gold / interest_step), interest_cap): 1 gold per
+#   10 saved, at most 5. Unit price = tier; selling refunds its full value.
+# LEVEL: the number of units allowed on the board. Buying a level costs
+#   level_costs (4, 6, 8, 10, 12 for levels 4 to 8) and improves the shop
+#   odds (UnitDatabase).
+# MERGE: three units of the same type and star become one of the next star,
+#   kept where one of them stood on the board if any. Buying is allowed with
+#   a full bench when the new unit completes a merge.
+# DEFEAT DAMAGE: damage_base + damage_per_survivor x enemy units left +
+#   damage_per_stage x stage (stage = 1 for rounds 1-5, 2 for 6-10...).
 # =============================================================================
 
 extends Node
 
 enum Phase { PREP, BATTLE, RESULT, GAME_OVER, VICTORY }
 
-signal phase_changed(new_phase: Phase)
-signal board_changed()
+signal phase_changed(phase: Phase)
 signal gold_changed(value: int)
-signal hp_changed(value: int)
-signal battle_event(event: BattleSimulator.BattleEvent)
-signal game_over()
-signal game_won()
+signal hp_changed(value: int, delta: int)
+signal level_changed(level: int)
+signal board_changed()
+signal shop_changed()
+signal unit_merged(unit: Unit)
+signal battle_started(sim: BattleSimulator)
+signal battle_event(event: Dictionary)
+signal battle_finished(won: bool, damage: int)
+signal feedback(key: String)
 
-var phase:         Phase = Phase.PREP
-var current_round: int   = 0
-var player_hp:     int   = 0
-var player_gold:   int   = 0
+const STEP: float = 1.0 / 30.0
 
-var board:     Board = null
-var shop_pool: Array = []   # Array[String] type_ids currently offered
+var phase: Phase = Phase.PREP
+var round_number: int = 0
+var hp: int = 30
+var gold: int = 0
+var level: int = 3
+var board: Board = null
+var shop: Array[String] = []
+var enemy_lineup: Array[Dictionary] = []
+var sim: BattleSimulator = null
+var battle_speed: float = 1.0
+var last_won: bool = false
+var stats: Dictionary = {}
+var _seed: int = 0
+var _accumulator: float = 0.0
+var _rng := RandomNumberGenerator.new()
 
-# --- Live battle state (mutated tick by tick, never pre-computed) ---
-var _battle_players:   Array = []  # Array[Unit] — surviving player units
-var _battle_enemies:   Array = []  # Array[Unit] — surviving enemy units
-var _turn_index:       int   = 0   # Round-robin position in the initiative order
-var _base_player_dmg:  int   = 2   # HP to subtract on defeat (from config)
-var _battle_timer:     Timer = null
+func _ready() -> void:
+	set_process(false)
 
 # =============================================================================
-# PUBLIC API
+# GAME FLOW
 # =============================================================================
 
 func new_game() -> void:
-	current_round = 0
-	player_hp     = ConfigManager.get_int("player_hp_start", 20)
-	player_gold   = 0
-	board = Board.new(
-		ConfigManager.get_int("board_cols", 4),
-		ConfigManager.get_int("board_rows", 2),
-		ConfigManager.get_int("bench_size", 8)
-	)
-	_start_prep_phase()
+	_seed = randi()
+	_rng.seed = _seed
+	round_number = 0
+	hp = ConfigManager.get_int("player_hp_start", 30)
+	gold = 0
+	level = ConfigManager.get_int("start_level", 3)
+	last_won = false
+	stats = {"wins": 0, "losses": 0, "merges": 0, "best_star": 1}
+	board = Board.new(ConfigManager.get_int("board_cols", 7), ConfigManager.get_int("board_rows", 4), ConfigManager.get_int("bench_size", 8))
+	level_changed.emit(level)
+	hp_changed.emit(hp, 0)
+	_start_prep()
 
-## Attempts to buy a unit. Returns false if not enough gold or bench full.
-func buy_unit(type_id: String) -> bool:
-	var cost = ConfigManager.get_int("unit_buy_cost", 3)
-	if player_gold < cost:
-		return false
-	if board.is_bench_full():
-		return false
-	var data = UnitDatabase.get_type(type_id)
-	if data.is_empty():
-		return false
-	var unit = Unit.new()
-	unit.setup_from_data(data)
-	var slot = board.first_empty_bench_slot()
-	board.bench_slots[slot] = unit
-	player_gold -= cost
-	emit_signal("gold_changed", player_gold)
-	emit_signal("board_changed")
-	return true
-
-## Sells a unit (bench or board). Returns false if not found.
-func sell_unit(unit: Unit) -> bool:
-	if not board.remove_unit(unit):
-		return false
-	player_gold += ConfigManager.get_int("unit_sell_value", 1)
-	emit_signal("gold_changed", player_gold)
-	emit_signal("board_changed")
-	return true
-
-## Moves a bench unit to the board. Returns false if board is full.
-func place_unit(unit: Unit) -> bool:
-	if board.is_board_full():
-		return false
-	var ok = board.move_bench_to_board(unit)
-	if ok:
-		emit_signal("board_changed")
-	return ok
-
-## Moves a board unit back to bench. Returns false if bench is full.
-func return_unit_to_bench(unit: Unit) -> bool:
-	if board.is_bench_full():
-		return false
-	var ok = board.move_board_to_bench(unit)
-	if ok:
-		emit_signal("board_changed")
-	return ok
-
-## Rerolls the shop. Returns false if not enough gold.
-func refresh_shop() -> bool:
-	var cost = ConfigManager.get_int("shop_refresh_cost", 2)
-	if player_gold < cost:
-		return false
-	player_gold -= cost
+func _start_prep() -> void:
+	round_number += 1
+	var interest: int = mini(int(gold / float(ConfigManager.get_int("interest_step", 10))), ConfigManager.get_int("interest_cap", 5))
+	gold += ConfigManager.get_int("income_base", 5) + (interest if round_number > 1 else 0)
+	if last_won and round_number > 1:
+		gold += ConfigManager.get_int("win_bonus", 1)
+	enemy_lineup = EnemyFactory.build(round_number, _seed)
 	_roll_shop()
-	emit_signal("gold_changed", player_gold)
-	return true
+	phase = Phase.PREP
+	gold_changed.emit(gold)
+	board_changed.emit()
+	phase_changed.emit(phase)
 
-## Called by the Ready button — starts the battle phase.
-## Returns false if board has no units.
+func stage() -> int:
+	return int(ceil(round_number / 5.0))
+
+## JSON numbers are floats (10.0): compare as integers, has(10) would miss them.
+func is_boss_round(r: int) -> bool:
+	return boss_index(r) >= 0
+
+static func boss_index(r: int) -> int:
+	var rounds: Array = ConfigManager.get_array("boss_rounds")
+	for i in rounds.size():
+		if int(rounds[i]) == r:
+			return i
+	return -1
+
 func start_battle() -> bool:
 	if phase != Phase.PREP:
 		return false
-	if board.get_board_units().is_empty():
+	if board.board_count() == 0:
+		feedback.emit("no_board_units")
 		return false
-	_run_battle()
+	var rows: int = board.rows
+	var players: Array[Unit] = []
+	for c in board.cells:
+		var unit: Unit = board.cells[c] as Unit
+		unit.prepare_for_battle(0, Vector2i(c.x, rows + c.y))
+		players.append(unit)
+	var enemies: Array[Unit] = []
+	for entry in enemy_lineup:
+		var enemy: Unit = entry["unit"] as Unit
+		enemy.prepare_for_battle(1, entry["cell"] as Vector2i)
+		enemies.append(enemy)
+	sim = BattleSimulator.new()
+	sim.setup(players, enemies, board.cols, rows * 2, _seed + round_number * 7919)
+	_accumulator = 0.0
+	phase = Phase.BATTLE
+	phase_changed.emit(phase)
+	battle_started.emit(sim)
+	set_process(true)
 	return true
 
-# =============================================================================
-# PRIVATE — PHASE TRANSITIONS
-# =============================================================================
-
-func _start_prep_phase() -> void:
-	current_round += 1
-	var income   = ConfigManager.get_int("gold_per_round", 5)
-	var interest = min(player_gold / 10, ConfigManager.get_int("interest_cap", 3))
-	player_gold += income + interest
-	_roll_shop()
-	phase = Phase.PREP
-	emit_signal("gold_changed",  player_gold)
-	emit_signal("hp_changed",    player_hp)
-	emit_signal("board_changed")
-	emit_signal("phase_changed", phase)
-
-func _run_battle() -> void:
-	phase = Phase.BATTLE
-	emit_signal("phase_changed", phase)
-
-	# Build enemy team scaled to the current round
-	var ids      = UnitDatabase.get_all_ids()
-	var min_e    = ConfigManager.get_int("enemy_team_size_min", 2)
-	var max_e    = ConfigManager.get_int("enemy_team_size_max", 4)
-	var total    = ConfigManager.get_int("rounds_total", 8)
-	var progress = float(current_round - 1) / max(total - 1, 1)
-	var count    = min_e + int(round(progress * (max_e - min_e)))
-	_battle_enemies = []
-	for _i in count:
-		var type_id = ids[randi() % ids.size()]
-		var data    = UnitDatabase.get_type(type_id)
-		var unit    = Unit.new()
-		unit.setup_from_data(data)
-		_battle_enemies.append(unit)
-
-	# Shallow copies — we erase dead units; the originals stay on the board
-	_battle_players  = board.get_board_units().duplicate()
-	_base_player_dmg = ConfigManager.get_int("base_damage_to_player", 2)
-	_turn_index      = 0
-
-	# Reset all units to full HP for this battle
-	for u in _battle_players:
-		u.reset_for_battle()
-	for u in _battle_enemies:
-		u.reset_for_battle()
-
-	# Create the timer once and reuse it
-	if _battle_timer == null:
-		_battle_timer          = Timer.new()
-		_battle_timer.one_shot = false
-		_battle_timer.timeout.connect(_on_battle_tick)
-		add_child(_battle_timer)
-
-	var delay_ms = ConfigManager.get_int("battle_tick_delay_ms", 150)
-	_battle_timer.wait_time = delay_ms / 1000.0
-	_battle_timer.start()
-
-## Called every tick — executes exactly ONE attack and returns immediately.
-## No loops, no blocking. Godot's main thread stays free between ticks.
-func _on_battle_tick() -> void:
-	# Check termination first
-	if _battle_players.is_empty() or _battle_enemies.is_empty():
-		_battle_timer.stop()
+func _process(delta: float) -> void:
+	if phase != Phase.BATTLE or sim == null:
+		set_process(false)
+		return
+	_accumulator += minf(delta, 0.1) * battle_speed
+	while _accumulator >= STEP and not sim.finished:
+		_accumulator -= STEP
+		sim.step(STEP)
+		for event in sim.events:
+			battle_event.emit(event)
+		sim.events.clear()
+	if sim.finished:
+		set_process(false)
 		_finish_battle()
-		return
 
-	# Build initiative order (only living units)
-	var order = BattleSimulator.build_order(_battle_players, _battle_enemies)
-	if order.is_empty():
-		_battle_timer.stop()
-		_finish_battle()
-		return
-
-	# Wrap index to account for units that died in a previous tick
-	_turn_index = _turn_index % order.size()
-	var entry         = order[_turn_index]
-	var attacker: Unit      = entry["unit"]
-	var attacker_team: String = entry["team"]
-	_turn_index += 1
-
-	# Pick lowest-HP target on the opposing side
-	var targets: Array = _battle_enemies if attacker_team == "player" else _battle_players
-	var target: Unit   = BattleSimulator.pick_target(targets)
-	if target == null:
-		return
-
-	# Resolve one attack
-	var damage: int = target.take_damage(attacker.attack)
-
-	var ev_atk      = BattleSimulator.BattleEvent.new()
-	ev_atk.type     = "attack"
-	ev_atk.attacker = attacker.display_name
-	ev_atk.target   = target.display_name
-	ev_atk.damage   = damage
-	emit_signal("battle_event", ev_atk)
-
-	# Handle death
-	if not target.is_alive():
-		var ev_death  = BattleSimulator.BattleEvent.new()
-		ev_death.type = "death"
-		ev_death.name = target.display_name
-		emit_signal("battle_event", ev_death)
-
-		if attacker_team == "player":
-			_battle_enemies.erase(target)
-		else:
-			_battle_players.erase(target)
-
-		# Reset index so it stays valid after the array shrinks
-		_turn_index = 0
-
-		# Re-check termination immediately after a death
-		if _battle_players.is_empty() or _battle_enemies.is_empty():
-			_battle_timer.stop()
-			_finish_battle()
-
-## Emits the result event and transitions to RESULT phase.
 func _finish_battle() -> void:
-	var ev_result          = BattleSimulator.BattleEvent.new()
-	ev_result.type         = "result"
-
-	if _battle_players.size() > 0 and _battle_enemies.is_empty():
-		ev_result.result           = "player_win"
-		ev_result.player_hp_damage = 0
-	elif _battle_enemies.size() > 0 and _battle_players.is_empty():
-		ev_result.result           = "enemy_win"
-		ev_result.player_hp_damage = _base_player_dmg
+	var won: bool = sim.winner == 0
+	var damage: int = 0
+	if won:
+		stats["wins"] = int(stats["wins"]) + 1
 	else:
-		ev_result.result           = "draw"
-		ev_result.player_hp_damage = 0
-
-	player_hp -= ev_result.player_hp_damage
-	emit_signal("battle_event", ev_result)
-	emit_signal("hp_changed",   player_hp)
-	_start_result_phase()
-
-func _start_result_phase() -> void:
+		stats["losses"] = int(stats["losses"]) + 1
+		damage = (ConfigManager.get_int("damage_base", 2) + ConfigManager.get_int("damage_per_survivor", 1) * sim.survivors(1).size()
+			+ ConfigManager.get_int("damage_per_stage", 1) * stage())
+		hp = maxi(hp - damage, 0)
+		hp_changed.emit(hp, -damage)
+	last_won = won
 	phase = Phase.RESULT
-	emit_signal("phase_changed", phase)
-
-	if player_hp <= 0:
-		phase = Phase.GAME_OVER
-		emit_signal("phase_changed", phase)
-		emit_signal("game_over")
-		return
-
-	var total = ConfigManager.get_int("rounds_total", 8)
-	if current_round >= total:
-		phase = Phase.VICTORY
-		emit_signal("phase_changed", phase)
-		emit_signal("game_won")
-		return
-
-	# Guard after await: if the game was restarted during this pause,
-	# phase will no longer be RESULT — do not advance the new game.
-	await get_tree().create_timer(1.5).timeout
+	phase_changed.emit(phase)
+	battle_finished.emit(won, damage)
+	await get_tree().create_timer(ConfigManager.get_float("result_delay", 2.2)).timeout
 	if phase != Phase.RESULT:
 		return
-	_start_prep_phase()
+	if hp <= 0:
+		phase = Phase.GAME_OVER
+	elif round_number >= ConfigManager.get_int("rounds_total", 15):
+		phase = Phase.VICTORY
+	if phase != Phase.RESULT:
+		phase_changed.emit(phase)
+		return
+	_start_prep()
+
+func set_battle_speed(speed: float) -> void:
+	battle_speed = speed
 
 # =============================================================================
-# PRIVATE — SHOP
+# SHOP, LEVEL, BENCH AND BOARD
 # =============================================================================
 
 func _roll_shop() -> void:
-	var size = ConfigManager.get_int("shop_size", 5)
-	var ids  = UnitDatabase.get_all_ids()
-	shop_pool.clear()
-	for _i in size:
-		shop_pool.append(ids[randi() % ids.size()])
+	shop.clear()
+	for i in ConfigManager.get_int("shop_size", 5):
+		shop.append(UnitDatabase.random_id_for_level(level, _rng))
+	shop_changed.emit()
+
+func reroll() -> bool:
+	var cost: int = ConfigManager.get_int("reroll_cost", 2)
+	if phase != Phase.PREP or gold < cost:
+		feedback.emit("not_enough_gold")
+		return false
+	_spend(cost)
+	_roll_shop()
+	return true
+
+func level_cost() -> int:
+	var costs: Array = ConfigManager.get_array("level_costs")
+	var index: int = level - ConfigManager.get_int("start_level", 3)
+	return int(costs[index]) if index >= 0 and index < costs.size() else -1
+
+func level_up() -> bool:
+	var cost: int = level_cost()
+	if phase != Phase.PREP or cost < 0 or level >= ConfigManager.get_int("max_level", 8):
+		return false
+	if gold < cost:
+		feedback.emit("not_enough_gold")
+		return false
+	_spend(cost)
+	level += 1
+	level_changed.emit(level)
+	return true
+
+func buy(shop_index: int) -> bool:
+	if phase != Phase.PREP or shop_index < 0 or shop_index >= shop.size() or shop[shop_index].is_empty():
+		return false
+	var type_id: String = shop[shop_index]
+	var cost: int = int(UnitDatabase.unit_data(type_id).get("tier", 1))
+	if gold < cost:
+		feedback.emit("not_enough_gold")
+		return false
+	var slot: int = board.first_free_bench()
+	if slot < 0 and _copies(type_id, 1).size() < ConfigManager.get_int("merge_count", 3) - 1:
+		feedback.emit("bench_full")
+		return false
+	var unit := Unit.new()
+	unit.setup(UnitDatabase.unit_data(type_id), 1)
+	_spend(cost)
+	shop[shop_index] = ""
+	if slot >= 0:
+		board.bench[slot] = unit
+	_merge_from(unit)
+	shop_changed.emit()
+	board_changed.emit()
+	return true
+
+func sell(unit: Unit) -> bool:
+	if phase != Phase.PREP or not board.remove(unit):
+		return false
+	gold += unit.sell_value()
+	gold_changed.emit(gold)
+	board_changed.emit()
+	return true
+
+## Moves a unit (drag and drop). Refuses to exceed the level on the board.
+func move_unit(unit: Unit, to: Dictionary) -> bool:
+	if phase != Phase.PREP or not board.is_valid(to):
+		return false
+	var from: Dictionary = board.location_of(unit)
+	if from.is_empty():
+		return false
+	var entering: bool = from["zone"] == "bench" and to["zone"] == "board" and board.unit_at(to) == null
+	if entering and board.board_count() >= level:
+		feedback.emit("board_full")
+		return false
+	board.move(unit, to)
+	board_changed.emit()
+	return true
+
+func _spend(amount: int) -> void:
+	gold -= amount
+	gold_changed.emit(gold)
+
+func _copies(type_id: String, star: int) -> Array[Unit]:
+	var result: Array[Unit] = []
+	for unit in board.all_units():
+		if unit.type_id == type_id and unit.star == star:
+			result.append(unit)
+	return result
+
+## The new unit may not be on the bench (full bench): it then takes the
+## place of one of its copies.
+func _merge_from(unit: Unit) -> void:
+	var needed: int = ConfigManager.get_int("merge_count", 3)
+	var copies: Array[Unit] = _copies(unit.type_id, unit.star)
+	if not copies.has(unit):
+		copies.append(unit)
+	if copies.size() < needed:
+		return
+	var keep: Unit = copies[0]
+	for copy in copies:
+		if board.location_of(copy).get("zone", "") == "board":
+			keep = copy
+			break
+	var removed: int = 0
+	for copy in copies:
+		if copy != keep and removed < needed - 1:
+			board.remove(copy)
+			removed += 1
+	if board.location_of(keep).is_empty():
+		var slot: int = board.first_free_bench()
+		if slot >= 0:
+			board.bench[slot] = keep
+	keep.star += 1
+	stats["merges"] = int(stats["merges"]) + 1
+	stats["best_star"] = maxi(int(stats["best_star"]), keep.star)
+	unit_merged.emit(keep)
+	_merge_from(keep)

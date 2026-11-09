@@ -1,52 +1,239 @@
 [
 	{
-		"id":           "warrior",
-		"display_name": "Warrior",
-		"glyph":        "W",
-		"color":        "4a90d9",
-		"hp":           12,
-		"attack":       4,
-		"defense":      2,
-		"speed":        3
+		"id": "ember_guard",
+		"tier": 1,
+		"traits": [
+			"guardian",
+			"ember"
+		],
+		"hp": 650,
+		"attack": 45,
+		"attack_speed": 0.6,
+		"range": 1,
+		"armor": 35,
+		"mana": 80,
+		"ability": {
+			"type": "shield_self",
+			"value": 220
+		}
 	},
 	{
-		"id":           "archer",
-		"display_name": "Archer",
-		"glyph":        "A",
-		"color":        "7ed321",
-		"hp":           7,
-		"attack":       6,
-		"defense":      0,
-		"speed":        5
+		"id": "frost_blade",
+		"tier": 1,
+		"traits": [
+			"blade",
+			"frost"
+		],
+		"hp": 520,
+		"attack": 55,
+		"attack_speed": 0.8,
+		"range": 1,
+		"armor": 20,
+		"mana": 60,
+		"ability": {
+			"type": "strike",
+			"value": 2.4
+		}
 	},
 	{
-		"id":           "mage",
-		"display_name": "Mage",
-		"glyph":        "M",
-		"color":        "bd10e0",
-		"hp":           6,
-		"attack":       8,
-		"defense":      0,
-		"speed":        4
+		"id": "grove_adept",
+		"tier": 1,
+		"traits": [
+			"arcane",
+			"grove"
+		],
+		"hp": 420,
+		"attack": 38,
+		"attack_speed": 0.65,
+		"range": 3,
+		"armor": 10,
+		"mana": 70,
+		"ability": {
+			"type": "heal_ally",
+			"value": 220
+		}
 	},
 	{
-		"id":           "tank",
-		"display_name": "Tank",
-		"glyph":        "T",
-		"color":        "f5a623",
-		"hp":           20,
-		"attack":       2,
-		"defense":      4,
-		"speed":        2
+		"id": "ember_archer",
+		"tier": 1,
+		"traits": [
+			"ranger",
+			"ember"
+		],
+		"hp": 440,
+		"attack": 48,
+		"attack_speed": 0.75,
+		"range": 4,
+		"armor": 10,
+		"mana": 70,
+		"ability": {
+			"type": "volley",
+			"value": 1.6,
+			"count": 2
+		}
 	},
 	{
-		"id":           "rogue",
-		"display_name": "Rogue",
-		"glyph":        "R",
-		"color":        "e84040",
-		"hp":           8,
-		"attack":       7,
-		"defense":      1,
-		"speed":        6
+		"id": "frost_bulwark",
+		"tier": 2,
+		"traits": [
+			"guardian",
+			"frost"
+		],
+		"hp": 850,
+		"attack": 55,
+		"attack_speed": 0.6,
+		"range": 1,
+		"armor": 45,
+		"mana": 90,
+		"ability": {
+			"type": "stun",
+			"value": 150,
+			"duration": 1.5
+		}
+	},
+	{
+		"id": "grove_blade",
+		"tier": 2,
+		"traits": [
+			"blade",
+			"grove"
+		],
+		"hp": 680,
+		"attack": 68,
+		"attack_speed": 0.85,
+		"range": 1,
+		"armor": 25,
+		"mana": 70,
+		"ability": {
+			"type": "dash",
+			"value": 2.2
+		}
+	},
+	{
+		"id": "ember_mage",
+		"tier": 2,
+		"traits": [
+			"arcane",
+			"ember"
+		],
+		"hp": 520,
+		"attack": 48,
+		"attack_speed": 0.65,
+		"range": 3,
+		"armor": 10,
+		"mana": 80,
+		"ability": {
+			"type": "aoe",
+			"value": 230
+		}
+	},
+	{
+		"id": "frost_crossbow",
+		"tier": 2,
+		"traits": [
+			"ranger",
+			"frost"
+		],
+		"hp": 560,
+		"attack": 62,
+		"attack_speed": 0.7,
+		"range": 4,
+		"armor": 15,
+		"mana": 70,
+		"ability": {
+			"type": "strike",
+			"value": 3.0
+		}
+	},
+	{
+		"id": "grove_colossus",
+		"tier": 3,
+		"traits": [
+			"guardian",
+			"grove"
+		],
+		"hp": 1150,
+		"attack": 70,
+		"attack_speed": 0.55,
+		"range": 1,
+		"armor": 55,
+		"mana": 100,
+		"ability": {
+			"type": "shield_team",
+			"value": 160
+		}
+	},
+	{
+		"id": "ember_reaver",
+		"tier": 3,
+		"traits": [
+			"blade",
+			"ember"
+		],
+		"hp": 820,
+		"attack": 90,
+		"attack_speed": 0.9,
+		"range": 1,
+		"armor": 30,
+		"mana": 80,
+		"ability": {
+			"type": "whirl",
+			"value": 260
+		}
+	},
+	{
+		"id": "frost_oracle",
+		"tier": 3,
+		"traits": [
+			"arcane",
+			"frost"
+		],
+		"hp": 640,
+		"attack": 58,
+		"attack_speed": 0.65,
+		"range": 3,
+		"armor": 15,
+		"mana": 90,
+		"ability": {
+			"type": "nova",
+			"value": 240,
+			"duration": 1.0
+		}
+	},
+	{
+		"id": "grove_stalker",
+		"tier": 3,
+		"traits": [
+			"ranger",
+			"grove"
+		],
+		"hp": 700,
+		"attack": 82,
+		"attack_speed": 0.8,
+		"range": 4,
+		"armor": 15,
+		"mana": 80,
+		"ability": {
+			"type": "volley",
+			"value": 1.5,
+			"count": 4
+		}
+	},
+	{
+		"id": "obsidian_golem",
+		"tier": 0,
+		"traits": [],
+		"hp": 2600,
+		"attack": 110,
+		"attack_speed": 0.5,
+		"range": 1,
+		"armor": 60,
+		"mana": 100,
+		"ability": {
+			"type": "slam",
+			"value": 260,
+			"duration": 1.2
+		},
+		"boss": true
 	}
 ]

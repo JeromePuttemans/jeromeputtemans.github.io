@@ -1,0 +1,149 @@
+[
+	{
+		"id": "guardian",
+		"kind": "class",
+		"color": "#d6dcec",
+		"thresholds": [
+			2,
+			3
+		],
+		"effects": [
+			{
+				"stat": "armor",
+				"value": 30,
+				"scope": "trait"
+			},
+			{
+				"stat": "armor",
+				"value": 30,
+				"scope": "team"
+			}
+		]
+	},
+	{
+		"id": "blade",
+		"kind": "class",
+		"color": "#ff8f8f",
+		"thresholds": [
+			2,
+			3
+		],
+		"effects": [
+			{
+				"stat": "crit",
+				"value": 0.2,
+				"scope": "trait"
+			},
+			{
+				"stat": "crit",
+				"value": 0.2,
+				"scope": "trait"
+			}
+		]
+	},
+	{
+		"id": "arcane",
+		"kind": "class",
+		"color": "#c79bff",
+		"thresholds": [
+			2,
+			3
+		],
+		"effects": [
+			{
+				"stat": "mana_start",
+				"value": 0.5,
+				"scope": "trait"
+			},
+			{
+				"stat": "mana_start",
+				"value": 0.5,
+				"scope": "trait"
+			}
+		]
+	},
+	{
+		"id": "ranger",
+		"kind": "class",
+		"color": "#ffd36b",
+		"thresholds": [
+			2,
+			3
+		],
+		"effects": [
+			{
+				"stat": "attack_speed",
+				"value": 0.25,
+				"scope": "trait"
+			},
+			{
+				"stat": "attack_speed",
+				"value": 0.25,
+				"scope": "trait"
+			}
+		]
+	},
+	{
+		"id": "ember",
+		"kind": "origin",
+		"color": "#ff7a3d",
+		"thresholds": [
+			2,
+			4
+		],
+		"effects": [
+			{
+				"stat": "damage",
+				"value": 0.2,
+				"scope": "trait"
+			},
+			{
+				"stat": "damage",
+				"value": 0.25,
+				"scope": "trait"
+			}
+		]
+	},
+	{
+		"id": "frost",
+		"kind": "origin",
+		"color": "#6fd3ff",
+		"thresholds": [
+			2,
+			4
+		],
+		"effects": [
+			{
+				"stat": "enemy_attack_speed",
+				"value": -0.15,
+				"scope": "enemies"
+			},
+			{
+				"stat": "enemy_attack_speed",
+				"value": -0.15,
+				"scope": "enemies"
+			}
+		]
+	},
+	{
+		"id": "grove",
+		"kind": "origin",
+		"color": "#7be07b",
+		"thresholds": [
+			2,
+			4
+		],
+		"effects": [
+			{
+				"stat": "regen",
+				"value": 0.015,
+				"scope": "team"
+			},
+			{
+				"stat": "regen",
+				"value": 0.015,
+				"scope": "team"
+			}
+		]
+	}
+]
