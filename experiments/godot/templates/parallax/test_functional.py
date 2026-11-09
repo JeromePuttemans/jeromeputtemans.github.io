@@ -49,20 +49,18 @@ def test_project_structure():
         os.path.join(DATAS_DIR, "settings.json"),
         os.path.join(DATAS_DIR, "strings_fr.json"),
         os.path.join(DATAS_DIR, "strings_en.json"),
-        os.path.join(SCRIPTS_DIR, "core", "game_manager.gd"),
-        os.path.join(SCRIPTS_DIR, "core", "spawner.gd"),
-        os.path.join(SCRIPTS_DIR, "ui", "hud.gd"),
-        os.path.join(SCRIPTS_DIR, "entities", "player.gd"),
-        os.path.join(SCRIPTS_DIR, "entities", "bullet.gd"),
-        os.path.join(SCRIPTS_DIR, "entities", "enemy_straight.gd"),
-        os.path.join(SCRIPTS_DIR, "entities", "enemy_sine.gd"),
         os.path.join(SCENES_DIR, "core", "main.tscn"),
-        os.path.join(SCENES_DIR, "ui", "hud.tscn"),
-        os.path.join(SCENES_DIR, "entities", "player.tscn"),
-        os.path.join(SCENES_DIR, "entities", "bullet.tscn"),
-        os.path.join(SCENES_DIR, "entities", "enemy_straight.tscn"),
-        os.path.join(SCENES_DIR, "entities", "enemy_sine.tscn"),
     ]
+    # Every node is built by code (CONVENTION.md): main.tscn is the only scene.
+    for name in ("game_manager", "spawner", "combat", "effects", "starfield",
+                 "sfx_manager", "input_manager"):
+        required.append(os.path.join(SCRIPTS_DIR, "core", f"{name}.gd"))
+    for name in ("hud", "screens"):
+        required.append(os.path.join(SCRIPTS_DIR, "ui", f"{name}.gd"))
+    for name in ("player", "bullet", "enemy_base", "enemy_straight", "enemy_sine",
+                 "enemy_charger", "enemy_gunner", "enemy_tank", "enemy_shot",
+                 "pickup_repair"):
+        required.append(os.path.join(SCRIPTS_DIR, "entities", f"{name}.gd"))
     for path in required:
         if not os.path.exists(path):
             fail(f"T01 missing required file: {path}")

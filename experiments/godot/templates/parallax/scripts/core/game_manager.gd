@@ -1,399 +1,487 @@
 extends Node2D
-# Node name: GameManager (this script runs on the Main node which acts as GameManager)
 
-# ── Game state ─────────────────────────────────────────────────────────────────
+# GameManager (root node of main.tscn): builds the whole scene by code, runs
+# the state machine, the score, the sectors and the save file.
+#
+# STATES: TITLE -> PLAYING <-> PAUSED, PLAYING -> GAME_OVER -> PLAYING (Space)
+#   or TITLE (Esc). When the ship dies, the game stays in PLAYING for
+#   DEATH_DELAY seconds of slow motion (_dying), then enters GAME_OVER.
+# SCORE: survival_points_per_second, plus each enemy's points x multiplier.
+#   Every kill extends the chain; the chain breaks after chain_window seconds
+#   without a kill or when the hull is hit. multiplier = 1 + chain /
+#   chain_per_multiplier, capped at multiplier_max.
+# SECTORS: one every sector_duration seconds. Each sector speeds the current
+#   up (scroll_speed_per_sector, capped at scroll_speed_max) and lets the
+#   spawner send denser waves and new enemy kinds.
+# FEEDBACK: shake and particles (effects.gd), hit-stop (Engine.time_scale
+#   briefly near 0 on hull hits and big kills), void proximity beeps.
+# SAVE: best score and language in user://parallax_save.json.
 
-enum GameState { TITLE, PLAYING, GAME_OVER, WIN }
+enum GameState { TITLE, PLAYING, PAUSED, GAME_OVER, WIN }
 
 signal game_state_changed(state: int)
-signal score_updated(seconds: float)
-signal twist_activated
+signal score_changed(score: int, multiplier: int, chain_ratio: float, elapsed: float)
+signal sector_changed(sector: int)
+signal danger_changed(intensity: float)
+signal language_changed()
+signal twist_activated()
 
-# ── Node references (set by _build_scene, never @onready) ─────────────────────
-
-var _world: Node2D = null
-var _spawner: Node = null
-var _bullets: Node2D = null
-var _player: CharacterBody2D = null
-var _hud: Control = null
-var _title_screen: Control = null
-var _game_over_screen: Control = null
-var _score_label_gameover: Label = null
-var _new_best_label: Label = null
-var _best_score_title_label: Label = null
-var _press_start_label: Label = null
-var _restart_label: Label = null
-var _game_over_main_label: Label = null
-
-# ── Runtime state ──────────────────────────────────────────────────────────────
+const SAVE_PATH: String = "user://parallax_save.json"
+const SETTINGS_PATH: String = "res://datas/settings.json"
+const DEATH_DELAY: float = 1.1
+const DEATH_TIME_SCALE: float = 0.3
+const RESTART_GUARD: float = 0.5
+const LANGUAGES: Array[String] = ["fr", "en"]
 
 var current_state: int = GameState.TITLE
-var _survival_time: float = 0.0
-var _session_best: float = 0.0
-var _can_restart: bool = true
-var _strings: Dictionary = {}
+var best_score: int = 0
+var last_result: Dictionary = {}
+var settings: Dictionary = {}
+var gameplay: Dictionary = {}
 
-# ── Bootstrap ──────────────────────────────────────────────────────────────────
+var _strings: Dictionary = {}
+var _language: String = "fr"
+var _screen: Vector2 = Vector2(1280.0, 720.0)
+var _sfx: Node = null
+var _world: Node2D = null
+var _starfield: Node2D = null
+var _containers: Dictionary = {}
+var _player: Node2D = null
+var _spawner: Node = null
+var _combat: Node = null
+var _effects: Node2D = null
+var _hud: Control = null
+var _screens: Control = null
+
+var _elapsed: float = 0.0
+var _survival_points: float = 0.0
+var _score: int = 0
+var _chain: int = 0
+var _chain_left: float = 0.0
+var _max_chain: int = 1
+var _sector: int = 1
+var _shots: int = 0
+var _hits: int = 0
+var _kills: int = 0
+var _dying: bool = false
+var _slow_motion: bool = false
+var _twist_tip_shown: bool = false
+var _warn_left: float = 0.0
+var _can_restart: bool = false
 
 func _ready() -> void:
+	process_mode = Node.PROCESS_MODE_ALWAYS
+	_load_settings()
 	_load_strings()
+	_load_save()
+	InputManager.configure()
 	_build_scene()
-	_connect_player_signals()
+	_connect_signals()
 	_set_state(GameState.TITLE)
 
-# ── Scene construction — entire hierarchy built by code ────────────────────────
+# ---------------------------------------------------------------------------
+# Scene construction (everything is built by code, see CONVENTION.md)
+# ---------------------------------------------------------------------------
 
 func _build_scene() -> void:
+	_screen = get_viewport_rect().size
+	_sfx = _make(Node.new(), "SfxManager", "res://scripts/core/sfx_manager.gd", self)
+	var audio: Dictionary = settings.get("audio", {}) as Dictionary
+	_sfx.call("set_volume", float(audio.get("master_volume", 1.0)) * float(audio.get("sfx_volume", 0.8)))
 	_build_world()
 	_build_ui()
 	_build_transitions()
-	_apply_strings_to_ui()
 
 func _build_world() -> void:
 	_world = Node2D.new()
 	_world.name = "World"
-
-	_spawner = Node.new()
-	_spawner.name = "Spawner"
-	_spawner.set_script(load("res://scripts/core/spawner.gd"))
-	_world.add_child(_spawner)
-
-	_bullets = Node2D.new()
-	_bullets.name = "Bullets"
-	_world.add_child(_bullets)
-
-	_player = _build_player()
-	_world.add_child(_player)
-
+	_world.process_mode = Node.PROCESS_MODE_PAUSABLE
 	add_child(_world)
+	_starfield = _make(Node2D.new(), "Starfield", "res://scripts/core/starfield.gd", _world) as Node2D
+	_build_containers()
+	_player = _make(Node2D.new(), "Player", "res://scripts/entities/player.gd", _world) as Node2D
+	_spawner = _make(Node.new(), "Spawner", "res://scripts/core/spawner.gd", _world)
+	_combat = _make(Node.new(), "Combat", "res://scripts/core/combat.gd", _world)
+	_combat.process_physics_priority = 10   # after every entity has moved
+	_effects = _make(Node2D.new(), "Effects", "res://scripts/core/effects.gd", _world) as Node2D
+	_player.call("configure", gameplay, _containers["bullets"], _screen)
+	_player.visible = false
+	_spawner.call("configure", gameplay, _containers, _player, _screen)
+	_combat.call("configure", _player, _containers, gameplay)
 
-func _build_player() -> CharacterBody2D:
-	var player: CharacterBody2D = CharacterBody2D.new()
-	player.name = "Player"
-	player.position = Vector2(200.0, 360.0)
-	player.collision_layer = 1
-	player.collision_mask = 0
-
-	var body: Polygon2D = Polygon2D.new()
-	body.name = "Body"
-	body.polygon = PackedVector2Array([Vector2(-14, 10), Vector2(-14, -10), Vector2(16, 0)])
-	body.color = Color(0.91, 0.91, 1.0, 1.0)
-	player.add_child(body)
-
-	var trail: Line2D = Line2D.new()
-	trail.name = "Trail"
-	trail.points = PackedVector2Array([Vector2(-14, 0), Vector2(-50, 0)])
-	trail.width = 3.0
-	trail.default_color = Color(0.91, 0.91, 1.0, 0.6)
-	player.add_child(trail)
-
-	var hitbox: Area2D = Area2D.new()
-	hitbox.name = "Hitbox"
-	hitbox.collision_layer = 0
-	hitbox.collision_mask = 2
-	var hitbox_col: CollisionShape2D = CollisionShape2D.new()
-	var circle: CircleShape2D = CircleShape2D.new()
-	circle.radius = 10.0
-	hitbox_col.shape = circle
-	hitbox.add_child(hitbox_col)
-	player.add_child(hitbox)
-
-	var fire_timer: Timer = Timer.new()
-	fire_timer.name = "FireCooldown"
-	fire_timer.wait_time = 0.12
-	fire_timer.one_shot = false
-	player.add_child(fire_timer)
-
-	# Script is set last — _ready() fires only when player enters the tree,
-	# at which point all children already exist and @onready resolves correctly
-	player.set_script(load("res://scripts/entities/player.gd"))
-	return player
+## Pickups, Enemies, Shots, Bullets: drawn in this order, bullets and orbs
+## with additive blending (they glow over everything else).
+func _build_containers() -> void:
+	for key in ["pickups", "enemies", "shots", "bullets"]:
+		var container := Node2D.new()
+		container.name = (key as String).capitalize()
+		if key == "shots" or key == "bullets":
+			var additive := CanvasItemMaterial.new()
+			additive.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+			container.material = additive
+		_world.add_child(container)
+		_containers[key] = container
 
 func _build_ui() -> void:
-	var ui: CanvasLayer = CanvasLayer.new()
+	var ui := CanvasLayer.new()
 	ui.name = "UI"
 	ui.layer = 1
-
-	_hud = Control.new()
-	_hud.name = "HUD"
-	_hud.set_anchors_preset(Control.PRESET_FULL_RECT)
-	_hud.mouse_filter = Control.MOUSE_FILTER_IGNORE
-
-	var score_label: Label = _make_label("ScoreLabel", "SURVIE : 0 sec",
-		20, Color(0.91, 0.91, 1.0, 0.85))
-	score_label.set_anchor_and_offset(SIDE_LEFT, 1.0, -180.0)
-	score_label.set_anchor_and_offset(SIDE_RIGHT, 1.0, -10.0)
-	score_label.set_anchor_and_offset(SIDE_TOP, 0.0, 10.0)
-	score_label.set_anchor_and_offset(SIDE_BOTTOM, 0.0, 45.0)
-	score_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	_hud.add_child(score_label)
-
-	var speed_bg: ColorRect = ColorRect.new()
-	speed_bg.name = "SpeedBarBackground"
-	speed_bg.position = Vector2(10.0, 10.0)
-	speed_bg.size = Vector2(104.0, 16.0)
-	speed_bg.color = Color(0.1, 0.1, 0.2, 0.8)
-	speed_bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_hud.add_child(speed_bg)
-
-	var speed_bar: ColorRect = ColorRect.new()
-	speed_bar.name = "SpeedBar"
-	speed_bar.position = Vector2(12.0, 12.0)
-	speed_bar.size = Vector2(100.0, 12.0)
-	speed_bar.color = Color(0.91, 0.91, 1.0, 0.9)
-	speed_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_hud.add_child(speed_bar)
-
-	var speed_lbl: Label = _make_label("SpeedLabel", "VITESSE", 14, Color(0.91, 0.91, 1.0, 0.5))
-	speed_lbl.position = Vector2(10.0, 28.0)
-	_hud.add_child(speed_lbl)
-
-	# Script set after children are added
-	_hud.set_script(load("res://scripts/ui/hud.gd"))
-	ui.add_child(_hud)
 	add_child(ui)
+	_hud = _make(Control.new(), "HUD", "res://scripts/ui/hud.gd", ui) as Control
+	_hud.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_hud.call("bind", self, _player, float(gameplay.get("player_speed_base", 300.0)))
 
 func _build_transitions() -> void:
-	var transitions: CanvasLayer = CanvasLayer.new()
+	var transitions := CanvasLayer.new()
 	transitions.name = "Transitions"
 	transitions.layer = 10
-
-	_title_screen = _build_title_screen()
-	transitions.add_child(_title_screen)
-
-	_game_over_screen = _build_game_over_screen()
-	transitions.add_child(_game_over_screen)
-
 	add_child(transitions)
+	_screens = _make(Control.new(), "Screens", "res://scripts/ui/screens.gd", transitions) as Control
+	_screens.call("bind", self)
 
-func _build_title_screen() -> Control:
-	var screen: Control = Control.new()
-	screen.name = "TitleScreen"
-	screen.set_anchors_preset(Control.PRESET_FULL_RECT)
-	screen.mouse_filter = Control.MOUSE_FILTER_IGNORE
+## Script attached before add_child(): _ready() runs with the script in place.
+func _make(node: Node, node_name: String, script_path: String, parent: Node) -> Node:
+	node.name = node_name
+	node.set_script(load(script_path))
+	parent.add_child(node)
+	return node
 
-	var bg: ColorRect = ColorRect.new()
-	bg.name = "Background"
-	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
-	bg.color = Color(0.024, 0.024, 0.059, 1.0)
-	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	screen.add_child(bg)
+func _connect_signals() -> void:
+	_player.player_fired.connect(_on_player_fired)
+	_player.player_died.connect(_on_player_died)
+	_player.player_purged.connect(_on_player_purged)
+	_player.twist_activated.connect(_on_twist_activated)
+	_combat.enemy_destroyed.connect(_on_enemy_destroyed)
+	_combat.enemy_damaged.connect(_on_enemy_damaged)
+	_combat.player_struck.connect(_on_player_struck)
+	_combat.pickup_collected.connect(_on_pickup_collected)
 
-	var title: Label = _make_label("TitleLabel", "PARALLAX", 72, Color(0.91, 0.91, 1.0, 1.0))
-	title.set_anchors_preset(Control.PRESET_CENTER)
-	title.offset_left = -200.0
-	title.offset_top = -80.0
-	title.offset_right = 200.0
-	title.offset_bottom = -20.0
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	screen.add_child(title)
+# ---------------------------------------------------------------------------
+# State machine and input
+# ---------------------------------------------------------------------------
 
-	_press_start_label = _make_label("PressStartLabel", "ESPACE pour jouer",
-		24, Color(0.91, 0.91, 1.0, 0.8))
-	_press_start_label.set_anchors_preset(Control.PRESET_CENTER)
-	_press_start_label.offset_left = -150.0
-	_press_start_label.offset_top = 10.0
-	_press_start_label.offset_right = 150.0
-	_press_start_label.offset_bottom = 50.0
-	_press_start_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	screen.add_child(_press_start_label)
-
-	_best_score_title_label = _make_label("BestScoreLabel", "", 20, Color(1.0, 0.8, 0.0, 0.9))
-	_best_score_title_label.set_anchor_and_offset(SIDE_LEFT, 0.0, 0.0)
-	_best_score_title_label.set_anchor_and_offset(SIDE_RIGHT, 1.0, 0.0)
-	_best_score_title_label.set_anchor_and_offset(SIDE_TOP, 1.0, -50.0)
-	_best_score_title_label.set_anchor_and_offset(SIDE_BOTTOM, 1.0, 0.0)
-	_best_score_title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	screen.add_child(_best_score_title_label)
-
-	return screen
-
-func _build_game_over_screen() -> Control:
-	var screen: Control = Control.new()
-	screen.name = "GameOverScreen"
-	screen.visible = false
-	screen.set_anchors_preset(Control.PRESET_FULL_RECT)
-	screen.mouse_filter = Control.MOUSE_FILTER_IGNORE
-
-	var bg: ColorRect = ColorRect.new()
-	bg.name = "Background"
-	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
-	bg.color = Color(0.024, 0.024, 0.059, 0.85)
-	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	screen.add_child(bg)
-
-	_game_over_main_label = _make_label("GameOverLabel", "DÉTRUIT", 56,
-		Color(1.0, 0.267, 0.333, 1.0))
-	_game_over_main_label.set_anchors_preset(Control.PRESET_CENTER)
-	_game_over_main_label.offset_left = -150.0
-	_game_over_main_label.offset_top = -80.0
-	_game_over_main_label.offset_right = 150.0
-	_game_over_main_label.offset_bottom = -30.0
-	_game_over_main_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	screen.add_child(_game_over_main_label)
-
-	_score_label_gameover = _make_label("ScoreLabel", "SURVIE : 0 sec", 28,
-		Color(0.91, 0.91, 1.0, 1.0))
-	_score_label_gameover.set_anchors_preset(Control.PRESET_CENTER)
-	_score_label_gameover.offset_left = -150.0
-	_score_label_gameover.offset_top = -10.0
-	_score_label_gameover.offset_right = 150.0
-	_score_label_gameover.offset_bottom = 30.0
-	_score_label_gameover.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	screen.add_child(_score_label_gameover)
-
-	_new_best_label = _make_label("NewBestLabel", "", 22, Color(1.0, 0.8, 0.0, 1.0))
-	_new_best_label.set_anchors_preset(Control.PRESET_CENTER)
-	_new_best_label.offset_left = -150.0
-	_new_best_label.offset_top = 40.0
-	_new_best_label.offset_right = 150.0
-	_new_best_label.offset_bottom = 75.0
-	_new_best_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	screen.add_child(_new_best_label)
-
-	_restart_label = _make_label("RestartLabel", "ESPACE pour jouer", 20,
-		Color(0.91, 0.91, 1.0, 0.7))
-	_restart_label.set_anchors_preset(Control.PRESET_CENTER)
-	_restart_label.offset_left = -150.0
-	_restart_label.offset_top = 90.0
-	_restart_label.offset_right = 150.0
-	_restart_label.offset_bottom = 125.0
-	_restart_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	screen.add_child(_restart_label)
-
-	return screen
-
-# ── Label factory ──────────────────────────────────────────────────────────────
-
-func _make_label(node_name: String, text: String, font_size: int, color: Color) -> Label:
-	var label: Label = Label.new()
-	label.name = node_name
-	label.text = text
-	label.add_theme_font_size_override("font_size", font_size)
-	label.add_theme_color_override("font_color", color)
-	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	return label
-
-# ── Signal wiring ──────────────────────────────────────────────────────────────
-
-func _connect_player_signals() -> void:
-	if is_instance_valid(_player):
-		_player.player_died.connect(_on_player_died)
-		_player.twist_activated.connect(_on_twist_activated)
-
-# ── Input ──────────────────────────────────────────────────────────────────────
+func _set_state(state: int) -> void:
+	current_state = state
+	get_tree().paused = state == GameState.PAUSED
+	game_state_changed.emit(state)
 
 func _unhandled_input(event: InputEvent) -> void:
-	if event.is_action_pressed("ui_accept"):
-		if current_state == GameState.TITLE:
-			_set_state(GameState.PLAYING)
-		elif current_state == GameState.GAME_OVER and _can_restart:
-			_set_state(GameState.TITLE)
-
-# ── State machine ──────────────────────────────────────────────────────────────
-
-func _set_state(new_state: int) -> void:
-	current_state = new_state
-	game_state_changed.emit(current_state)
 	match current_state:
-		GameState.TITLE:    _on_enter_title()
-		GameState.PLAYING:  _on_enter_playing()
-		GameState.GAME_OVER: _on_enter_game_over()
+		GameState.TITLE:
+			if event.is_action_pressed("start"):
+				start_run()
+			elif event.is_action_pressed("language"):
+				_toggle_language()
+		GameState.PLAYING:
+			if event.is_action_pressed("pause") and not _dying:
+				_set_state(GameState.PAUSED)
+				_sfx.call("play", "click", 0.0, 0.0)
+		GameState.PAUSED:
+			if event.is_action_pressed("pause"):
+				_set_state(GameState.PLAYING)
+				_sfx.call("play", "click", 0.0, 0.0)
+		GameState.GAME_OVER:
+			if not _can_restart:
+				return
+			if event.is_action_pressed("start"):
+				start_run()
+			elif event.is_action_pressed("to_title"):
+				_go_to_title()
 
-func _on_enter_title() -> void:
-	if is_instance_valid(_title_screen):   _title_screen.visible = true
-	if is_instance_valid(_game_over_screen): _game_over_screen.visible = false
-	_update_best_score_display()
-	if is_instance_valid(_player):   _player.visible = false
-	if is_instance_valid(_spawner):  _spawner.call("stop_spawning")
-	_clear_bullets()
+func start_run() -> void:
+	_clear_world()
+	_reset_run()
+	_player.call("reset_player", Vector2(_screen.x * 0.25, _screen.y * 0.5))
+	_apply_current_speed()
+	_spawner.call("start")
+	_combat.set("active", true)
+	_set_state(GameState.PLAYING)
+	sector_changed.emit(_sector)
+	_emit_score()
+	_sfx.call("play", "start", 0.0, 0.0)
 
-func _on_enter_playing() -> void:
-	_survival_time = 0.0
-	if is_instance_valid(_title_screen):    _title_screen.visible = false
-	if is_instance_valid(_game_over_screen): _game_over_screen.visible = false
+func _reset_run() -> void:
+	_elapsed = 0.0
+	_survival_points = 0.0
+	_score = 0
+	_chain = 0
+	_chain_left = 0.0
+	_max_chain = 1
+	_sector = 1
+	_shots = 0
+	_hits = 0
+	_kills = 0
+	_dying = false
 	_can_restart = false
-	if is_instance_valid(_player):
-		_player.call("reset_player")
-		_player.visible = true
-	if is_instance_valid(_spawner): _spawner.call("start_spawning")
-	score_updated.emit(_survival_time)
+	Engine.time_scale = 1.0
+	_slow_motion = false
 
-func _on_enter_game_over() -> void:
-	if is_instance_valid(_game_over_screen): _game_over_screen.visible = false
-	var is_new_best: bool = _survival_time > _session_best
-	if is_new_best:
-		_session_best = _survival_time
-	if is_instance_valid(_spawner): _spawner.call("stop_spawning")
-	_update_game_over_display(is_new_best)
-	await get_tree().create_timer(0.8).timeout
-	if current_state == GameState.GAME_OVER:
-		if is_instance_valid(_game_over_screen): _game_over_screen.visible = true
-		_can_restart = true
+func _go_to_title() -> void:
+	_clear_world()
+	_player.visible = false
+	_player.set("alive", false)
+	_set_state(GameState.TITLE)
+	_sfx.call("play", "click", 0.0, 0.0)
 
-# ── Process ────────────────────────────────────────────────────────────────────
+func _clear_world() -> void:
+	_spawner.call("stop")
+	_spawner.call("clear")
+	_combat.set("active", false)
+	var bullets: Node2D = _containers["bullets"] as Node2D
+	for child_v in bullets.get_children():
+		var child: Node = child_v as Node
+		bullets.remove_child(child)
+		child.queue_free()
+	_effects.call("clear")
+	_effects.call("set_void_intensity", 0.0)
+
+# ---------------------------------------------------------------------------
+# Run update
+# ---------------------------------------------------------------------------
 
 func _process(delta: float) -> void:
+	_screen = get_viewport_rect().size
 	if current_state != GameState.PLAYING:
 		return
-	_survival_time += delta
-	score_updated.emit(_survival_time)
+	if is_instance_valid(_player) and _player.visible:
+		_starfield.call("set_focus", _player.position.y)
+	if _dying:
+		return
+	_elapsed += delta
+	_survival_points += float(gameplay.get("survival_points_per_second", 10)) * delta
+	_update_chain(delta)
+	_update_sector()
+	_update_danger(delta)
+	_emit_score()
 
-# ── Signal handlers ────────────────────────────────────────────────────────────
+func _update_chain(delta: float) -> void:
+	if _chain_left <= 0.0:
+		return
+	_chain_left -= delta
+	if _chain_left <= 0.0:
+		_chain = 0
 
-func _on_player_died() -> void:
-	_set_state(GameState.GAME_OVER)
+func _update_sector() -> void:
+	var sector: int = 1 + int(_elapsed / float(gameplay.get("sector_duration", 40.0)))
+	if sector <= _sector:
+		return
+	_sector = sector
+	_apply_current_speed()
+	_spawner.call("set_sector", _sector)
+	sector_changed.emit(_sector)
+	_sfx.call("play", "sector", 0.0, 0.0)
+	_effects.call("ring", _player.position, Color(1.0, 0.8, 0.0), 300.0, 0.8, 4.0)
+
+func _apply_current_speed() -> void:
+	var base: float = float(gameplay.get("scroll_speed", 90.0))
+	var step: float = float(gameplay.get("scroll_speed_per_sector", 10.0))
+	var speed: float = minf(float(gameplay.get("scroll_speed_max", 150.0)), base + step * (_sector - 1))
+	_player.set("current_speed", speed)
+	_starfield.call("set_current_speed", speed)
+
+func _update_danger(delta: float) -> void:
+	var width: float = float(gameplay.get("danger_zone_width", 260.0))
+	var intensity: float = clampf(1.0 - _player.position.x / width, 0.0, 1.0)
+	_effects.call("set_void_intensity", intensity)
+	danger_changed.emit(intensity)
+	_warn_left -= delta
+	if intensity > 0.3 and _warn_left <= 0.0:
+		_sfx.call("play", "warn", 0.0, -4.0 + 6.0 * intensity)
+		_warn_left = lerpf(0.6, 0.12, intensity)
+
+func multiplier() -> int:
+	var per: int = maxi(int(gameplay.get("chain_per_multiplier", 4)), 1)
+	return mini(1 + int(float(_chain) / float(per)), int(gameplay.get("multiplier_max", 8)))
+
+func _emit_score() -> void:
+	var total: int = _score + int(_survival_points)
+	var window: float = maxf(float(gameplay.get("chain_window", 2.5)), 0.01)
+	score_changed.emit(total, multiplier(), clampf(_chain_left / window, 0.0, 1.0) if _chain > 0 else 0.0, _elapsed)
+
+# ---------------------------------------------------------------------------
+# Gameplay events
+# ---------------------------------------------------------------------------
+
+func _on_player_fired() -> void:
+	_shots += 1
+	_sfx.call("play", "shoot", 0.08, -3.0)
+
+func _on_enemy_destroyed(enemy: EnemyBase) -> void:
+	_hits += 1
+	_kills += 1
+	_chain += 1
+	_max_chain = maxi(_max_chain, multiplier())
+	_chain_left = float(gameplay.get("chain_window", 2.5))
+	var gained: int = enemy.points * multiplier()
+	_score += gained
+	var big: bool = enemy.radius >= 25.0
+	_effects.call("explosion", enemy.position, enemy.call("_body_color"), 2.4 if big else 1.0)
+	_effects.call("float_text", enemy.position + Vector2(0.0, -20.0), "+%d" % gained, Color(1.0, 0.85, 0.3), 22 if big else 16)
+	_effects.call("add_trauma", 0.55 if big else 0.18)
+	_sfx.call("play", "kill_big" if big else "kill", 0.1, 0.0)
+	if big:
+		_hit_stop(0.09, 0.05)
+		_maybe_drop_repair(enemy)
+
+func _maybe_drop_repair(enemy: EnemyBase) -> void:
+	if randf() < float(enemy.config.get("repair_drop_chance", 0.0)):
+		_spawner.call("spawn_pickup", enemy.position, float(_player.get("current_speed")) * 0.6)
+
+func _on_enemy_damaged(enemy: EnemyBase, impact: Vector2) -> void:
+	_hits += 1
+	_effects.call("sparks", impact, enemy.call("_body_color"), Vector2.LEFT)
+	_sfx.call("play", "hit", 0.12, -2.0)
+
+func _on_player_struck(impact: Vector2) -> void:
+	_chain = 0
+	_chain_left = 0.0
+	_effects.call("explosion", impact, Color(1.0, 0.4, 0.4), 0.8)
+	_effects.call("add_trauma", 0.7)
+	_sfx.call("play", "hurt", 0.05, 0.0)
+	_hit_stop(0.12, 0.04)
+
+func _on_player_purged(bullet_positions: PackedVector2Array) -> void:
+	for at in bullet_positions:
+		_effects.call("burst", at, Color(0.45, 0.9, 1.0), 4, 160.0, 2.5, 0.3)
+	_effects.call("ring", _player.position, Color(0.45, 0.9, 1.0), 120.0, 0.45, 3.0)
+	_effects.call("float_text", _player.position + Vector2(0.0, -34.0), t("purge"), Color(0.45, 0.9, 1.0), 18)
+	_effects.call("add_trauma", 0.2)
+	_sfx.call("play", "purge", 0.03, 0.0)
+
+func _on_pickup_collected(_kind: String, at: Vector2) -> void:
+	_sfx.call("play", "pickup", 0.0, 0.0)
+	_effects.call("burst", at, Color(0.35, 1.0, 0.55), 14, 200.0, 3.0, 0.5)
+	if bool(_player.call("repair")):
+		_effects.call("float_text", at + Vector2(0.0, -24.0), t("repair"), Color(0.35, 1.0, 0.55), 18)
+		return
+	var bonus: int = int(gameplay.get("repair_points_when_full", 500)) * multiplier()
+	_score += bonus
+	_effects.call("float_text", at + Vector2(0.0, -24.0), tf("bonus", {value = bonus}), Color(0.35, 1.0, 0.55), 18)
 
 func _on_twist_activated() -> void:
+	if _twist_tip_shown:
+		return
+	_twist_tip_shown = true
 	twist_activated.emit()
 
-# ── UI helpers ─────────────────────────────────────────────────────────────────
+func _on_player_died(cause: String) -> void:
+	_dying = true
+	_combat.set("active", false)
+	_spawner.call("stop")
+	_effects.call("explosion", _player.position, Color(0.91, 0.91, 1.0), 3.0)
+	_effects.call("add_trauma", 1.0)
+	_effects.call("set_void_intensity", 0.0)
+	_sfx.call("play", "kill_big", 0.0, 2.0)
+	_sfx.call("play", "gameover", 0.0, 0.0)
+	_finish_run(cause)
+	_slow_motion = true
+	Engine.time_scale = DEATH_TIME_SCALE
+	await get_tree().create_timer(DEATH_DELAY, true, false, true).timeout
+	Engine.time_scale = 1.0
+	_slow_motion = false
+	if current_state == GameState.PLAYING and _dying:
+		_set_state(GameState.GAME_OVER)
+		await get_tree().create_timer(RESTART_GUARD, true, false, true).timeout
+		_can_restart = true
 
-func _update_game_over_display(is_new_best: bool) -> void:
-	var score_text: String = _strings.get("score", "SURVIE") as String
-	var unit_text: String = _strings.get("score_unit", "sec") as String
-	if is_instance_valid(_score_label_gameover):
-		_score_label_gameover.text = score_text + " : " + str(int(_survival_time)) + " " + unit_text
-	if is_instance_valid(_game_over_main_label):
-		_game_over_main_label.text = _strings.get("game_over", "DÉTRUIT") as String
-	if is_instance_valid(_new_best_label):
-		_new_best_label.text = _strings.get("new_best", "NOUVEAU RECORD") as String if is_new_best else ""
+func _finish_run(cause: String) -> void:
+	var total: int = _score + int(_survival_points)
+	var new_best: bool = total > best_score
+	if new_best:
+		best_score = total
+		_save()
+	var accuracy: int = int(round(100.0 * float(_hits) / float(_shots))) if _shots > 0 else 0
+	last_result = {score = total, best = best_score, new_best = new_best, cause = cause, time = _elapsed,
+		sector = _sector, kills = _kills, accuracy = mini(accuracy, 100), max_chain = _max_chain}
 
-func _update_best_score_display() -> void:
-	if not is_instance_valid(_best_score_title_label): return
-	if _session_best > 0.0:
-		var best: String = _strings.get("best", "MEILLEUR") as String
-		var unit: String = _strings.get("score_unit", "sec") as String
-		_best_score_title_label.text = best + " : " + str(int(_session_best)) + " " + unit
-	else:
-		_best_score_title_label.text = ""
+func _hit_stop(duration: float, time_scale: float) -> void:
+	if _slow_motion:
+		return
+	Engine.time_scale = time_scale
+	await get_tree().create_timer(duration, true, false, true).timeout
+	if not _slow_motion:
+		Engine.time_scale = 1.0
 
-func _apply_strings_to_ui() -> void:
-	var press: String = _strings.get("press_start", "ESPACE pour jouer") as String
-	if is_instance_valid(_press_start_label): _press_start_label.text = press
-	if is_instance_valid(_restart_label):     _restart_label.text = press
+# ---------------------------------------------------------------------------
+# Texts and formatting (used by hud.gd and screens.gd)
+# ---------------------------------------------------------------------------
+
+## Text for a key, searched in the feedback, gameplay then ui sections: the
+## specific sections first, so feedback.game_over ("DESTROYED") wins over the
+## generic ui.game_over. A missing key shows as [key].
+func t(key: String) -> String:
+	var table: Dictionary = _strings.get(_language, {}) as Dictionary
+	for section in ["feedback", "gameplay", "ui"]:
+		var entries: Dictionary = table.get(section, {}) as Dictionary
+		if entries.has(key):
+			return entries[key] as String
+	return "[%s]" % key
+
+func tf(key: String, params: Dictionary) -> String:
+	var text: String = t(key)
+	for param in params:
+		text = text.replace("{%s}" % param, str(params[param]))
+	return text
+
+## 12400 -> "12 400" (French) or "12,400" (English).
+func format_score(score: int) -> String:
+	var digits: String = str(absi(score))
+	var separator: String = " " if _language == "fr" else ","
+	var result: String = ""
+	while digits.length() > 3:
+		result = separator + digits.substr(digits.length() - 3) + result
+		digits = digits.substr(0, digits.length() - 3)
+	return digits + result
+
+func format_time(seconds: float) -> String:
+	var total: int = int(seconds)
+	return "%d:%02d" % [int(total / 60.0), total % 60]
+
+func _toggle_language() -> void:
+	_language = LANGUAGES[(LANGUAGES.find(_language) + 1) % LANGUAGES.size()]
+	_save()
+	language_changed.emit()
+	_sfx.call("play", "click", 0.0, 0.0)
+
+# ---------------------------------------------------------------------------
+# Files
+# ---------------------------------------------------------------------------
+
+func _load_settings() -> void:
+	var data: Variant = _read_json(SETTINGS_PATH)
+	if data is Dictionary:
+		settings = data as Dictionary
+		gameplay = settings.get("gameplay", {}) as Dictionary
 
 func _load_strings() -> void:
-	var file: FileAccess = FileAccess.open("res://datas/strings_fr.json", FileAccess.READ)
-	if file:
-		var json: JSON = JSON.new()
-		if json.parse(file.get_as_text()) == OK:
-			var data: Dictionary = json.data as Dictionary
-			var g: Dictionary = data.get("gameplay", {}) as Dictionary
-			var f: Dictionary = data.get("feedback", {}) as Dictionary
-			_strings["score"]       = g.get("score", "SURVIE") as String
-			_strings["score_unit"]  = g.get("score_unit", "sec") as String
-			_strings["best"]        = g.get("best", "MEILLEUR") as String
-			_strings["press_start"] = g.get("press_start", "ESPACE pour jouer") as String
-			_strings["game_over"]   = f.get("game_over", "DÉTRUIT") as String
-			_strings["new_best"]    = f.get("new_best", "NOUVEAU RECORD") as String
-		file.close()
-	else:
-		_strings = {"score":"SURVIE","score_unit":"sec","best":"MEILLEUR",
-			"press_start":"ESPACE pour jouer","game_over":"DÉTRUIT","new_best":"NOUVEAU RECORD"}
+	for language in LANGUAGES:
+		var data: Variant = _read_json("res://datas/strings_%s.json" % language)
+		_strings[language] = data if data is Dictionary else {}
+	var meta: Dictionary = settings.get("meta", {}) as Dictionary
+	_language = "fr" if OS.get_locale_language() == "fr" else "en"
+	if not LANGUAGES.has(_language):
+		_language = meta.get("language", "fr") as String
 
-func _clear_bullets() -> void:
-	if not is_instance_valid(_bullets): return
-	for child_v in _bullets.get_children():
-		var child: Node = child_v as Node
-		if is_instance_valid(child): child.queue_free()
+func _load_save() -> void:
+	var data: Variant = _read_json(SAVE_PATH)
+	if not data is Dictionary:
+		return
+	var save: Dictionary = data as Dictionary
+	best_score = int(save.get("best_score", 0))
+	var language: String = save.get("language", _language) as String
+	if LANGUAGES.has(language):
+		_language = language
+
+func _save() -> void:
+	var file: FileAccess = FileAccess.open(SAVE_PATH, FileAccess.WRITE)
+	if file == null:
+		return
+	file.store_string(JSON.stringify({best_score = best_score, language = _language}))
+
+func _read_json(path: String) -> Variant:
+	if not FileAccess.file_exists(path):
+		return null
+	var file: FileAccess = FileAccess.open(path, FileAccess.READ)
+	if file == null:
+		return null
+	return JSON.parse_string(file.get_as_text())

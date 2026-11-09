@@ -1,17 +1,91 @@
 {
-  "meta": {
-	"convention_version": "2.0.0",
-	"project": "shmup",
-	"title": "Parallax"
-  },
-  "gameplay": {
-	"player_speed_base": 220.0,
-	"player_speed_min": 60.0,
-	"fire_speed_penalty": 8.0,
-	"bullet_speed": 500.0,
-	"scroll_speed": 80.0,
-	"enemy_spawn_interval": 2.0,
-	"player_hp": 1,
-	"bullet_lifetime": 1.2
-  }
+	"meta": {
+		"genre": "shmup",
+		"project": "parallax",
+		"title": "Parallax",
+		"version": "0.2.0",
+		"convention_version": "2.3.0",
+		"language": "fr"
+	},
+	"display": {
+		"base_width": 1280,
+		"base_height": 720,
+		"fullscreen": false
+	},
+	"gameplay": {
+		"difficulty": 1.0,
+
+		"player_speed_base": 300.0,
+		"player_speed_min": 60.0,
+		"fire_speed_penalty": 24.0,
+		"player_acceleration": 2600.0,
+		"player_radius": 9.0,
+		"player_hp": 3,
+		"invulnerability_time": 1.5,
+		"right_margin": 70.0,
+		"vertical_margin": 34.0,
+
+		"fire_interval": 0.1,
+		"bullet_speed": 900.0,
+		"bullet_lifetime": 1.6,
+		"bullet_damage": 1,
+		"bullet_radius": 5.0,
+
+		"purge_cooldown": 4.0,
+		"purge_boost": 1.6,
+		"purge_boost_time": 0.5,
+
+		"scroll_speed": 90.0,
+		"scroll_speed_per_sector": 10.0,
+		"scroll_speed_max": 150.0,
+		"danger_zone_width": 260.0,
+
+		"sector_duration": 40.0,
+		"enemy_spawn_interval": 2.0,
+		"enemy_spawn_interval_per_sector": 0.22,
+		"enemy_spawn_interval_min": 0.7,
+		"first_wave_delay": 1.2,
+		"enemy_shot_speed": 300.0,
+		"enemy_shot_radius": 6.0,
+		"contact_damage_to_enemy": 3,
+
+		"survival_points_per_second": 10,
+		"chain_window": 2.5,
+		"chain_per_multiplier": 4,
+		"multiplier_max": 8,
+		"repair_points_when_full": 500,
+		"pickup_radius": 14.0,
+
+		"enemies": {
+			"straight": {"hp": 1, "speed": 170.0, "radius": 14.0, "points": 100},
+			"sine": {"hp": 1, "speed": 140.0, "radius": 14.0, "points": 150, "amplitude": 90.0, "frequency": 0.7},
+			"charger": {"hp": 2, "speed": 220.0, "radius": 15.0, "points": 250, "stop_x_ratio": 0.82, "aim_time": 0.9, "dash_speed": 640.0},
+			"gunner": {"hp": 4, "speed": 170.0, "radius": 18.0, "points": 350, "stop_x_ratio": 0.84, "fire_interval": 1.5, "stay_time": 9.0},
+			"tank": {"hp": 14, "speed": 55.0, "radius": 30.0, "points": 900, "fire_interval": 2.6, "spread_degrees": 18.0, "repair_drop_chance": 0.5}
+		},
+
+		"waves": [
+			{"pattern": "single", "kind": "straight", "min_sector": 1, "weight": 3, "cost": 1.0},
+			{"pattern": "line", "kind": "straight", "count": 3, "min_sector": 1, "weight": 3, "cost": 1.4},
+			{"pattern": "pair", "kind": "sine", "count": 2, "min_sector": 1, "weight": 2, "cost": 1.3},
+			{"pattern": "column", "kind": "straight", "count": 4, "min_sector": 2, "weight": 2, "cost": 1.6},
+			{"pattern": "vee", "kind": "straight", "count": 5, "min_sector": 2, "weight": 2, "cost": 1.8},
+			{"pattern": "single", "kind": "charger", "min_sector": 2, "weight": 2, "cost": 1.3},
+			{"pattern": "line", "kind": "sine", "count": 4, "min_sector": 3, "weight": 2, "cost": 1.6},
+			{"pattern": "single", "kind": "gunner", "min_sector": 3, "weight": 2, "cost": 1.6},
+			{"pattern": "pair", "kind": "charger", "count": 2, "min_sector": 4, "weight": 1, "cost": 1.8},
+			{"pattern": "single", "kind": "tank", "min_sector": 4, "weight": 1, "cost": 2.6},
+			{"pattern": "pair", "kind": "gunner", "count": 2, "min_sector": 5, "weight": 1, "cost": 2.4}
+		]
+	},
+	"audio": {
+		"master_volume": 1.0,
+		"sfx_volume": 0.8,
+		"bgm_volume": 0.8
+	},
+	"debug": {
+		"show_hitboxes": false,
+		"god_mode": false,
+		"verbose_logs": false
+	}
 }

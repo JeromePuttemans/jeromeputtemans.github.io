@@ -1,13 +1,42 @@
 {
-  "gameplay": {
-	"score": "SURVIVAL",
-	"score_unit": "sec",
-	"best": "BEST",
-	"press_start": "SPACE to play",
-	"speed_label": "SPEED"
-  },
-  "feedback": {
-	"game_over": "DESTROYED",
-	"new_best": "NEW BEST"
-  }
+	"ui": {
+		"start": "Take off",
+		"quit": "Quit",
+		"pause": "PAUSE",
+		"resume": "ESC: resume",
+		"game_over": "GAME OVER"
+	},
+	"gameplay": {
+		"score": "SCORE",
+		"score_unit": "pts",
+		"best": "BEST",
+		"press_start": "SPACE to take off",
+		"tagline": "Every bullet in flight slows you down.",
+		"rule_current": "A current pushes you to the left. The left edge is the void: it destroys the ship.",
+		"rule_drag": "The more bullets you have in flight, the slower you are. A bullet that hits vanishes and frees you.",
+		"rule_purge": "Purging erases all your bullets in flight and gives your speed back at once.",
+		"controls": "Move: {move} or arrows   ·   Fire: Space (hold)   ·   Purge: Shift   ·   Pause: Esc",
+		"language_hint": "L: Français",
+		"speed_label": "SPEED",
+		"current_label": "CURRENT",
+		"sector": "SECTOR {value}",
+		"time": "{value}",
+		"purge_label": "PURGE (Shift)",
+		"hull_label": "HULL",
+		"multiplier": "×{value}",
+		"stats": "Time {time}   ·   Sector {sector}   ·   Enemies destroyed {kills}   ·   Accuracy {accuracy}%   ·   Best chain ×{chain}",
+		"restart": "SPACE: play again   ·   ESC: title screen"
+	},
+	"feedback": {
+		"game_over": "DESTROYED",
+		"game_over_void": "SWALLOWED BY THE VOID",
+		"new_best": "NEW BEST",
+		"too_slow": "TOO SLOW: STOP FIRING OR PURGE",
+		"twist_tip": "Your bullets in flight slow you down. Aim well, stop firing or purge with Shift.",
+		"void_warning": "THE VOID",
+		"repair": "HULL REPAIRED",
+		"bonus": "+{value}",
+		"purge": "PURGE",
+		"sector_up": "THE CURRENT SPEEDS UP"
+	}
 }

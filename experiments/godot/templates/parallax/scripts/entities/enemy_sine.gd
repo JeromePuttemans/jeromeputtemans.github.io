@@ -1,47 +1,25 @@
-extends CharacterBody2D
-# Enemy — sine wave vertical movement. Built by code in spawner.gd.
+extends EnemyBase
 
-var speed_override: float = -1.0
-var _speed: float = 100.0
-var _amplitude: float = 80.0
-var _frequency: float = 1.5
-var _origin_y: float = 0.0
-var _time: float = 0.0
-var _hitbox: Area2D = null
+# Weaver (pink triangle): crosses the screen on a sine wave (amplitude and
+# frequency in settings.json). Harder to line up: firing at it from far away
+# wastes bullets, so it rewards waiting until it is close.
 
-func _ready() -> void:
-	add_to_group("enemies")
-	if speed_override > 0.0:
-		_speed = speed_override
-	else:
-		_load_settings()
-	_origin_y = position.y
-	_time = randf() * TAU
-	_hitbox = get_node_or_null("Hitbox") as Area2D
-	if is_instance_valid(_hitbox):
-		_hitbox.add_to_group("enemy_hitboxes")
-		_hitbox.area_entered.connect(_on_hitbox_area_entered)
+var _base_y: float = 0.0
+var _wave_phase: float = 0.0
 
-func _load_settings() -> void:
-	var file: FileAccess = FileAccess.open("res://datas/settings.json", FileAccess.READ)
-	if not file:
-		return
-	var json: JSON = JSON.new()
-	if json.parse(file.get_as_text()) == OK:
-		var data: Dictionary = json.data as Dictionary
-		var gp: Dictionary = data.get("gameplay", {}) as Dictionary
-		_speed     = gp.get("enemy_speed_base", 100.0) as float
-		_amplitude = gp.get("enemy_sine_amplitude", 80.0) as float
-		_frequency = gp.get("enemy_sine_frequency", 1.5) as float
-	file.close()
+func _on_setup() -> void:
+	_base_y = position.y
+	_wave_phase = randf() * TAU
 
-func _physics_process(delta: float) -> void:
-	_time += delta
-	velocity.x = -_speed
-	velocity.y = sin(_time * _frequency * TAU) * _amplitude
-	move_and_slide()
-	if position.x < -80.0:
-		queue_free()
+func _move(delta: float) -> void:
+	position.x -= speed * delta
+	var amplitude: float = float(config.get("amplitude", 90.0))
+	var frequency: float = float(config.get("frequency", 0.7))
+	position.y = _base_y + sin(_age * TAU * frequency + _wave_phase) * amplitude
 
-func _on_hitbox_area_entered(_area: Area2D) -> void:
-	queue_free()
+func _shape() -> PackedVector2Array:
+	return PackedVector2Array([Vector2(-radius, 0.0), Vector2(radius * 0.8, -radius * 0.85),
+		Vector2(radius * 0.35, 0.0), Vector2(radius * 0.8, radius * 0.85)])
+
+func _body_color() -> Color:
+	return Color(1.0, 0.36, 0.55)

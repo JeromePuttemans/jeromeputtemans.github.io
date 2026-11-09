@@ -1,13 +1,42 @@
 {
-  "gameplay": {
-	"score": "SURVIE",
-	"score_unit": "sec",
-	"best": "MEILLEUR",
-	"press_start": "ESPACE pour jouer",
-	"speed_label": "VITESSE"
-  },
-  "feedback": {
-	"game_over": "DÉTRUIT",
-	"new_best": "NOUVEAU RECORD"
-  }
+	"ui": {
+		"start": "Décoller",
+		"quit": "Quitter",
+		"pause": "PAUSE",
+		"resume": "ÉCHAP : reprendre",
+		"game_over": "PARTIE TERMINÉE"
+	},
+	"gameplay": {
+		"score": "SCORE",
+		"score_unit": "pts",
+		"best": "RECORD",
+		"press_start": "ESPACE pour décoller",
+		"tagline": "Chaque balle en vol vous freine.",
+		"rule_current": "Un courant vous pousse vers la gauche. Le bord gauche est le vide : il détruit le vaisseau.",
+		"rule_drag": "Plus vous avez de balles en vol, plus vous êtes lent. Une balle qui touche disparaît et vous libère.",
+		"rule_purge": "La purge efface toutes vos balles en vol et vous rend votre vitesse d'un coup.",
+		"controls": "Déplacer : {move} ou flèches   ·   Tirer : Espace (maintenir)   ·   Purger : Maj   ·   Pause : Échap",
+		"language_hint": "L : English",
+		"speed_label": "VITESSE",
+		"current_label": "COURANT",
+		"sector": "SECTEUR {value}",
+		"time": "{value}",
+		"purge_label": "PURGE (Maj)",
+		"hull_label": "COQUE",
+		"multiplier": "×{value}",
+		"stats": "Temps {time}   ·   Secteur {sector}   ·   Ennemis détruits {kills}   ·   Précision {accuracy} %   ·   Chaîne max ×{chain}",
+		"restart": "ESPACE : rejouer   ·   ÉCHAP : écran titre"
+	},
+	"feedback": {
+		"game_over": "DÉTRUIT",
+		"game_over_void": "AVALÉ PAR LE VIDE",
+		"new_best": "NOUVEAU RECORD",
+		"too_slow": "TROP LENT : CESSEZ LE FEU OU PURGEZ",
+		"twist_tip": "Vos balles en vol vous freinent. Visez juste, cessez le feu ou purgez avec Maj.",
+		"void_warning": "LE VIDE",
+		"repair": "COQUE RÉPARÉE",
+		"bonus": "+{value}",
+		"purge": "PURGE",
+		"sector_up": "LE COURANT ACCÉLÈRE"
+	}
 }
