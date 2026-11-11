@@ -81,3 +81,6 @@ Pour les USP : formule chaque point comme un argument de vente percutant, pas un
 Pour l'intérêt comparatif : cite des jeux existants par nom et explique précisément le vide de marché que ce jeu comble.
 
 Réponds uniquement fichier à télécharger contenant un tableau Markdown complèté, garder les headers principaux, sans commentaire.
+
+# UAmélioration
+Améliore fortement le gameplay, le design et le game feel de <Relative Forlder>
