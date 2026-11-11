@@ -24,4 +24,7 @@ Principalement : CONVENTION.md, SYSTEM_PROMPT.md, GAME_PROMPT.md, GAME_PROMPT_Te
 Contient un screenshot du jeu pour l'afficher sur la page html.
 
 - templates : 
-Contient les protos générés par IA.
+Contient les protos générés par IA, jouables dans un navigateur.
+
+- vr : 
+Contient les protos de réalité virtuelle (Meta Quest), qui ne se jouent pas dans un navigateur et ne figurent donc pas sur la page html : le projet Godot, son archive zip, l'APK à installer sur le casque (dossier `builds`) et une capture.
