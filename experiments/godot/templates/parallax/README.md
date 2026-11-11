@@ -317,6 +317,6 @@ Le volume des sons est `audio.master_volume × audio.sfx_volume` (1 × 0,8).
 ## Lancement
 
 Ouvrez le dossier dans Godot 4.4 ou plus récent et lancez le projet (`F5`). Le rendu utilise le
-mode Compatibility, aussi celui de la version web publiée dans `experiments/godot/builds/parallax/`.
+mode Compatibility, aussi celui de la version web publiée dans le dossier `web` du projet.
 `test_functional.py` vérifie la conformité à `CONVENTION.md` : lancez-le depuis ce dossier avec
 `python test_functional.py`.

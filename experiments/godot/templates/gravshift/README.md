@@ -352,8 +352,8 @@ La section `enemies` donne pour chaque ennemi `hp`, `mass`, `radius`, `speed`, `
 
 1. Ouvrez le dossier `gravshift` dans Godot 4.4 ou plus récent (testé avec 4.4.1 et 4.7).
 2. Lancez la scène principale (`F5`) : elle est déjà réglée sur `scenes/core/main.tscn`.
-3. Pour la version web, utilisez le préréglage d'export **Web** : il écrit dans
-   `experiments/godot/builds/gravshift/`.
+3. Pour la version web, utilisez le préréglage d'export **Web** : il écrit dans le dossier `web`
+   du projet, vers lequel pointe la page html.
 
 Le test fonctionnel vérifie la structure du projet, la cohérence de `settings.json`, la présence
 de chaque texte dans les deux langues et plusieurs règles de la convention :

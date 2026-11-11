@@ -243,4 +243,4 @@ compositions), la galerie des huit dernières toiles et les réglages (langue, s
 1. Ouvrir le dossier `mondrian_tetris` dans Godot 4.4 ou plus récent.
 2. Lancer la scène principale (`F5`) : elle est déjà réglée sur `scenes/Main.tscn`.
 3. Pour la version web, utiliser le préréglage d'export **Web** : il écrit dans
-   `experiments/godot/builds/tetris_mondrian/`.
+   `tetris_mondrian/web/`, à côté du dossier du projet, vers lequel pointe la page html.

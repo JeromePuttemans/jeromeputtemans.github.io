@@ -238,3 +238,12 @@ dimensions `w`, `h`, `d` et sa rotation `yaw` en degrés. Un passage existe quan
 pierre touche une autre île de même hauteur : déplacer une pierre d'un mètre peut ouvrir ou fermer
 un passage, ou en décaler l'heure. Une pierre posée au ras du bord de son île laisse un angle vide
 entre l'île et son ombre ; reculez-la d'un mètre vers l'intérieur.
+
+---
+
+## Lancement
+
+1. Ouvrez le dossier `first_person_explore` dans Godot 4.4 ou plus récent.
+2. Lancez la scène principale (`F5`) : elle est déjà réglée sur `scenes/Main.tscn`.
+3. Pour la version web, utilisez le préréglage d'export **Web** : il écrit dans le dossier `web`
+   du projet, vers lequel pointe la page html.

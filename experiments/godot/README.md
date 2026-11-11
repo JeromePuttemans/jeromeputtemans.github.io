@@ -8,9 +8,6 @@ Le but est de générer rapidement des prototypes/templates minimalistes de jeux
 # Structure du projet
 ## Les dossiers
 
-- builds : 
-Contient les build des projets
-
 - Prompts : 
 Le dossier contient les fichiers nécessaires pour la génération des projet par IA. 
 Principalement : CONVENTION.md, SYSTEM_PROMPT.md, GAME_PROMPT.md, GAME_PROMPT_Template.md
@@ -20,11 +17,8 @@ Principalement : CONVENTION.md, SYSTEM_PROMPT.md, GAME_PROMPT.md, GAME_PROMPT_Te
 3. `GAME_PROMPT_Template.md` — template vierge à remplir par genre
 4. `GAME_PROMPT.md` — exemple concret rempli, qui sera réellement utilisé
 
-- template-images : 
-Contient un screenshot du jeu pour l'afficher sur la page html.
-
 - templates : 
-Contient les protos générés par IA, jouables dans un navigateur.
+Contient les protos générés par IA, jouables dans un navigateur. Chaque dossier de jeu contient le projet Godot et un dossier `web` : la version exportée pour le navigateur, vers laquelle pointe la page html, et la vignette qu'elle affiche (`vignette.jpg`, ou `vignette.png` pour un jeu). Un fichier `.gdignore` dans `web` empêche Godot d'importer ces fichiers dans le projet et de les remettre dans l'export suivant.
 
 - vr : 
 Contient les protos de réalité virtuelle (Meta Quest), qui ne se jouent pas dans un navigateur et ne figurent donc pas sur la page html : le projet Godot, son archive zip, l'APK à installer sur le casque (dossier `builds`) et une capture.
