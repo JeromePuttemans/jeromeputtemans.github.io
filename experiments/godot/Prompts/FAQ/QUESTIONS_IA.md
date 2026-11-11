@@ -82,5 +82,5 @@ Pour l'intérêt comparatif : cite des jeux existants par nom et explique préci
 
 Réponds uniquement fichier à télécharger contenant un tableau Markdown complèté, garder les headers principaux, sans commentaire.
 
-# UAmélioration
-Améliore fortement le gameplay, le design et le game feel de <Relative Forlder>
+# Amélioration
+Améliore fortement le gameplay, le design et le game feel de <Relative Folder>
