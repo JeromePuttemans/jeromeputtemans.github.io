@@ -1,50 +1,82 @@
-[
-	{
-		"id":           "basic",
-		"hp":           2,
-		"speed":        110.0,
-		"move":         "straight",
-		"shoot":        "single",
-		"fire_rate":    0.9,
-		"score_key":    "score_per_basic",
-		"color":        "e74c3c",
-		"size":         16,
-		"bullet_color": "ff6b6b"
+{
+	"dart": {
+		"hp": 3, "radius": 13, "score": 100, "gems": 1, "shape": "dart", "color": "ff5f7a", "move": "path", "speed": 240,
+		"patterns": [
+			{"type": "aimed", "count": 1, "speed": 190, "interval": 2.8, "delay": 1.0, "bullet": "pellet", "color": "ff8fa8"}
+		]
 	},
-	{
-		"id":           "fast",
-		"hp":           1,
-		"speed":        200.0,
-		"move":         "sine",
-		"shoot":        "none",
-		"fire_rate":    0.0,
-		"score_key":    "score_per_fast",
-		"color":        "f39c12",
-		"size":         12,
-		"bullet_color": "ffd166"
+	"wasp": {
+		"hp": 5, "radius": 14, "score": 150, "gems": 1, "shape": "wasp", "color": "ffb347", "move": "path", "speed": 170,
+		"patterns": [
+			{"type": "fan", "count": 3, "spread": 40, "direction": 90, "speed": 150, "interval": 2.2, "delay": 1.2, "bullet": "rice", "color": "ffd27a"}
+		]
 	},
-	{
-		"id":           "heavy",
-		"hp":           6,
-		"speed":        55.0,
-		"move":         "straight",
-		"shoot":        "spread3",
-		"fire_rate":    1.4,
-		"score_key":    "score_per_heavy",
-		"color":        "8e44ad",
-		"size":         22,
-		"bullet_color": "c39bd3"
+	"lancer": {
+		"hp": 10, "radius": 15, "score": 300, "gems": 2, "shape": "lancer", "color": "7dffb0", "move": "dive", "speed": 260,
+		"patterns": [
+			{"type": "aimed", "count": 3, "spread": 24, "speed": 210, "interval": 9.0, "delay": 0.9, "bullet": "rice", "color": "a8ffcf"}
+		]
 	},
-	{
-		"id":           "boss",
-		"hp":           60,
-		"speed":        40.0,
-		"move":         "boss",
-		"shoot":        "ring8",
-		"fire_rate":    0.7,
-		"score_key":    "score_per_boss",
-		"color":        "c0392b",
-		"size":         44,
-		"bullet_color": "ff4757"
+	"mine": {
+		"hp": 8, "radius": 14, "score": 200, "gems": 1, "shape": "mine", "color": "ff6ad5", "move": "drift", "speed": 70,
+		"patterns": [],
+		"revenge": {"type": "ring", "count": 10, "speed": 120, "delay": 0, "bullet": "orb", "color": "ff9be6"}
+	},
+	"gunship": {
+		"hp": 70, "radius": 24, "score": 1500, "gems": 6, "large": true, "shape": "gunship", "color": "8e7dff", "move": "hover", "speed": 140, "hover_time": 6.0,
+		"patterns": [
+			{"type": "ring", "count": 16, "speed": 140, "interval": 1.5, "delay": 0.8, "bullet": "orb", "color": "b9a8ff", "rotate": 8},
+			{"type": "aimed", "count": 3, "spread": 18, "speed": 230, "interval": 1.5, "delay": 1.55, "bullet": "pellet", "color": "ffffff"}
+		]
+	},
+	"turret": {
+		"hp": 110, "radius": 24, "score": 2000, "gems": 7, "large": true, "shape": "gunship", "color": "5fd3ff", "move": "hover", "speed": 140, "hover_time": 7.0,
+		"patterns": [
+			{"type": "spiral", "arms": 5, "step": 9, "speed": 130, "interval": 0.12, "delay": 1.0, "bullet": "rice", "color": "9fe6ff"}
+		]
+	},
+	"carrier": {
+		"hp": 90, "radius": 30, "score": 2500, "gems": 8, "large": true, "shape": "carrier", "color": "ffcc4d", "move": "drift", "speed": 45, "drops": ["power"],
+		"patterns": [
+			{"type": "spiral", "arms": 3, "step": 17, "speed": 120, "interval": 0.16, "delay": 1.5, "bullet": "pellet", "color": "ffe08a"}
+		]
+	},
+	"supply": {
+		"hp": 90, "radius": 30, "score": 2500, "gems": 8, "large": true, "shape": "carrier", "color": "5fe08a", "move": "drift", "speed": 45, "drops": ["bomb"],
+		"patterns": [
+			{"type": "ring", "count": 12, "speed": 110, "interval": 1.2, "delay": 1.5, "bullet": "orb", "color": "a8ffc0", "rotate": 15}
+		]
+	},
+	"sentinel": {
+		"name": "boss_sentinel", "radius": 46, "score": 30000, "phase_bonus": 15000, "large": true, "drops": ["power", "bomb"], "shape": "sentinel", "color": "4fe0c0", "move": "boss", "speed": 80,
+		"phases": [
+			{"hp": 950, "time": 30, "move": "sway", "patterns": [
+				{"type": "aimed", "count": 5, "spread": 44, "speed": 220, "interval": 1.1, "delay": 0.4, "bullet": "rice", "color": "7fffe0", "burst": 3, "burst_gap": 0.1},
+				{"type": "ring", "count": 20, "speed": 120, "interval": 2.0, "delay": 1.0, "bullet": "orb", "color": "4fe0c0", "rotate": 9}
+			]},
+			{"hp": 1100, "time": 32, "move": "center", "patterns": [
+				{"type": "spiral", "arms": 4, "step": 11, "speed": 150, "interval": 0.1, "delay": 0.5, "bullet": "pellet", "color": "7fffe0"},
+				{"type": "wall", "count": 26, "gap": 50, "speed": 110, "interval": 2.6, "delay": 2.0, "bullet": "orb", "color": "ffffff"}
+			]}
+		]
+	},
+	"crown": {
+		"name": "boss_crown", "radius": 50, "score": 120000, "phase_bonus": 30000, "large": true, "final": true, "shape": "crown", "color": "ff4f78", "move": "boss", "speed": 80,
+		"phases": [
+			{"hp": 1700, "time": 40, "move": "sway", "patterns": [
+				{"type": "ring", "count": 28, "speed": 230, "accel": -180, "min_speed": 70, "interval": 1.6, "delay": 0.6, "bullet": "orb", "color": "ff7fa0", "rotate": 6.4},
+				{"type": "aimed", "count": 7, "spread": 60, "speed": 240, "interval": 1.3, "delay": 1.2, "bullet": "rice", "color": "ffd0dc"}
+			]},
+			{"hp": 2200, "time": 45, "move": "center", "patterns": [
+				{"type": "spiral", "arms": 3, "step": 13, "speed": 140, "interval": 0.08, "delay": 0.5, "bullet": "pellet", "color": "ff9fd0", "turn": 18},
+				{"type": "spiral", "arms": 3, "step": -13, "speed": 140, "interval": 0.08, "delay": 0.5, "bullet": "pellet", "color": "b89fff", "turn": -18},
+				{"type": "burst", "count": 10, "spread": 50, "speed": 260, "interval": 2.2, "delay": 2.0, "bullet": "large", "color": "ff4f78"}
+			]},
+			{"hp": 2600, "time": 50, "move": "figure8", "patterns": [
+				{"type": "wall", "count": 34, "gap": 46, "speed": 120, "interval": 1.4, "delay": 0.5, "bullet": "orb", "color": "ffb0c4"},
+				{"type": "aimed", "count": 1, "speed": 360, "interval": 0.9, "delay": 1.0, "bullet": "rice", "color": "ffffff", "burst": 6, "burst_gap": 0.05},
+				{"type": "ring", "count": 12, "speed": 80, "interval": 2.4, "delay": 1.8, "bullet": "large", "color": "ff4f78", "rotate": 15}
+			]}
+		]
 	}
-]
+}
