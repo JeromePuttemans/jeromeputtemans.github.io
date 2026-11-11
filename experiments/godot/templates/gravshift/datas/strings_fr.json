@@ -1,12 +1,74 @@
 {
-  "gameplay": {
-    "wave": "Vague",
-    "best": "Meilleur",
-    "press_start": "Appuie sur Espace"
-  },
-  "feedback": {
-    "player_death": "Détruit. Recommencer ?",
-    "wave_clear": "Vague franchie.",
-    "run_complete": "Secteur sécurisé."
-  }
+	"ui": {
+		"title": "GRAVSHIFT",
+		"language_hint": "L : English     M : son ({sound})",
+		"sound_on": "oui",
+		"sound_off": "non",
+		"pause_title": "PAUSE",
+		"pause_hint": "Échap : reprendre     Q : abandonner",
+		"upgrade_title": "SECTEUR {n} NETTOYÉ",
+		"upgrade_subtitle": "Choisissez une amélioration",
+		"upgrade_level": "niveau {n}",
+		"upgrade_hint": "Gauche et droite puis Espace, touches 1 2 3 ou clic",
+		"end_hint": "Espace : rejouer     Échap : écran titre"
+	},
+	"gameplay": {
+		"score": "SCORE",
+		"score_unit": "pts",
+		"best": "Meilleur score : {n} pts",
+		"best_wave": "Meilleur secteur : {n}",
+		"press_start": "Espace pour commencer",
+		"tagline": "Votre vaisseau est un puits de gravité.",
+		"rule_well": "Maintenez Espace : le puits aspire les balles orange et les met en orbite.",
+		"rule_sling": "Relâchez : les balles en orbite repartent vers les ennemis.",
+		"rule_crash": "Le puits attire aussi les ennemis : projetés les uns contre les autres, ils se brisent.",
+		"rule_heavy": "Les orbes rouges à pointes échappent à la gravité : esquivez-les.",
+		"controls": "Déplacer : flèches ou ZQSD     Puits : Espace, J ou Maj, maintenu     Pause : Échap",
+		"sector": "SECTEUR {n}/{total}",
+		"enemies_left": "{n} ennemis restants",
+		"hull": "COQUE",
+		"flux": "FLUX",
+		"orbit": "ORBITE {n}/{max}",
+		"multiplier": "x{n}",
+		"boss_guardian": "GARDIEN",
+		"boss_singularity": "SINGULARITÉ",
+		"stats_wave": "Secteur atteint : {n} sur {total}",
+		"stats_captured": "Balles capturées : {n}",
+		"stats_volley": "Meilleure fronde : {n} ennemis d'un coup"
+	},
+	"feedback": {
+		"game_over": "COQUE DÉTRUITE",
+		"victory": "SINGULARITÉ VAINCUE",
+		"new_best": "NOUVEAU RECORD",
+		"twist_tip": "Balle capturée : relâchez pour la renvoyer",
+		"sector_start": "SECTEUR {n}",
+		"wave_clear": "SECTEUR NETTOYÉ",
+		"warning": "ALERTE",
+		"repair": "+1 COQUE",
+		"multikill": "{n} D'UN COUP",
+		"collapse": "PUITS ÉPUISÉ",
+		"crash": "COLLISION"
+	},
+	"upgrades": {
+		"name_orbit": "Orbite élargie",
+		"desc_orbit": "L'orbite garde 6 balles de plus.",
+		"name_horizon": "Horizon",
+		"desc_horizon": "Le puits attire et capture 20 % plus loin.",
+		"name_sling": "Fronde",
+		"desc_sling": "Les balles renvoyées font 40 % de dégâts en plus.",
+		"name_tank": "Réservoir",
+		"desc_tank": "+30 de flux, recharge 25 % plus rapide.",
+		"name_twin": "Canon jumeau",
+		"desc_twin": "Un tir automatique de plus, cadence +15 %.",
+		"name_hull": "Coque renforcée",
+		"desc_hull": "+1 point de coque maximum, et une réparation.",
+		"name_shrapnel": "Éclats",
+		"desc_shrapnel": "Les balles renvoyées éclatent à l'impact et touchent les voisins.",
+		"name_pierce": "Perforation",
+		"desc_pierce": "Les balles renvoyées traversent un ennemi de plus.",
+		"name_grinder": "Broyeur",
+		"desc_grinder": "Les balles en orbite ne s'usent plus en frappant.",
+		"name_recoil": "Contrecoup",
+		"desc_recoil": "L'onde du relâchement porte 60 % plus loin et étourdit."
+	}
 }

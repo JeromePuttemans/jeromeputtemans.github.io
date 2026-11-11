@@ -1,12 +1,74 @@
 {
-  "gameplay": {
-    "wave": "Wave",
-    "best": "Best",
-    "press_start": "Press Space"
-  },
-  "feedback": {
-    "player_death": "Destroyed. Try again?",
-    "wave_clear": "Wave cleared.",
-    "run_complete": "Sector secured."
-  }
+	"ui": {
+		"title": "GRAVSHIFT",
+		"language_hint": "L: Français     M: sound ({sound})",
+		"sound_on": "on",
+		"sound_off": "off",
+		"pause_title": "PAUSE",
+		"pause_hint": "Esc: resume     Q: give up",
+		"upgrade_title": "SECTOR {n} CLEARED",
+		"upgrade_subtitle": "Choose an upgrade",
+		"upgrade_level": "level {n}",
+		"upgrade_hint": "Left and right then Space, keys 1 2 3 or click",
+		"end_hint": "Space: play again     Esc: title screen"
+	},
+	"gameplay": {
+		"score": "SCORE",
+		"score_unit": "pts",
+		"best": "Best score: {n} pts",
+		"best_wave": "Best sector: {n}",
+		"press_start": "Press Space to start",
+		"tagline": "Your ship is a gravity well.",
+		"rule_well": "Hold Space: the well pulls in the orange bullets and puts them in orbit.",
+		"rule_sling": "Release: the orbiting bullets fly back at the enemies.",
+		"rule_crash": "The well pulls enemies too: thrown into each other, they break.",
+		"rule_heavy": "Spiked red orbs escape gravity: dodge them.",
+		"controls": "Move: arrows or WASD     Well: Space, J or Shift, held     Pause: Esc",
+		"sector": "SECTOR {n}/{total}",
+		"enemies_left": "{n} enemies left",
+		"hull": "HULL",
+		"flux": "FLUX",
+		"orbit": "ORBIT {n}/{max}",
+		"multiplier": "x{n}",
+		"boss_guardian": "GUARDIAN",
+		"boss_singularity": "SINGULARITY",
+		"stats_wave": "Sector reached: {n} of {total}",
+		"stats_captured": "Bullets captured: {n}",
+		"stats_volley": "Best sling: {n} enemies at once"
+	},
+	"feedback": {
+		"game_over": "HULL DESTROYED",
+		"victory": "SINGULARITY DEFEATED",
+		"new_best": "NEW RECORD",
+		"twist_tip": "Bullet captured: release to send it back",
+		"sector_start": "SECTOR {n}",
+		"wave_clear": "SECTOR CLEARED",
+		"warning": "WARNING",
+		"repair": "+1 HULL",
+		"multikill": "{n} AT ONCE",
+		"collapse": "WELL EXHAUSTED",
+		"crash": "CRASH"
+	},
+	"upgrades": {
+		"name_orbit": "Wider orbit",
+		"desc_orbit": "The orbit holds 6 more bullets.",
+		"name_horizon": "Horizon",
+		"desc_horizon": "The well pulls and captures 20% further.",
+		"name_sling": "Sling",
+		"desc_sling": "Bullets sent back deal 40% more damage.",
+		"name_tank": "Tank",
+		"desc_tank": "+30 flux, 25% faster recharge.",
+		"name_twin": "Twin cannon",
+		"desc_twin": "One more automatic shot, +15% fire rate.",
+		"name_hull": "Reinforced hull",
+		"desc_hull": "+1 maximum hull, and a repair.",
+		"name_shrapnel": "Shrapnel",
+		"desc_shrapnel": "Bullets sent back burst on impact and hit the neighbours.",
+		"name_pierce": "Pierce",
+		"desc_pierce": "Bullets sent back go through one more enemy.",
+		"name_grinder": "Grinder",
+		"desc_grinder": "Orbiting bullets no longer wear out when they hit.",
+		"name_recoil": "Recoil",
+		"desc_recoil": "The release wave reaches 60% further and stuns."
+	}
 }

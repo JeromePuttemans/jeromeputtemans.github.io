@@ -1,16 +1,79 @@
 {
-  "meta": {
-    "convention_version": "2.3.0",
-    "project": "gravshift"
-  },
-  "gameplay": {
-    "scroll_speed": 60.0,
-    "player_speed": 220.0,
-    "gravity_radius": 180,
-    "gravity_strength": 0.35,
-    "bullet_speed": 400.0,
-    "enemy_bullet_speed": 180.0,
-    "wave_count": 3,
-    "enemies_per_wave": 6
-  }
+	"meta": {
+		"genre": "shmup",
+		"project": "gravshift",
+		"title": "Gravshift",
+		"version": "0.2.0",
+		"convention_version": "2.3.0",
+		"language": "fr"
+	},
+	"display": {
+		"base_width": 1280,
+		"base_height": 720,
+		"fullscreen": false
+	},
+	"gameplay": {
+		"player_speed": 330.0,
+		"player_acceleration": 2600.0,
+		"well_speed_factor": 0.6,
+		"player_radius": 7.0,
+		"player_hp": 3,
+		"invulnerability_time": 1.6,
+		"fire_interval": 0.2,
+		"bullet_speed": 820.0,
+		"bullet_damage": 1.0,
+		"bullet_homing": 5.0,
+		"flux_max": 100.0,
+		"flux_drain": 28.0,
+		"flux_regen": 22.0,
+		"flux_regen_delay": 0.35,
+		"flux_per_capture": 5.0,
+		"flux_min_to_open": 12.0,
+		"pull_radius": 230.0,
+		"capture_radius": 74.0,
+		"bullet_pull": 1400.0,
+		"enemy_pull": 900.0,
+		"passive_pull": 120.0,
+		"orbit_capacity": 12,
+		"orbit_radius": 48.0,
+		"orbit_speed": 4.2,
+		"sling_speed": 780.0,
+		"sling_damage": 3.0,
+		"sling_homing": 7.0,
+		"shockwave_radius": 130.0,
+		"crash_speed": 150.0,
+		"crash_damage": 3.0,
+		"enemy_bullet_speed": 190.0,
+		"heavy_bullet_speed": 150.0,
+		"chain_window": 2.5,
+		"chain_per_multiplier": 5,
+		"multiplier_max": 8,
+		"multikill_bonus": 60,
+		"repair_drop_chance": 0.06,
+		"shake_decay": 2.4,
+		"shake_pixels": 14.0
+	},
+	"enemies": {
+		"drone": {"hp": 3, "mass": 1.0, "radius": 13, "speed": 120, "points": 50, "color": "ff5a7a"},
+		"gunner": {"hp": 10, "mass": 2.0, "radius": 17, "speed": 150, "points": 150, "color": "ffa040", "fire_interval": 1.7},
+		"spinner": {"hp": 24, "mass": 3.0, "radius": 20, "speed": 90, "points": 250, "color": "ffd84a", "fire_interval": 0.13},
+		"lancer": {"hp": 6, "mass": 1.6, "radius": 15, "speed": 560, "points": 120, "color": "c070ff"},
+		"brute": {"hp": 45, "mass": 9.0, "radius": 30, "speed": 55, "points": 500, "color": "ff3040", "fire_interval": 2.6},
+		"mine": {"hp": 4, "mass": 1.2, "radius": 14, "speed": 40, "points": 80, "color": "6affc8", "fuse": 6.0},
+		"guardian": {"hp": 520, "mass": 40.0, "radius": 56, "speed": 60, "points": 6000, "color": "48d0ff"},
+		"singularity": {"hp": 1250, "mass": 60.0, "radius": 62, "speed": 40, "points": 20000, "color": "ff4adf"}
+	},
+	"waves": [
+		{"groups": [{"type": "drone", "count": 10, "edge": "top", "interval": 0.6}, {"type": "gunner", "count": 3, "edge": "sides", "delay": 5, "interval": 2.0}, {"type": "drone", "count": 8, "edge": "corners", "delay": 12, "interval": 0.5}, {"type": "gunner", "count": 2, "edge": "top", "delay": 18, "interval": 1.5}]},
+		{"groups": [{"type": "gunner", "count": 5, "edge": "sides", "interval": 1.5}, {"type": "drone", "count": 14, "edge": "random", "delay": 4, "interval": 0.45}, {"type": "spinner", "count": 1, "edge": "top", "delay": 14}, {"type": "gunner", "count": 3, "edge": "corners", "delay": 20, "interval": 1.5}]},
+		{"groups": [{"type": "spinner", "count": 2, "edge": "top", "interval": 3.0}, {"type": "drone", "count": 16, "edge": "corners", "delay": 3, "interval": 0.35}, {"type": "gunner", "count": 4, "edge": "sides", "delay": 10, "interval": 1.2}, {"type": "lancer", "count": 4, "edge": "random", "delay": 18, "interval": 1.0}]},
+		{"groups": [{"type": "lancer", "count": 8, "edge": "sides", "interval": 1.0}, {"type": "mine", "count": 8, "edge": "random", "delay": 4, "interval": 0.9}, {"type": "spinner", "count": 2, "edge": "top", "delay": 10, "interval": 3.0}, {"type": "gunner", "count": 5, "edge": "random", "delay": 18, "interval": 1.0}]},
+		{"boss": "guardian", "groups": [{"type": "drone", "count": 8, "edge": "corners", "delay": 10, "interval": 2.0}, {"type": "gunner", "count": 4, "edge": "sides", "delay": 25, "interval": 3.0}]},
+		{"groups": [{"type": "brute", "count": 1, "edge": "top"}, {"type": "gunner", "count": 6, "edge": "random", "delay": 2, "interval": 1.0}, {"type": "drone", "count": 18, "edge": "corners", "delay": 6, "interval": 0.3}, {"type": "brute", "count": 1, "edge": "bottom", "delay": 18}, {"type": "mine", "count": 6, "edge": "random", "delay": 22, "interval": 0.8}]},
+		{"groups": [{"type": "spinner", "count": 3, "edge": "sides", "interval": 2.5}, {"type": "lancer", "count": 10, "edge": "random", "delay": 5, "interval": 0.6}, {"type": "mine", "count": 10, "edge": "random", "delay": 12, "interval": 0.6}, {"type": "gunner", "count": 5, "edge": "corners", "delay": 20, "interval": 1.0}]},
+		{"groups": [{"type": "brute", "count": 2, "edge": "sides", "interval": 4.0}, {"type": "spinner", "count": 2, "edge": "top", "delay": 3, "interval": 3.0}, {"type": "drone", "count": 24, "edge": "random", "delay": 6, "interval": 0.25}, {"type": "lancer", "count": 8, "edge": "sides", "delay": 16, "interval": 0.6}]},
+		{"groups": [{"type": "gunner", "count": 8, "edge": "corners", "interval": 0.8}, {"type": "lancer", "count": 10, "edge": "sides", "delay": 4, "interval": 0.5}, {"type": "brute", "count": 2, "edge": "random", "delay": 8, "interval": 5.0}, {"type": "spinner", "count": 3, "edge": "top", "delay": 14, "interval": 2.5}, {"type": "drone", "count": 20, "edge": "random", "delay": 20, "interval": 0.3}]},
+		{"boss": "singularity", "groups": []}
+	],
+	"upgrades": ["orbit", "horizon", "sling", "tank", "twin", "hull", "shrapnel", "pierce", "grinder", "recoil"]
 }

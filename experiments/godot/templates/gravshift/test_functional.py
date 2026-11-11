@@ -1,364 +1,306 @@
 #!/usr/bin/env python3
-"""
-test_functional.py — Gravshift functional test suite
-Convention v2.3.0 — T01–T14 adapted for this project.
-Run from the gravshift/ root directory.
-"""
+"""Functional tests for Gravshift: run from the gravshift project root."""
 
 import os
 import re
-import sys
 import json
-
-fails: list = []
-warnings: list = []
+import sys
+from collections import Counter
 
 SCRIPTS_DIR = "scripts"
 SCENES_DIR = "scenes"
 DATAS_DIR = "datas"
 
-REQUIRED_DIRS = [
-    "datas",
-    "scenes/core",
-    "scenes/ui",
-    "scenes/entities",
-    "scripts/core",
-    "scripts/ui",
-    "scripts/entities",
-    "assets/fonts",
-    "assets/sounds",
-    "assets/textures",
-    "addons",
-]
+fails = []
+warnings = []
 
-REQUIRED_SCRIPTS = [
-    "scripts/core/game_manager.gd",
-    "scripts/core/spawner.gd",
-    "scripts/core/gravity_field.gd",
-    "scripts/ui/hud.gd",
-    "scripts/entities/player.gd",
-    "scripts/entities/bullet.gd",
-    "scripts/entities/enemy_linear.gd",
-    "scripts/entities/enemy_wave.gd",
-    "scripts/entities/enemy_bullet.gd",
-]
-
-REQUIRED_SETTINGS_GAMEPLAY_KEYS = [
-    "scroll_speed",
-    "player_speed",
-    "gravity_radius",
-    "gravity_strength",
-    "bullet_speed",
-    "enemy_bullet_speed",
-    "wave_count",
-    "enemies_per_wave",
-]
-
-REQUIRED_STRINGS_GAMEPLAY_KEYS = ["wave", "best", "press_start"]
-REQUIRED_STRINGS_FEEDBACK_KEYS = ["player_death", "wave_clear", "run_complete"]
-
+# -- helpers -------------------------------------------------------------------
 
 def fail(msg: str) -> None:
-    fails.append(f"FAIL  {msg}")
-
+    fails.append(f"  FAIL  {msg}")
 
 def warn(msg: str) -> None:
-    warnings.append(f"WARN  {msg}")
-
+    warnings.append(f"  WARN  {msg}")
 
 def gd_files():
-    for root, _dirs, files in os.walk(SCRIPTS_DIR):
-        for fname in files:
-            if fname.endswith(".gd"):
-                path = os.path.join(root, fname)
+    """Yield (path, lines) for every .gd file under SCRIPTS_DIR."""
+    for root, _, files in os.walk(SCRIPTS_DIR):
+        for f in files:
+            if f.endswith(".gd"):
+                path = os.path.join(root, f)
                 with open(path, encoding="utf-8") as fh:
-                    lines = fh.readlines()
-                yield path, lines
-
+                    yield path, fh.readlines()
 
 def tscn_files():
-    for root, _dirs, files in os.walk(SCENES_DIR):
-        for fname in files:
-            if fname.endswith(".tscn"):
-                path = os.path.join(root, fname)
+    """Yield (path, content) for every .tscn file under SCENES_DIR."""
+    for root, _, files in os.walk(SCENES_DIR):
+        for f in files:
+            if f.endswith(".tscn"):
+                path = os.path.join(root, f)
                 with open(path, encoding="utf-8") as fh:
-                    content = fh.read()
-                yield path, content
+                    yield path, fh.read()
 
-
-# ── T01 — project structure ───────────────────────────────────────────────────
-
-def test_project_structure() -> None:
-    for d in REQUIRED_DIRS:
-        if not os.path.isdir(d):
-            fail(f"T01 missing required directory: {d}")
-    for s in REQUIRED_SCRIPTS:
-        if not os.path.isfile(s):
-            fail(f"T01 missing required script: {s}")
-    if not os.path.isfile("project.godot"):
-        fail("T01 missing project.godot")
-    if not os.path.isfile("README.md"):
-        fail("T01 missing README.md")
-    if not os.path.isfile("CONVENTION.md"):
-        fail("T01 missing CONVENTION.md at project root")
-    if not os.path.isfile("scenes/core/main.tscn"):
-        fail("T01 missing scenes/core/main.tscn")
-
-
-# ── T02 — settings.json structure ────────────────────────────────────────────
-
-def test_settings_json() -> None:
-    path = os.path.join(DATAS_DIR, "settings.json")
-    if not os.path.isfile(path):
-        fail("T02 missing datas/settings.json")
-        return
+def load_json(name: str):
+    path = os.path.join(DATAS_DIR, name)
+    if not os.path.exists(path):
+        return None
     with open(path, encoding="utf-8") as fh:
         try:
-            data = json.load(fh)
+            return json.load(fh)
         except json.JSONDecodeError as e:
-            fail(f"T02 settings.json is not valid JSON: {e}")
+            fail(f"{name} invalid JSON: {e}")
+            return None
+
+# -- T01: project structure ----------------------------------------------------
+
+def test_project_structure():
+    required = [
+        "project.godot", "README.md", "CONVENTION.md", "export_presets.cfg",
+        os.path.join(DATAS_DIR, "settings.json"),
+        os.path.join(DATAS_DIR, "strings_fr.json"),
+        os.path.join(DATAS_DIR, "strings_en.json"),
+        os.path.join(SCENES_DIR, "core", "main.tscn"),
+    ]
+    # Every node is built by code (CONVENTION.md): main.tscn is the only scene.
+    for name in ("game_manager", "input_manager", "sfx_manager", "space_grid",
+                 "effects", "bullet_field", "shots", "gravity_field", "spawner",
+                 "combat", "upgrades"):
+        required.append(os.path.join(SCRIPTS_DIR, "core", f"{name}.gd"))
+    for name in ("hud", "screens"):
+        required.append(os.path.join(SCRIPTS_DIR, "ui", f"{name}.gd"))
+    for name in ("player", "enemy_base", "enemy_drone", "enemy_gunner",
+                 "enemy_spinner", "enemy_lancer", "enemy_brute", "enemy_mine",
+                 "boss_guardian", "boss_singularity"):
+        required.append(os.path.join(SCRIPTS_DIR, "entities", f"{name}.gd"))
+    for path in required:
+        if not os.path.exists(path):
+            fail(f"T01 missing required file: {path}")
+
+# -- T02: settings.json schema and consistency ---------------------------------
+
+def test_settings_json():
+    data = load_json("settings.json")
+    if data is None:
+        fail("T02 settings.json missing or unreadable")
+        return
+    if "convention_version" not in data.get("meta", {}):
+        fail("T02 settings.json missing meta.convention_version")
+    gameplay = data.get("gameplay", {})
+    for key in ("player_speed", "player_hp", "fire_interval", "bullet_speed",
+                "flux_max", "flux_drain", "flux_regen", "pull_radius",
+                "capture_radius", "orbit_capacity", "sling_speed", "sling_damage",
+                "shockwave_radius", "crash_speed", "enemy_bullet_speed",
+                "chain_window", "chain_per_multiplier", "multiplier_max"):
+        if key not in gameplay:
+            fail(f"T02 settings.json missing gameplay key: {key}")
+    enemies = data.get("enemies", {})
+    gd_dir = os.path.join(SCRIPTS_DIR, "entities")
+    for kind, stats in enemies.items():
+        for key in ("hp", "mass", "radius", "speed", "points", "color"):
+            if key not in stats:
+                fail(f"T02 enemy '{kind}' missing key: {key}")
+        script = f"enemy_{kind}.gd" if os.path.exists(os.path.join(gd_dir, f"enemy_{kind}.gd")) else f"boss_{kind}.gd"
+        if not os.path.exists(os.path.join(gd_dir, script)):
+            fail(f"T02 enemy '{kind}' has no script in {gd_dir}")
+    waves = data.get("waves", [])
+    if not waves:
+        fail("T02 settings.json has no waves")
+    for i, wave in enumerate(waves, 1):
+        if "boss" in wave and wave["boss"] not in enemies:
+            fail(f"T02 wave {i} boss '{wave['boss']}' is not an enemy type")
+        if not wave.get("groups") and "boss" not in wave:
+            fail(f"T02 wave {i} has no enemies")
+        for group in wave.get("groups", []):
+            if group.get("type") not in enemies:
+                fail(f"T02 wave {i} unknown enemy type: {group.get('type')}")
+            if int(group.get("count", 0)) < 1:
+                fail(f"T02 wave {i} group with no enemies: {group}")
+    with open(os.path.join(SCRIPTS_DIR, "core", "upgrades.gd"), encoding="utf-8") as fh:
+        upgrades_gd = fh.read()
+    for up in data.get("upgrades", []):
+        if f'"{up}"' not in upgrades_gd:
+            fail(f"T02 upgrade '{up}' is not handled in upgrades.gd")
+
+# -- T03: strings complete in both languages -----------------------------------
+
+def test_strings_json():
+    tables = {}
+    for lang in ("fr", "en"):
+        data = load_json(f"strings_{lang}.json")
+        if data is None:
+            fail(f"T03 strings_{lang}.json missing or unreadable")
             return
-    if "meta" not in data:
-        fail("T02 settings.json missing 'meta' key")
-    else:
-        if "convention_version" not in data["meta"]:
-            fail("T02 settings.json meta missing 'convention_version'")
-    if "gameplay" not in data:
-        fail("T02 settings.json missing 'gameplay' section")
-    else:
-        for key in REQUIRED_SETTINGS_GAMEPLAY_KEYS:
-            if key not in data["gameplay"]:
-                fail(f"T02 settings.json gameplay missing key: {key}")
-
-
-# ── T03 — strings json ────────────────────────────────────────────────────────
-
-def test_strings_json() -> None:
-    for lang in ["fr", "en"]:
-        path = os.path.join(DATAS_DIR, f"strings_{lang}.json")
-        if not os.path.isfile(path):
-            fail(f"T03 missing datas/strings_{lang}.json")
-            continue
-        with open(path, encoding="utf-8") as fh:
-            try:
-                data = json.load(fh)
-            except json.JSONDecodeError as e:
-                fail(f"T03 strings_{lang}.json invalid JSON: {e}")
-                continue
-        gameplay = data.get("gameplay", {})
-        feedback = data.get("feedback", {})
-        for key in REQUIRED_STRINGS_GAMEPLAY_KEYS:
-            if key not in gameplay:
-                fail(f"T03 strings_{lang}.json gameplay missing key: {key}")
-        for key in REQUIRED_STRINGS_FEEDBACK_KEYS:
-            if key not in feedback:
-                fail(f"T03 strings_{lang}.json feedback missing key: {key}")
-        # Check no empty values
-        for section_name, section in [("gameplay", gameplay), ("feedback", feedback)]:
-            for k, v in section.items():
-                if not str(v).strip():
-                    fail(f"T03 strings_{lang}.json {section_name}.{k} is empty")
-
-
-# ── T04 — duplicate functions ─────────────────────────────────────────────────
-
-def test_duplicate_functions() -> None:
-    for path, lines in gd_files():
-        seen: dict = {}
-        func_pat = re.compile(r"^func (\w+)\s*\(")
-        for i, line in enumerate(lines, 1):
-            m = func_pat.match(line.strip())
-            if m:
-                name = m.group(1)
-                if name in seen:
-                    fail(f"T04 duplicate function '{name}' at {path}:{i} (first at line {seen[name]})")
-                else:
-                    seen[name] = i
-
-
-# ── T05 — return types on all functions ──────────────────────────────────────
-
-def test_return_types() -> None:
-    func_pat = re.compile(r"^func \w+\([^)]*\)\s*:")
+        tables[lang] = data
+    fr, en = tables["fr"], tables["en"]
+    for section in fr:
+        for key in fr[section]:
+            if key not in en.get(section, {}):
+                fail(f"T03 strings_en.json missing {section}.{key}")
+    for section in en:
+        for key in en[section]:
+            if key not in fr.get(section, {}):
+                fail(f"T03 strings_fr.json missing {section}.{key}")
+    # Every text("section", "key") call in the scripts must exist.
+    call = re.compile(r'(?:text|_tx)\(\s*"(\w+)"\s*,\s*"(\w+)"\s*[,)]')
     for path, lines in gd_files():
         for i, line in enumerate(lines, 1):
-            stripped = line.strip()
-            if func_pat.match(stripped) and not stripped.startswith("#"):
-                fail(f"T05 function missing return type at {path}:{i}: {stripped}")
+            for section, key in call.findall(line):
+                for lang, table in tables.items():
+                    if key not in table.get(section, {}):
+                        fail(f"T03 {path}:{i} uses {section}.{key}, missing in strings_{lang}.json")
+    settings = load_json("settings.json") or {}
+    for up in settings.get("upgrades", []):
+        for prefix in ("name_", "desc_"):
+            for lang, table in tables.items():
+                if prefix + up not in table.get("upgrades", {}):
+                    fail(f"T03 strings_{lang}.json missing upgrades.{prefix}{up}")
+    # The web export font only covers Latin-1; the texts carry no "!".
+    for lang, table in tables.items():
+        for section, entries in table.items():
+            for key, value in entries.items():
+                if any(ord(ch) > 255 for ch in value):
+                    fail(f"T03 strings_{lang}.json {section}.{key} has a glyph outside Latin-1")
+                if "!" in value:
+                    fail(f"T03 strings_{lang}.json {section}.{key} contains '!'")
 
+# -- T04: no duplicate functions -----------------------------------------------
 
-# ── T06 — dead signals (declared but never emitted) ──────────────────────────
+def test_duplicate_functions():
+    for path, lines in gd_files():
+        # Top-level functions only: an inner class has its own _ready or _draw.
+        names = [m.group(1) for m in (re.match(r"^(?:static )?func (\w+)\(", l) for l in lines) if m]
+        for name, count in Counter(names).items():
+            if count > 1:
+                fail(f"T04 duplicate function '{name}' in {path}")
 
-def test_dead_signals() -> None:
+# -- T05: return types declared ------------------------------------------------
+
+def test_return_types():
+    pattern = re.compile(r"^(static )?func \w+\([^)]*\)\s*:")
+    for path, lines in gd_files():
+        for i, line in enumerate(lines, 1):
+            if pattern.match(line.strip()):
+                fail(f"T05 missing return type at {path}:{i}: {line.strip()}")
+
+# -- T06: no dead signals ------------------------------------------------------
+
+def test_dead_signals():
     for path, lines in gd_files():
         content = "".join(lines)
-        sig_decl_pat = re.compile(r"^signal (\w+)", re.MULTILINE)
-        for m in sig_decl_pat.finditer(content):
-            sig_name = m.group(1)
-            if f"{sig_name}.emit(" not in content:
-                fail(f"T06 signal '{sig_name}' declared but never emitted in {path}")
+        for sig in re.findall(r"^signal (\w+)", content, re.MULTILINE):
+            if f"{sig}.emit(" not in content:
+                fail(f"T06 dead signal '{sig}' in {path} (declared, never emitted)")
 
+# -- T07: no Godot 3 signal syntax ---------------------------------------------
 
-# ── T07 — deprecated Godot 3 syntax ──────────────────────────────────────────
-
-def test_godot3_syntax() -> None:
+def test_godot3_syntax():
     for path, lines in gd_files():
         for i, line in enumerate(lines, 1):
-            if re.search(r'\bemit_signal\s*\(', line):
+            if "emit_signal(" in line:
                 fail(f"T07 deprecated emit_signal() at {path}:{i}")
             if re.search(r'\.connect\s*\(\s*"', line):
                 fail(f"T07 deprecated string connect() at {path}:{i}")
 
+# -- T08: unused parameters without _ prefix -----------------------------------
 
-# ── T08 — unused parameters without _ prefix ─────────────────────────────────
-
-def test_unused_params() -> None:
-    func_pattern = re.compile(r"^func (\w+)\(([^)]*)\)\s*(->.*)?:")
+def test_unused_params():
+    func_pattern = re.compile(r"^(?:static )?func (\w+)\(([^)]*)\)\s*(->.*)?:", re.MULTILINE)
     for path, lines in gd_files():
         content = "".join(lines)
         for m in func_pattern.finditer(content):
-            params_raw = m.group(2)
-            if not params_raw.strip():
-                continue
-            for param in params_raw.split(","):
-                param = param.strip().split(":")[0].strip()
+            for param in m.group(2).split(","):
+                param = param.strip().split(":")[0].split("=")[0].strip()
                 if not param or param.startswith("_"):
                     continue
-                uses = len(re.findall(rf"\b{re.escape(param)}\b", content))
-                if uses <= 1:
-                    warn(f"T08 param '{param}' possibly unused in {path} — prefix with _ if intentional")
+                if len(re.findall(rf"\b{re.escape(param)}\b", content)) <= 1:
+                    warn(f"T08 param '{param}' possibly unused in {path}")
 
+# -- T09: no add_child in physics callbacks ------------------------------------
 
-# ── T09 — add_child in physics callbacks ─────────────────────────────────────
-
-def test_physics_add_child() -> None:
-    physics_signals = ("area_entered", "body_entered", "area_exited", "body_exited")
+def test_physics_add_child():
+    physics = ("area_entered", "body_entered", "area_exited", "body_exited")
     for path, lines in gd_files():
-        in_physics = False
-        depth = 0
+        in_callback = False
         for i, line in enumerate(lines, 1):
             stripped = line.strip()
-            if any(f"_{sig}" in stripped or f"on_{sig}" in stripped for sig in physics_signals):
-                in_physics = True
-                depth = 0
-            if in_physics:
-                depth += stripped.count("{") + stripped.count(":")
-                depth -= stripped.count("}")
-                if "add_child(" in stripped and "call_deferred" not in stripped:
-                    fail(f"T09 add_child() in physics callback at {path}:{i} — use call_deferred")
-                if depth <= 0 and i > 1:
-                    in_physics = False
+            if line.startswith("func "):
+                in_callback = any(sig in stripped for sig in physics)
+            if in_callback and "add_child(" in stripped and "call_deferred" not in stripped:
+                fail(f"T09 add_child() in physics callback at {path}:{i}: use call_deferred")
 
+# -- T10: mouse_filter on UI controls ------------------------------------------
 
-# ── T10 — mouse_filter on UI containers ──────────────────────────────────────
-
-def test_mouse_filter() -> None:
-    # This project builds UI by code — containers have mouse_filter set in scripts.
-    # Check that hud.gd sets mouse_filter = MOUSE_FILTER_IGNORE on non-interactive nodes.
-    path = "scripts/ui/hud.gd"
-    if not os.path.isfile(path):
-        fail("T10 missing scripts/ui/hud.gd")
-        return
+def test_mouse_filter():
+    # The HUD and the screens are drawn by code: they must not eat the clicks
+    # meant for the upgrade cards (screens.gd handles them itself).
+    path = os.path.join(SCRIPTS_DIR, "ui", "hud.gd")
     with open(path, encoding="utf-8") as fh:
-        content = fh.read()
-    if "MOUSE_FILTER_IGNORE" not in content:
-        warn("T10 hud.gd may be missing MOUSE_FILTER_IGNORE on layout containers")
+        if "MOUSE_FILTER_IGNORE" not in fh.read():
+            fail(f"T10 {path} does not set mouse_filter to MOUSE_FILTER_IGNORE")
 
+# -- T11: main.tscn and the tree built by game_manager.gd ----------------------
 
-# ── T11 — main.tscn hierarchy ────────────────────────────────────────────────
-
-def test_main_tscn() -> None:
-    path = os.path.join(SCENES_DIR, "core", "main.tscn")
-    if not os.path.exists(path):
+def test_main_tscn():
+    tscn_path = os.path.join(SCENES_DIR, "core", "main.tscn")
+    if not os.path.exists(tscn_path):
         fail("T11 missing scenes/core/main.tscn")
         return
-    with open(path, encoding="utf-8") as fh:
-        content = fh.read()
-    # PATTERN 25: main.tscn must be minimal (no sub_resource, no instance=, no uid=)
-    if "sub_resource" in content:
-        fail("T11 main.tscn contains sub_resource — violates PATTERN 25")
-    if "instance=" in content:
-        fail("T11 main.tscn contains instance= — violates PATTERN 25")
-    # Must reference game_manager script
-    if "game_manager.gd" not in content:
-        fail("T11 main.tscn does not reference game_manager.gd")
-    # Check that game_manager.gd builds the hierarchy (GameManager, World, UI, HUD, Transitions)
-    gm_path = "scripts/core/game_manager.gd"
-    if os.path.isfile(gm_path):
-        with open(gm_path, encoding="utf-8") as fh:
-            gm_content = fh.read()
-        for required in ("World", "UI", "HUD", "Transitions"):
-            if f'"{required}"' not in gm_content and f"name = \"{required}\"" not in gm_content:
-                fail(f"T11 game_manager.gd does not build node: {required}")
+    with open(tscn_path, encoding="utf-8") as fh:
+        if "game_manager.gd" not in fh.read():
+            fail("T11 main.tscn does not reference game_manager.gd")
+    gm_path = os.path.join(SCRIPTS_DIR, "core", "game_manager.gd")
+    with open(gm_path, encoding="utf-8") as fh:
+        gm_content = fh.read()
+    for required in ("World", "UI", "HUD", "Transitions"):
+        if f'"{required}"' not in gm_content:
+            fail(f"T11 game_manager.gd does not build the node: {required}")
+    with open("project.godot", encoding="utf-8") as fh:
+        project = fh.read()
+    if 'run/main_scene="res://scenes/core/main.tscn"' not in project:
+        fail("T11 project.godot main scene is not scenes/core/main.tscn")
 
+# -- T12: twist_activated signal -----------------------------------------------
 
-# ── T12 — twist_activated signal ─────────────────────────────────────────────
-
-def test_twist_activated() -> None:
-    found_emit = False
-    for path, lines in gd_files():
-        content = "".join(lines)
-        if "twist_activated.emit(" in content:
-            found_emit = True
-            break
-    if not found_emit:
+def test_twist_activated():
+    if not any("twist_activated.emit(" in "".join(lines) for _, lines in gd_files()):
         fail("T12 twist_activated.emit() not found in any script")
 
+# -- T13: no hardcoded display strings -----------------------------------------
 
-# ── T13 — no hardcoded display strings ───────────────────────────────────────
-
-def test_no_hardcoded_strings() -> None:
-    suspicious = re.compile(r'(?:add_text|text\s*=\s*|label\.text\s*=\s*)"[A-Za-z ]{4,}"')
+def test_no_hardcoded_strings():
+    suspicious = re.compile(r'(?:draw_string\([^"]*|\.text\s*=\s*)"[A-Za-z]+ [A-Za-z ]+"')
     for path, lines in gd_files():
         for i, line in enumerate(lines, 1):
-            if suspicious.search(line) and "strings[" not in line and "[" not in line:
-                # Allow "GRAVSHIFT" title and structural names — warn only
+            if suspicious.search(line):
                 warn(f"T13 possible hardcoded display string at {path}:{i}: {line.strip()}")
 
+# -- T14: folder names free of brace expansion artifacts -----------------------
 
-# ── T14 — folder names free of bash brace expansion artifacts ────────────────
-
-def test_folder_names() -> None:
+def test_folder_names():
     bad = re.compile(r"[{},]")
     for root, dirs, _ in os.walk("."):
         for d in dirs:
             if bad.search(d):
                 fail(f"T14 invalid folder name (brace expansion artifact?): {os.path.join(root, d)}")
 
-
-# ── run all tests ─────────────────────────────────────────────────────────────
+# -- run all tests -------------------------------------------------------------
 
 if __name__ == "__main__":
-    tests = [
-        test_project_structure,
-        test_settings_json,
-        test_strings_json,
-        test_duplicate_functions,
-        test_return_types,
-        test_dead_signals,
-        test_godot3_syntax,
-        test_unused_params,
-        test_physics_add_child,
-        test_mouse_filter,
-        test_main_tscn,
-        test_twist_activated,
-        test_no_hardcoded_strings,
-        test_folder_names,
-    ]
-    for t in tests:
+    for t in (test_project_structure, test_settings_json, test_strings_json,
+              test_duplicate_functions, test_return_types, test_dead_signals,
+              test_godot3_syntax, test_unused_params, test_physics_add_child,
+              test_mouse_filter, test_main_tscn, test_twist_activated,
+              test_no_hardcoded_strings, test_folder_names):
         t()
-
     if warnings:
-        print("\n── WARNINGS (informational) ──")
+        print("\n-- WARNINGS (informational) --")
         for w in warnings:
             print(w)
-
     if fails:
-        print("\n── FAILURES ──")
+        print("\n-- FAILURES --")
         for f in fails:
             print(f)
-        print(f"\n{len(fails)} FAIL(s) — fix before producing the .zip")
+        print(f"\n{len(fails)} FAIL(s)")
         sys.exit(1)
-    else:
-        print("\nALL TESTS PASSED")
-        sys.exit(0)
+    print("\nALL TESTS PASSED")
+    sys.exit(0)

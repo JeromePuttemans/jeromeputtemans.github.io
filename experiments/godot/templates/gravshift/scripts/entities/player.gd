@@ -1,141 +1,114 @@
-extends CharacterBody2D
+extends Node2D
 
-class_name Player
+# Player: the ship. Accelerates toward the stick direction (player_speed,
+# player_acceleration), slower while the well is open (well_speed_factor).
+# The singularity's counter-well adds its own pull (extra_pull).
+# AUTO-FIRE: every fire_interval seconds a slightly homing bolt toward the
+# nearest enemy (more bolts with the twin cannon upgrade). The ship's nose
+# follows its target.
 
-# ── Signals ───────────────────────────────────────────────────────────────────
-signal player_died
+var gm: Node = null
+var vel: Vector2 = Vector2.ZERO
+var alive: bool = true
+var hp: int = 3
+var hp_max: int = 3
+var invulnerable: float = 0.0
+var twin: int = 0
+var fire_rate: float = 1.0
+var radius: float = 7.0
 
-# ── Constants ─────────────────────────────────────────────────────────────────
-const PLAYER_COLOR: Color = Color(0.0, 0.898, 1.0)          # #00e5ff cyan
-const AURA_COLOR_BASE: Color = Color(0.0, 0.898, 1.0, 0.12) # semi-transparent cyan
-const AURA_RINGS: int = 3
-const TRIANGLE_SIZE: float = 18.0
-const FIRE_INTERVAL: float = 0.15
-const VIEWPORT_MARGIN: float = 20.0
+var _g: Dictionary = {}
+var _fire_t: float = 0.0
+var _facing: float = -PI * 0.5
+var _time: float = 0.0
+var _trail: Array[Vector2] = []
+var _well_open: bool = false
 
-# ── State ─────────────────────────────────────────────────────────────────────
-var _speed: float = 220.0
-var _gravity_radius: float = 180.0
-var _bullet_speed: float = 400.0
-var _fire_timer: float = 0.0
-var _is_alive: bool = true
-var _game_manager: Node = null
-var _bullets_container: Node2D = null
-var _bullet_script: Script = null
+func setup(gameplay: Dictionary) -> void:
+	_g = gameplay
+	radius = float(gameplay.get("player_radius", 7.0))
+	reset()
 
-# ── Collision shape (created by code) ─────────────────────────────────────────
-var _collision_shape: CollisionShape2D = null
+func reset() -> void:
+	hp = int(_g.get("player_hp", 3))
+	hp_max = hp
+	alive = true
+	invulnerable = 1.0
+	vel = Vector2.ZERO
+	twin = 0
+	fire_rate = 1.0
+	_trail.clear()
 
-# ── Lifecycle ─────────────────────────────────────────────────────────────────
-func _ready() -> void:
-	_game_manager = get_node_or_null("/root/Main")
-	if is_instance_valid(_game_manager):
-		_speed = _game_manager.get_setting("player_speed", 220.0) as float
-		_gravity_radius = _game_manager.get_setting("gravity_radius", 180) as float
-		_bullet_speed = _game_manager.get_setting("bullet_speed", 400.0) as float
-		_bullets_container = _game_manager.get_bullets_container()
-
-	_bullet_script = load("res://scripts/entities/bullet.gd") as Script
-
-	# Collision shape
-	_collision_shape = CollisionShape2D.new()
-	var shape: CircleShape2D = CircleShape2D.new()
-	shape.radius = 8.0
-	_collision_shape.shape = shape
-	add_child(_collision_shape)
-
-	# Collision layers: player on layer 1, detects layer 3 (enemy bullets) and layer 4 (enemies)
-	collision_layer = 2
-	collision_mask = 8 | 16   # enemy bullets (layer 4) + enemies (layer 5)
-
-	# Initial position: center-bottom of viewport
-	var vp: Viewport = get_viewport()
-	if is_instance_valid(vp):
-		var vp_size: Vector2 = vp.get_visible_rect().size
-		position = Vector2(vp_size.x * 0.5, vp_size.y * 0.8)
-
-func _physics_process(delta: float) -> void:
-	if not _is_alive:
+func step(delta: float, move: Vector2, well_open: bool, extra_pull: Vector2) -> void:
+	_time += delta
+	_well_open = well_open
+	invulnerable = maxf(invulnerable - delta, 0.0)
+	if not alive:
 		return
-	if not is_instance_valid(_game_manager):
-		return
-	if _game_manager.get_current_state() != _game_manager.GameState.PLAYING:
-		velocity = Vector2.ZERO
-		return
+	var speed: float = float(_g.get("player_speed", 330.0)) * (float(_g.get("well_speed_factor", 0.6)) if well_open else 1.0)
+	vel = vel.move_toward(move * speed, float(_g.get("player_acceleration", 2600.0)) * delta)
+	vel += extra_pull * delta
+	position += vel * delta
+	var arena: Rect2 = (gm.call("arena_rect") as Rect2).grow(-14.0)
+	position = position.clamp(arena.position, arena.end)
+	var target: Node2D = gm.call("nearest_enemy", position) as Node2D
+	var want: float = (target.position - position).angle() if target != null else (vel.angle() if vel.length() > 30.0 else _facing)
+	_facing = lerp_angle(_facing, want, minf(delta * 12.0, 1.0))
+	_fire_t -= delta * fire_rate
+	if _fire_t <= 0.0:
+		_fire_t = float(_g.get("fire_interval", 0.2))
+		_fire(target)
+	_trail.push_front(position)
+	while _trail.size() > 10:
+		_trail.pop_back()
 
-	_handle_movement(delta)
-	_handle_shooting(delta)
-	_clamp_to_viewport()
-	move_and_slide()
+func _fire(target: Node2D) -> void:
+	if target == null:
+		return
+	var dir: Vector2 = (target.position - position).normalized()
+	var speed: float = float(_g.get("bullet_speed", 820.0))
+	var damage: float = float(_g.get("bullet_damage", 1.0))
+	var homing: float = float(_g.get("bullet_homing", 5.0))
+	var shots: Node = gm.call("shots_node") as Node
+	shots.call("spawn", position + dir * 14.0, dir * speed, damage, 0, 0, homing)
+	for k in twin:
+		var side: float = 0.22 * (floorf(k / 2.0) + 1.0) * (1.0 if k % 2 == 0 else -1.0)
+		shots.call("spawn", position + dir * 10.0, dir.rotated(side) * speed, damage, 0, 0, homing)
+	gm.call("sfx", "shot", 1.0, 0.08)
+
+## Returns true when the hull is destroyed.
+func hit() -> bool:
+	hp -= 1
+	invulnerable = float(_g.get("invulnerability_time", 1.6))
+	if hp <= 0:
+		hp = 0
+		alive = false
+		return true
+	return false
+
+func _process(_delta: float) -> void:
 	queue_redraw()
-
-func _handle_movement(_delta: float) -> void:
-	var input_dir: Vector2 = Vector2.ZERO
-	input_dir.x = Input.get_axis("ui_left", "ui_right")
-	input_dir.y = Input.get_axis("ui_up", "ui_down")
-	if input_dir.length_squared() > 0.0:
-		input_dir = input_dir.normalized()
-	velocity = input_dir * _speed
-
-func _handle_shooting(delta: float) -> void:
-	_fire_timer -= delta
-	if _fire_timer <= 0.0:
-		_fire_timer = FIRE_INTERVAL
-		_spawn_bullet()
-
-func _spawn_bullet() -> void:
-	if not is_instance_valid(_bullets_container):
-		return
-	if not is_instance_valid(_bullet_script):
-		return
-	var bullet: Area2D = Area2D.new()
-	bullet.set_script(_bullet_script)
-	bullet.position = global_position + Vector2(0.0, -TRIANGLE_SIZE)
-	_bullets_container.add_child(bullet)
-	# setup() callable after add_child — node is in scene tree
-	(bullet as PlayerBullet).setup(_bullet_speed)
-
-func _clamp_to_viewport() -> void:
-	var vp: Viewport = get_viewport()
-	if not is_instance_valid(vp):
-		return
-	var vp_size: Vector2 = vp.get_visible_rect().size
-	position.x = clamp(position.x, VIEWPORT_MARGIN, vp_size.x - VIEWPORT_MARGIN)
-	position.y = clamp(position.y, VIEWPORT_MARGIN, vp_size.y - VIEWPORT_MARGIN)
 
 func _draw() -> void:
-	if not _is_alive:
+	if not alive:
 		return
-	# Draw gravitational aura (concentric rings)
-	for ring_index in range(AURA_RINGS):
-		var ring_float: float = float(ring_index + 1)
-		var ring_radius: float = _gravity_radius * ring_float / float(AURA_RINGS)
-		var alpha: float = 0.15 - ring_float * 0.04
-		var ring_color: Color = Color(AURA_COLOR_BASE.r, AURA_COLOR_BASE.g, AURA_COLOR_BASE.b, max(alpha, 0.02))
-		draw_arc(Vector2.ZERO, ring_radius, 0.0, TAU, 64, ring_color, 1.5)
-
-	# Draw player triangle (pointing up)
-	var tip: Vector2 = Vector2(0.0, -TRIANGLE_SIZE)
-	var left: Vector2 = Vector2(-TRIANGLE_SIZE * 0.7, TRIANGLE_SIZE * 0.6)
-	var right: Vector2 = Vector2(TRIANGLE_SIZE * 0.7, TRIANGLE_SIZE * 0.6)
-	var points: PackedVector2Array = PackedVector2Array([tip, left, right])
-	draw_colored_polygon(points, PLAYER_COLOR)
-
-# ── Death handling ────────────────────────────────────────────────────────────
-func die() -> void:
-	if not _is_alive:
-		return
-	_is_alive = false
-	velocity = Vector2.ZERO
-	queue_redraw()
-	player_died.emit()
-
-func reset_player() -> void:
-	_is_alive = true
-	_fire_timer = 0.0
-	velocity = Vector2.ZERO
-	var vp: Viewport = get_viewport()
-	if is_instance_valid(vp):
-		var vp_size: Vector2 = vp.get_visible_rect().size
-		position = Vector2(vp_size.x * 0.5, vp_size.y * 0.8)
-	queue_redraw()
+	for i in _trail.size():
+		var p: Vector2 = _trail[i] - position
+		draw_circle(p, 5.0 * (1.0 - float(i) / _trail.size()), Color(0.3, 0.8, 1.0, 0.25 * (1.0 - float(i) / _trail.size())))
+	var alpha: float = 1.0
+	if invulnerable > 0.0 and fmod(_time * 12.0, 1.0) < 0.5:
+		alpha = 0.3
+	var glow: float = 0.55 if _well_open else 0.35
+	Effects.put(self, Vector2.ZERO, 34.0, Color(0.2, 0.8, 1.0, glow * alpha))
+	var f := Vector2.RIGHT.rotated(_facing)
+	var s := Vector2(-f.y, f.x)
+	var nose: Vector2 = f * 17.0
+	var left: Vector2 = -f * 11.0 + s * 12.0
+	var right: Vector2 = -f * 11.0 - s * 12.0
+	var notch: Vector2 = -f * 5.0
+	var c := Color(0.45, 0.95, 1.0, alpha)
+	draw_colored_polygon(PackedVector2Array([nose, left, notch, right]), Color(0.05, 0.2, 0.3, alpha))
+	draw_polyline(PackedVector2Array([nose, left, notch, right, nose]), c, 2.5)
+	draw_circle(Vector2.ZERO, 3.0, Color(1.0, 1.0, 1.0, alpha))
+	var flame: float = 6.0 + vel.length() * 0.03 + sin(_time * 40.0) * 2.0
+	draw_line(notch, notch - f * flame, Color(1.0, 0.6, 0.3, 0.8 * alpha), 3.0)

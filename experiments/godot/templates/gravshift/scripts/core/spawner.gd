@@ -1,74 +1,67 @@
 extends Node
 
-class_name Spawner
+# Spawner: plays the sectors of settings.json "waves".
+# A sector is a list of groups {type, count, edge, delay, interval}: the
+# group starts after delay seconds and sends count enemies, one every
+# interval seconds, from the given edge of the arena:
+#   top, bottom, left, right   anywhere along that edge
+#   sides                      left and right in turn
+#   corners                    one of the four corners
+#   random                     any edge
+# A sector with "boss" spawns that boss from the top at once. The sector
+# ends when everything has been sent and nothing is left alive.
 
-# ── Signals ───────────────────────────────────────────────────────────────────
-signal wave_cleared
-signal enemy_destroyed
+var gm: Node = null
+var waves: Array = []
+var wave_index: int = -1
+var _queue: Array[Dictionary] = []
+var _time: float = 0.0
 
-# ── Constants ─────────────────────────────────────────────────────────────────
-const SPAWN_MARGIN_X: float = 60.0
-const SPAWN_Y_OFFSET: float = -40.0
-const WAVE_DENSITY_MULTIPLIER: float = 1.3
+func total() -> int:
+	return waves.size()
 
-# ── State ─────────────────────────────────────────────────────────────────────
-var _enemies_alive: int = 0
-var _enemies_container: Node2D = null
-var _game_manager: Node = null
-var _enemy_linear_script: Script = null
-var _enemy_wave_script: Script = null
+func start_wave(index: int) -> void:
+	wave_index = index
+	_queue.clear()
+	_time = 0.0
+	var wave: Dictionary = waves[index] as Dictionary
+	if wave.has("boss"):
+		var arena: Rect2 = gm.call("arena_rect") as Rect2
+		gm.call("spawn_enemy_at", str(wave["boss"]), Vector2(arena.get_center().x, arena.position.y - 90.0))
+	for group in wave.get("groups", []) as Array:
+		var g: Dictionary = group as Dictionary
+		for k in int(g.get("count", 1)):
+			_queue.append({t = float(g.get("delay", 0.0)) + k * float(g.get("interval", 0.5)), type = str(g.get("type", "drone")), edge = str(g.get("edge", "random")), n = k})
+	_queue.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return float(a["t"]) < float(b["t"]))
 
-# ── Lifecycle ─────────────────────────────────────────────────────────────────
-func _ready() -> void:
-	_game_manager = get_node_or_null("/root/Main")
-	if is_instance_valid(_game_manager):
-		_enemies_container = _game_manager.get_enemies_container()
-	_enemy_linear_script = load("res://scripts/entities/enemy_linear.gd") as Script
-	_enemy_wave_script = load("res://scripts/entities/enemy_wave.gd") as Script
+func step(delta: float) -> void:
+	_time += delta
+	while not _queue.is_empty() and float(_queue[0]["t"]) <= _time:
+		var job: Dictionary = _queue.pop_front()
+		gm.call("spawn_enemy_at", str(job["type"]), _edge_point(str(job["edge"]), int(job["n"])))
 
-# ── Public API ────────────────────────────────────────────────────────────────
-func reset() -> void:
-	_enemies_alive = 0
-	# Clear any remaining enemies from previous run
-	if is_instance_valid(_enemies_container):
-		for child_v in _enemies_container.get_children():
-			var child: Node = child_v as Node
-			if is_instance_valid(child):
-				child.queue_free()
+func done_spawning() -> bool:
+	return _queue.is_empty()
 
-func spawn_wave(wave_number: int) -> void:
-	if not is_instance_valid(_enemies_container):
-		_enemies_container = _game_manager.get_enemies_container()
+func remaining() -> int:
+	return _queue.size()
 
-	var base_count: int = _game_manager.get_setting("enemies_per_wave", 6) as int
-	# Increase enemy count slightly each wave
-	var count: int = base_count + (wave_number - 1) * 2
-	_enemies_alive = count
-
-	var viewport_width: float = 1152.0
-	# Try to get actual viewport size
-	var vp: Viewport = get_viewport()
-	if is_instance_valid(vp):
-		viewport_width = vp.get_visible_rect().size.x
-
-	for i in range(count):
-		var enemy: CharacterBody2D = CharacterBody2D.new()
-		# Alternate types: linear for even index, wave for odd
-		if i % 2 == 0:
-			enemy.set_script(_enemy_linear_script)
-		else:
-			enemy.set_script(_enemy_wave_script)
-
-		var spawn_x: float = SPAWN_MARGIN_X + (float(i) / float(count - 1 if count > 1 else 1)) * (viewport_width - SPAWN_MARGIN_X * 2.0)
-		var spawn_y: float = SPAWN_Y_OFFSET - float(i) * 30.0
-		enemy.position = Vector2(spawn_x, spawn_y)
-
-		# Connect destruction signal before add_child so it fires correctly
-		_enemies_container.add_child(enemy)
-		enemy.enemy_destroyed.connect(_on_enemy_died)
-
-func _on_enemy_died() -> void:
-	_enemies_alive -= 1
-	enemy_destroyed.emit()
-	if _enemies_alive <= 0:
-		wave_cleared.emit()
+func _edge_point(edge: String, n: int) -> Vector2:
+	var a: Rect2 = gm.call("arena_rect") as Rect2
+	var m: float = 50.0
+	match edge:
+		"top":
+			return Vector2(randf_range(a.position.x + 80.0, a.end.x - 80.0), a.position.y - m)
+		"bottom":
+			return Vector2(randf_range(a.position.x + 80.0, a.end.x - 80.0), a.end.y + m)
+		"left":
+			return Vector2(a.position.x - m, randf_range(a.position.y + 80.0, a.end.y - 80.0))
+		"right":
+			return Vector2(a.end.x + m, randf_range(a.position.y + 80.0, a.end.y - 80.0))
+		"sides":
+			return _edge_point("left" if n % 2 == 0 else "right", n)
+		"corners":
+			var corners: Array[Vector2] = [a.position - Vector2(m, m), Vector2(a.end.x + m, a.position.y - m), a.end + Vector2(m, m), Vector2(a.position.x - m, a.end.y + m)]
+			return corners[n % 4]
+	var edges: Array[String] = ["top", "bottom", "left", "right"]
+	return _edge_point(edges[randi() % 4], n)
