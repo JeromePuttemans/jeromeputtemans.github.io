@@ -1,0 +1,13 @@
+{
+	"default_language": "fr",
+	"round_time": 60,
+	"rounds_to_win": 2,
+	"roster": ["brio", "colosse", "libellule"],
+	"stages": {"brio": "atelier", "colosse": "fonderie", "libellule": "serre"},
+	"ai": [
+		{"reaction": 22, "block": 0.3, "anti_air": 0.2, "punish": 0.25, "combo": 0.35, "aggression": 0.35, "throw": 0.08, "special": 0.25},
+		{"reaction": 14, "block": 0.6, "anti_air": 0.5, "punish": 0.55, "combo": 0.7, "aggression": 0.5, "throw": 0.18, "special": 0.4},
+		{"reaction": 9, "block": 0.82, "anti_air": 0.8, "punish": 0.85, "combo": 0.92, "aggression": 0.6, "throw": 0.25, "special": 0.5},
+		{"reaction": 6, "block": 0.9, "anti_air": 0.9, "punish": 0.95, "combo": 1.0, "aggression": 0.65, "throw": 0.3, "special": 0.55}
+	]
+}
