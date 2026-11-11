@@ -1,0 +1,33 @@
+{
+	"default_language": "fr",
+
+	"cols": 12,
+	"rows": 20,
+	"hidden_rows": 3,
+	"cell": 32,
+
+	"gravity": [0.8, 0.7, 0.6, 0.5, 0.42, 0.35, 0.28, 0.22, 0.17, 0.13, 0.1, 0.08, 0.065, 0.05, 0.04],
+	"lines_per_level": 10,
+	"soft_drop_factor": 20.0,
+	"lock_delay": 0.5,
+	"lock_resets": 15,
+	"das": 0.17,
+	"arr": 0.05,
+	"next_count": 3,
+	"rise_start": 14,
+	"rise_min": 7,
+
+	"score_lines": [0, 100, 300, 500, 800],
+	"score_soft_drop": 1,
+	"score_hard_drop": 2,
+	"score_fusion_per_cell": 5,
+	"score_aplat_per_cell": 20,
+	"aplat_min_area": 4,
+	"sober_multiplier": 2,
+	"score_combo": 50,
+	"score_perfect": 2000,
+
+	"music_bpm": 112,
+	"music_bpm_per_level": 6,
+	"music_bpm_max": 172
+}
