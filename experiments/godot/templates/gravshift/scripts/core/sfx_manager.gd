@@ -12,7 +12,7 @@ extends Node
 #   like a charge building up.
 
 const MIX_RATE: int = 22050
-const POOL_SIZE: int = 20
+const POOL_SIZE: int = 24
 const VOLUME_DB: float = -8.0
 
 enum Wave { SINE, SQUARE, TRIANGLE, SAW }
@@ -28,11 +28,13 @@ func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	for i in POOL_SIZE:
 		var player := AudioStreamPlayer.new()
+		player.bus = "Master"
 		add_child(player)
 		_players.append(player)
 	_build_well_sounds()
 	_build_combat_sounds()
 	_build_ui_sounds()
+	_build_nova_sounds()
 
 func play(sound: String, pitch: float = 1.0, jitter: float = 0.05, volume_offset_db: float = 0.0) -> void:
 	if muted or not _streams.has(sound):
@@ -145,6 +147,66 @@ func _build_ui_sounds() -> void:
 	b = _buffer(0.06)                                  # Validate
 	_tone(b, 0.0, 0.05, 1200.0, 900.0, Wave.SINE, 0.16)
 	_add("ui_select", b, 0.04)
+
+func _build_nova_sounds() -> void:
+	var b: PackedFloat32Array = _buffer(1.2)           # Nova starts: deep rising suction
+	_tone(b, 0.0, 1.15, 60.0, 240.0, Wave.SAW, 0.12)
+	_tone(b, 0.0, 1.15, 120.0, 480.0, Wave.SINE, 0.18)
+	_noise(b, 0.0, 1.1, 0.2, 0.08)
+	_add("nova_charge", b, 0.5)
+	b = _buffer(1.3)                                   # Nova release: blast and bright chord
+	_noise(b, 0.0, 0.9, 0.6, 0.25)
+	_tone(b, 0.0, 0.9, 160.0, 40.0, Wave.SINE, 0.5)
+	for i in 3:
+		var f: float = 440.0 * pow(1.26, i)
+		_tone(b, 0.05, 1.1, f, f * 1.5, Wave.TRIANGLE, 0.08)
+	_add("nova_blast", b, 0.5)
+	b = _buffer(0.6)                                   # Nova ready: rising chime
+	for i in 3:
+		var f2: float = 880.0 * pow(1.335, i)
+		_tone(b, i * 0.08, 0.35, f2, f2, Wave.SINE, 0.12)
+		_tone(b, i * 0.08, 0.2, f2 * 2.0, f2 * 2.0, Wave.TRIANGLE, 0.03)
+	_add("nova_ready", b, 0.5)
+	b = _buffer(0.06)                                  # Shard collected: tiny sparkle
+	_tone(b, 0.0, 0.05, 2100.0, 2600.0, Wave.SINE, 0.09)
+	_add("shard", b, 0.03)
+	b = _buffer(0.12)                                  # Graze: airy swish
+	_noise(b, 0.0, 0.1, 0.12, 0.7)
+	_tone(b, 0.0, 0.08, 1800.0, 2400.0, Wave.SINE, 0.05)
+	_add("graze", b, 0.05)
+	b = _buffer(0.2)                                   # Heavy orb swallowed by the Nova
+	_tone(b, 0.0, 0.18, 300.0, 60.0, Wave.SINE, 0.25)
+	_add("swallow", b, 0.06)
+	b = _buffer(0.35)                                  # Siphon spits its pellets
+	_tone(b, 0.0, 0.3, 200.0, 500.0, Wave.SQUARE, 0.06)
+	_noise(b, 0.0, 0.2, 0.2, 0.3)
+	_add("siphon_fire", b, 0.2)
+	b = _buffer(0.06)                                  # Siphon absorbs a pellet
+	_tone(b, 0.0, 0.05, 500.0, 260.0, Wave.SINE, 0.07)
+	_add("siphon_absorb", b, 0.05)
+	b = _buffer(0.2)                                   # Lancer dash
+	_noise(b, 0.0, 0.18, 0.18, 0.5)
+	_tone(b, 0.0, 0.15, 500.0, 900.0, Wave.SAW, 0.03)
+	_add("dash", b, 0.08)
+	b = _buffer(1.0)                                   # Boss phase change: impact and rise
+	_noise(b, 0.0, 0.5, 0.5, 0.2)
+	_tone(b, 0.0, 0.5, 110.0, 40.0, Wave.SINE, 0.5)
+	_tone(b, 0.25, 0.7, 220.0, 660.0, Wave.SQUARE, 0.05)
+	_add("phase", b, 0.5)
+	b = _buffer(0.5)                                   # Heartbeat (last hull point)
+	_tone(b, 0.0, 0.12, 90.0, 50.0, Wave.SINE, 0.45)
+	_tone(b, 0.2, 0.12, 80.0, 45.0, Wave.SINE, 0.35)
+	_add("heartbeat", b, 0.4)
+	b = _buffer(0.15)                                  # Spawn warning: soft blip
+	_tone(b, 0.0, 0.12, 660.0, 520.0, Wave.TRIANGLE, 0.05)
+	_add("warp", b, 0.25)
+	b = _buffer(0.18)                                  # Multiplier level up
+	_tone(b, 0.0, 0.08, 990.0, 990.0, Wave.SQUARE, 0.04)
+	_tone(b, 0.07, 0.1, 1320.0, 1320.0, Wave.SQUARE, 0.04)
+	_add("chain_up", b, 0.1)
+	b = _buffer(0.08)                                  # Menu back
+	_tone(b, 0.0, 0.07, 900.0, 600.0, Wave.SINE, 0.12)
+	_add("ui_back", b, 0.04)
 
 func _buffer(duration: float) -> PackedFloat32Array:
 	var b := PackedFloat32Array()

@@ -3,9 +3,11 @@ extends Node
 # InputManager: registers the input actions at startup.
 # Letter keys use physical key codes, so the keys at the W/A/S/D positions
 # move the ship on any layout (Z/Q/S/D on an AZERTY keyboard).
-#   move     arrows, W A S D, d-pad, left stick
-#   well     Space, J, Shift (held), pad A or right trigger
+#   move     arrows, W A S D, d-pad, left stick (menus: up and down)
+#   well     Space, J, Shift, left mouse button (held), pad A or right trigger
+#   nova     E, K, right mouse button, pad X, left shoulder or left trigger
 #   pause    Esc, P, pad Start
+#   confirm  Space, Enter, pad A (menus)
 #   choose   1 2 3 on the upgrade screen; L language, M sound on the title
 
 const DEADZONE: float = 0.35
@@ -15,11 +17,12 @@ func _ready() -> void:
 	_action("move_right", [KEY_RIGHT, KEY_D], [JOY_BUTTON_DPAD_RIGHT], JOY_AXIS_LEFT_X, 1.0)
 	_action("move_up", [KEY_UP, KEY_W], [JOY_BUTTON_DPAD_UP], JOY_AXIS_LEFT_Y, -1.0)
 	_action("move_down", [KEY_DOWN, KEY_S], [JOY_BUTTON_DPAD_DOWN], JOY_AXIS_LEFT_Y, 1.0)
-	_action("well", [KEY_SPACE, KEY_J, KEY_SHIFT], [JOY_BUTTON_A, JOY_BUTTON_RIGHT_SHOULDER], JOY_AXIS_TRIGGER_RIGHT, 1.0)
+	_action("well", [KEY_SPACE, KEY_J, KEY_SHIFT], [JOY_BUTTON_A, JOY_BUTTON_RIGHT_SHOULDER], JOY_AXIS_TRIGGER_RIGHT, 1.0, MOUSE_BUTTON_LEFT)
+	_action("nova", [KEY_E, KEY_K], [JOY_BUTTON_X, JOY_BUTTON_LEFT_SHOULDER], JOY_AXIS_TRIGGER_LEFT, 1.0, MOUSE_BUTTON_RIGHT)
 	_action("pause", [KEY_ESCAPE, KEY_P], [JOY_BUTTON_START], JOY_AXIS_INVALID, 0.0)
 	_action("confirm", [KEY_SPACE, KEY_ENTER, KEY_KP_ENTER], [JOY_BUTTON_A], JOY_AXIS_INVALID, 0.0)
 
-func _action(action: String, keys: Array, buttons: Array, axis: JoyAxis, direction: float) -> void:
+func _action(action: String, keys: Array, buttons: Array, axis: JoyAxis, direction: float, mouse: MouseButton = MOUSE_BUTTON_NONE) -> void:
 	if InputMap.has_action(action):
 		InputMap.erase_action(action)
 	InputMap.add_action(action, DEADZONE)
@@ -36,6 +39,10 @@ func _action(action: String, keys: Array, buttons: Array, axis: JoyAxis, directi
 		motion.axis = axis
 		motion.axis_value = direction
 		InputMap.action_add_event(action, motion)
+	if mouse != MOUSE_BUTTON_NONE:
+		var click := InputEventMouseButton.new()
+		click.button_index = mouse
+		InputMap.action_add_event(action, click)
 
 func move_vector() -> Vector2:
 	var v := Vector2(Input.get_axis("move_left", "move_right"), Input.get_axis("move_up", "move_down"))
@@ -43,3 +50,6 @@ func move_vector() -> Vector2:
 
 func well_held() -> bool:
 	return Input.is_action_pressed("well")
+
+func nova_pressed() -> bool:
+	return Input.is_action_just_pressed("nova")

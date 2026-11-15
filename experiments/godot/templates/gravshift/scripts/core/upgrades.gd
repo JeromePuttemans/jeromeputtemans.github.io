@@ -12,8 +12,10 @@ extends RefCounted
 #   pierce    slings go through one more enemy   (max 2)
 #   grinder   orbiting bullets are not used up   (max 1)
 #   recoil    release shockwave +60 % and stuns  (max 1)
+#   magnet    shard magnet +1 x base, Nova +50 %  (max 2)
+#   supernova Nova +40 % longer, +50 % damage    (max 2)
 
-const MAX_LEVEL: Dictionary = {orbit = 3, horizon = 3, sling = 3, tank = 3, twin = 3, hull = 3, shrapnel = 1, pierce = 2, grinder = 1, recoil = 1}
+const MAX_LEVEL: Dictionary = {orbit = 3, horizon = 3, sling = 3, tank = 3, twin = 3, hull = 3, shrapnel = 1, pierce = 2, grinder = 1, recoil = 1, magnet = 2, supernova = 2}
 
 static func offer(pool: Array, levels: Dictionary, count: int) -> Array[String]:
 	var open: Array[String] = []
@@ -27,7 +29,11 @@ static func offer(pool: Array, levels: Dictionary, count: int) -> Array[String]:
 		out.append(open[i])
 	return out
 
-static func apply(id: String, well: GravityField, ship: Node, levels: Dictionary) -> void:
+## Highest level of an upgrade.
+static func max_level(id: String) -> int:
+	return int(MAX_LEVEL.get(id, 1))
+
+static func apply(id: String, well: GravityField, ship: Node, pickups: Node, levels: Dictionary) -> void:
 	levels[id] = int(levels.get(id, 0)) + 1
 	match id:
 		"orbit":
@@ -54,3 +60,9 @@ static func apply(id: String, well: GravityField, ship: Node, levels: Dictionary
 			well.grinder = true
 		"recoil":
 			well.recoil = 1.6
+		"magnet":
+			pickups.set("magnet_mult", float(pickups.get("magnet_mult")) + 1.0)
+			well.nova_gain += 0.5
+		"supernova":
+			well.nova_length += 0.4
+			well.nova_power += 0.5

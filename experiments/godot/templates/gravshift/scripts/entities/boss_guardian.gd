@@ -2,8 +2,10 @@ extends EnemyBase
 
 # Guardian (sector 5): sweeps the top of the arena behind three rotating
 # shield arcs that stop the ship's shots (slings included: aim through the
-# gaps, or let the homing find them). Fires rings with two gaps and aimed
-# heavy orbs; below half health it adds a spiral and calls drones.
+# gaps, or let the homing find them). Fires rings with two gaps (its core
+# glows for 0.4 s before each ring) and aimed heavy orbs; below half
+# health it enters phase 2 (announced by game_manager.boss_phase), adds a
+# spiral and calls drones.
 
 const SHIELD_ARCS: int = 3
 const ARC_SPAN: float = 1.1
@@ -13,9 +15,11 @@ var _heavy_t: float = 3.0
 var _spiral_t: float = 0.0
 var _spiral: float = 0.0
 var _call_t: float = 6.0
+var _phase: int = 1
 
 func _ready() -> void:
 	boss = true
+	sides = 6
 
 func phase2() -> bool:
 	return hp < max_hp * 0.5
@@ -26,6 +30,9 @@ func _behave(delta: float) -> void:
 	steer((target - position).limit_length(speed * 2.0), 200.0, delta)
 	if not entered:
 		return
+	if phase2() and _phase == 1:
+		_phase = 2
+		gm.call("boss_phase", self, 2)
 	_ring_t -= delta
 	if _ring_t <= 0.0:
 		_ring_t = 1.7 if not phase2() else 1.3
@@ -69,15 +76,12 @@ func blocks_shot(p: Vector2) -> bool:
 	return false
 
 func _shape(c: Color) -> void:
-	var pts: Array = []
-	for k in 6:
-		pts.append(Vector2.RIGHT.rotated(TAU * k / 6.0 + _time * 0.3) * radius)
-	polygon(pts, c, 4.0)
-	var inner: Array = []
-	for k in 6:
-		inner.append(Vector2.RIGHT.rotated(TAU * k / 6.0 - _time * 0.6) * radius * 0.55)
-	polygon(inner, c, 3.0)
-	draw_circle(Vector2.ZERO, 10.0 + sin(_time * 5.0) * 3.0, c)
+	polygon(ngon(6, radius, _time * 0.3), c, 4.0)
+	polygon(ngon(6, radius * 0.55, -_time * 0.6), c, 3.0, false)
+	var warm: float = clampf(1.0 - _ring_t / 0.4, 0.0, 1.0) if entered else 0.0
+	Effects.put(self, Vector2.ZERO, 22.0 + 30.0 * warm, Color(0.6, 0.95, 1.0, 0.3 + 0.5 * warm))
+	draw_circle(Vector2.ZERO, 10.0 + sin(_time * 5.0) * 3.0 + 5.0 * warm, c)
 	for k in SHIELD_ARCS:
 		var start: float = _time * 0.8 + TAU * k / SHIELD_ARCS
 		draw_arc(Vector2.ZERO, radius + 18.0, start, start + ARC_SPAN, 16, Color(0.6, 0.95, 1.0, 0.9), 6.0)
+		draw_arc(Vector2.ZERO, radius + 18.0, start, start + ARC_SPAN, 16, Color(1.0, 1.0, 1.0, 0.5), 2.0)

@@ -64,13 +64,13 @@ def test_project_structure():
     # Every node is built by code (CONVENTION.md): main.tscn is the only scene.
     for name in ("game_manager", "input_manager", "sfx_manager", "space_grid",
                  "effects", "bullet_field", "shots", "gravity_field", "spawner",
-                 "combat", "upgrades"):
+                 "combat", "upgrades", "pickups", "post_fx", "music"):
         required.append(os.path.join(SCRIPTS_DIR, "core", f"{name}.gd"))
-    for name in ("hud", "screens"):
+    for name in ("hud", "screens", "ui_kit"):
         required.append(os.path.join(SCRIPTS_DIR, "ui", f"{name}.gd"))
     for name in ("player", "enemy_base", "enemy_drone", "enemy_gunner",
                  "enemy_spinner", "enemy_lancer", "enemy_brute", "enemy_mine",
-                 "boss_guardian", "boss_singularity"):
+                 "enemy_swarm", "enemy_siphon", "boss_guardian", "boss_singularity"):
         required.append(os.path.join(SCRIPTS_DIR, "entities", f"{name}.gd"))
     for path in required:
         if not os.path.exists(path):
@@ -251,7 +251,7 @@ def test_main_tscn():
     gm_path = os.path.join(SCRIPTS_DIR, "core", "game_manager.gd")
     with open(gm_path, encoding="utf-8") as fh:
         gm_content = fh.read()
-    for required in ("World", "UI", "HUD", "Transitions"):
+    for required in ("World", "PostFX", "UI", "HUD", "Transitions"):
         if f'"{required}"' not in gm_content:
             fail(f"T11 game_manager.gd does not build the node: {required}")
     with open("project.godot", encoding="utf-8") as fh:

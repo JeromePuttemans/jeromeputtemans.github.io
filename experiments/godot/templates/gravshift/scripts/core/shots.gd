@@ -3,12 +3,13 @@ extends Node2D
 # Shots: the ship's projectiles, in packed arrays.
 #   BOLT   automatic fire, weak, slightly homing
 #   SLING  a captured bullet flung back at release, strong and homing
+#   NOVA   a sling released by the Nova (violet, pierces one more enemy)
 # HOMING: every frame the velocity turns toward the nearest enemy within
 #   HOMING_RANGE by at most homing x delta radians: the shot curves on its
 #   way but cannot make a U-turn. PIERCE lets a sling go through that many
 #   extra enemies; "explosive" slings burst on impact (upgrade).
 
-enum Kind { BOLT, SLING }
+enum Kind { BOLT, SLING, NOVA }
 
 const HOMING_RANGE: float = 380.0
 const LIFETIME: float = 1.8
@@ -123,7 +124,8 @@ func _draw() -> void:
 			draw_line(_pos[i] - dir * 14.0, _pos[i], Color(0.35, 0.85, 1.0, 0.7), 2.5)
 			draw_circle(_pos[i], 2.2, Color(0.8, 0.97, 1.0))
 		else:
-			Effects.put(self, _pos[i], 16.0, Color(0.3, 0.9, 1.0, 0.6))
+			var c: Color = Color(0.5, 0.95, 1.0) if _kind[i] == Kind.SLING else Color(0.8, 0.65, 1.0)
+			Effects.put(self, _pos[i], 16.0, Color(c, 0.6))
 			for k in 4:
-				draw_circle(_pos[i] - dir * k * 7.0, 5.0 - k * 1.0, Color(0.5, 0.95, 1.0, 0.9 - k * 0.2))
+				draw_circle(_pos[i] - dir * k * 7.0, 5.0 - k * 1.0, Color(c, 0.9 - k * 0.2))
 			draw_circle(_pos[i], 2.5, Color.WHITE)

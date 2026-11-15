@@ -8,8 +8,11 @@ extends Node
 #   enemy -> enemy       two enemies meeting faster than crash_speed both
 #                        take crash_damage x relative speed / crash_speed:
 #                        the well turns enemies into projectiles
-#   bullets -> ship      the ship's small hitbox (player_radius)
-#   enemy -> ship        contact damages the ship and the enemy
+#   bullets -> ship      the ship's small hitbox (player_radius); bullets
+#                        leaving the graze ring around it count as grazes
+#   enemy -> ship        contact damages the ship and the enemy; during the
+#                        Nova the ship is untouchable and crushes what it
+#                        touches (bosses excepted)
 
 var gm: Node = null
 var _g: Dictionary = {}
@@ -29,7 +32,7 @@ func _shots_vs_enemies(enemies: Array) -> void:
 	var i: int = int(shots.call("count")) - 1
 	while i >= 0:
 		var p: Vector2 = shots.call("position_of", i) as Vector2
-		var sling: bool = int(shots.call("kind_of", i)) == 1
+		var sling: bool = int(shots.call("kind_of", i)) >= 1
 		for e in enemies:
 			var en: EnemyBase = e as EnemyBase
 			if not en.alive or not en.entered or int(shots.call("last_hit", i)) == en.uid:
@@ -91,16 +94,26 @@ func _ship_hits(enemies: Array) -> void:
 	var core: Vector2 = ship.position
 	var r: float = float(ship.get("radius"))
 	var safe: bool = float(ship.get("invulnerable")) > 0.0
+	var well: GravityField = gm.call("well_node") as GravityField
 	var bullets: Node = gm.call("bullets_node") as Node
 	if not safe and bool(bullets.call("check_player", core, r)):
 		gm.call("ship_hit")
 		return
+	var grazed: Array = bullets.call("graze", core, r, float(_g.get("graze_radius", 24.0)), not well.active) as Array
+	if not safe:
+		for g in grazed:
+			var v: Vector3 = g as Vector3
+			gm.call("on_graze", Vector2(v.x, v.y), int(v.z))
 	for e in enemies:
 		var en: EnemyBase = e as EnemyBase
 		if not en.alive or not en.entered:
 			continue
 		var rr: float = en.radius * 0.8 + r
 		if core.distance_squared_to(en.position) < rr * rr:
+			if well.nova_active():
+				if not en.boss:
+					gm.call("nova_crush", en)
+				continue
 			if not safe:
 				gm.call("ship_hit")
 				if not en.boss:

@@ -12,15 +12,34 @@ extends Node2D
 #   twinkling stars; then one polyline per row and per column, each vertex
 #   coloured by its displacement, so the deformation glows where gravity is
 #   strong.
+# THEMES: each sector has its own pair of colours (resting lines, bent
+#   lines) and nebula tint, from cold blue in sector 1 to violet and
+#   magenta near the Singularity; set_sector() fades to the new pair in
+#   about two seconds.
 
 const SPACING: float = 40.0
 const SPRING: float = 38.0
 const DAMPING: float = 6.0
 const MAX_OFFSET: float = 34.0
 
+const THEMES: Array = [
+	[Color(0.16, 0.22, 0.5, 0.32), Color(0.3, 0.95, 1.0, 0.8), Color(0.25, 0.1, 0.55)],
+	[Color(0.1, 0.3, 0.45, 0.32), Color(0.35, 1.0, 0.85, 0.8), Color(0.05, 0.35, 0.45)],
+	[Color(0.2, 0.17, 0.52, 0.32), Color(0.55, 0.75, 1.0, 0.8), Color(0.3, 0.15, 0.6)],
+	[Color(0.08, 0.27, 0.38, 0.32), Color(0.4, 1.0, 0.75, 0.8), Color(0.05, 0.3, 0.35)],
+	[Color(0.12, 0.25, 0.55, 0.34), Color(0.5, 0.9, 1.0, 0.85), Color(0.1, 0.25, 0.6)],
+	[Color(0.27, 0.13, 0.47, 0.32), Color(0.8, 0.65, 1.0, 0.8), Color(0.4, 0.1, 0.55)],
+	[Color(0.3, 0.1, 0.45, 0.32), Color(0.95, 0.6, 1.0, 0.8), Color(0.5, 0.1, 0.5)],
+	[Color(0.36, 0.1, 0.36, 0.32), Color(1.0, 0.6, 0.85, 0.8), Color(0.55, 0.1, 0.4)],
+	[Color(0.38, 0.09, 0.26, 0.32), Color(1.0, 0.55, 0.75, 0.8), Color(0.55, 0.08, 0.3)],
+	[Color(0.3, 0.06, 0.34, 0.34), Color(1.0, 0.45, 0.95, 0.85), Color(0.6, 0.05, 0.5)],
+]
+
 var attractors: Array[Dictionary] = []
 var base_color: Color = Color(0.16, 0.22, 0.5, 0.32)
 var hot_color: Color = Color(0.3, 0.95, 1.0, 0.8)
+var nebula_tint: Color = Color(0.25, 0.1, 0.55)
+var _theme: Array = THEMES[0]
 
 var _stars: Array[Vector4] = []   # x, y, size, twinkle phase
 var _time: float = 0.0
@@ -49,6 +68,10 @@ func setup(size: Vector2) -> void:
 	for k in 150:
 		_stars.append(Vector4(rng.randf() * size.x, rng.randf() * size.y, rng.randf_range(0.6, 1.8), rng.randf() * TAU))
 
+## Fades to the colours of sector n (1-based; 0 = title).
+func set_sector(n: int) -> void:
+	_theme = THEMES[clampi(n - 1, 0, THEMES.size() - 1)]
+
 func impulse(center: Vector2, strength: float, radius: float) -> void:
 	for i in _pos.size():
 		var d: Vector2 = _pos[i] - center
@@ -59,6 +82,10 @@ func impulse(center: Vector2, strength: float, radius: float) -> void:
 func step(delta: float) -> void:
 	var dt: float = minf(delta, 1.0 / 30.0)
 	_time += delta
+	var fade: float = minf(delta * 1.5, 1.0)
+	base_color = base_color.lerp(_theme[0] as Color, fade)
+	hot_color = hot_color.lerp(_theme[1] as Color, fade)
+	nebula_tint = nebula_tint.lerp(_theme[2] as Color, fade)
 	for i in _pos.size():
 		var p: Vector2 = _pos[i]
 		var force: Vector2 = (_rest[i] - p) * SPRING - _vel[i] * DAMPING
@@ -83,9 +110,9 @@ func _color(i: int) -> Color:
 
 func _draw() -> void:
 	var nebulas: Array = [
-		[Vector2(260.0, 180.0), 520.0, Color(0.25, 0.1, 0.55, 0.13)],
+		[Vector2(260.0, 180.0), 520.0, Color(nebula_tint, 0.13)],
 		[Vector2(1040.0, 560.0), 600.0, Color(0.05, 0.3, 0.55, 0.12)],
-		[Vector2(760.0, 120.0), 420.0, Color(0.5, 0.1, 0.4, 0.07)],
+		[Vector2(760.0, 120.0), 420.0, Color(nebula_tint.lerp(Color(0.5, 0.1, 0.4), 0.5), 0.08)],
 	]
 	for n in nebulas:
 		var drift := Vector2(sin(_time * 0.05 + n[1]), cos(_time * 0.04 + n[1])) * 30.0

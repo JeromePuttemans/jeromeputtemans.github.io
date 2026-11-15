@@ -2,9 +2,12 @@ extends EnemyBase
 
 # Gunner: keeps about 300 px from the ship while circling it, and fires a
 # fan of three aimed pellets every fire_interval seconds: ammunition for
-# the well.
+# the well. Its muzzle glows brighter during the last 0.5 s of the reload.
 
 const RANGE: float = 300.0
+
+func _ready() -> void:
+	sides = 3
 
 func _behave(delta: float) -> void:
 	var to_ship: Vector2 = ship() - position
@@ -24,3 +27,6 @@ func _shape(c: Color) -> void:
 	var pts: Array = [Vector2.RIGHT.rotated(a) * radius, Vector2.RIGHT.rotated(a + 2.4) * radius, Vector2.RIGHT.rotated(a + PI) * radius * 0.4, Vector2.RIGHT.rotated(a - 2.4) * radius]
 	polygon(pts, c, 2.5)
 	draw_line(Vector2.ZERO, dir * radius * 1.3, c, 2.0)
+	var warm: float = clampf((charge() - 0.7) / 0.3, 0.0, 1.0)
+	if warm > 0.0:
+		Effects.put(self, dir * radius * 1.3, 6.0 + 12.0 * warm, Color(1.0, 0.6, 0.2, 0.8 * warm))

@@ -7,6 +7,7 @@ extends EnemyBase
 #   phase 1 (above 2/3 health)   two counter-rotating spirals
 #   phase 2 (above 1/3)          rings and aimed heavy orbs
 #   phase 3                      everything, plus mines and drones
+# Each change of phase is announced (game_manager.boss_phase).
 
 const PULL: Array[float] = [130.0, 190.0, 250.0]
 
@@ -15,9 +16,11 @@ var _spiral: float = 0.0
 var _ring_t: float = 1.0
 var _heavy_t: float = 2.5
 var _call_t: float = 5.0
+var _seen_phase: int = 0
 
 func _ready() -> void:
 	boss = true
+	sides = 10
 
 func phase() -> int:
 	var r: float = hp / max_hp
@@ -38,6 +41,9 @@ func _behave(delta: float) -> void:
 	if not entered:
 		return
 	var p: int = phase()
+	if p > _seen_phase:
+		_seen_phase = p
+		gm.call("boss_phase", self, p + 1)
 	if p != 1:
 		_spiral_t -= delta
 		if _spiral_t <= 0.0:
@@ -73,9 +79,10 @@ func _shape(c: Color) -> void:
 		var r: float = radius * (1.0 + k * 0.35)
 		var start: float = _time * (1.2 - k * 0.2) * (1.0 if k % 2 == 0 else -1.0)
 		draw_arc(Vector2.ZERO, r, start, start + PI * 1.3, 40, Color(c, 0.75 - k * 0.15), 5.0 - k)
-	for k in 10:
-		var a: float = _time * 1.5 + TAU * k / 10.0
+	for k in 12:
+		var a: float = _time * 1.5 + TAU * k / 12.0
 		var p: Vector2 = Vector2.RIGHT.rotated(a) * radius * (1.25 + 0.15 * sin(_time * 3.0 + k))
 		draw_circle(p, 3.0, Color(1.0, 0.8, 1.0, 0.8))
-	draw_circle(Vector2.ZERO, radius * 0.55, Color(0.02, 0.0, 0.04))
-	draw_arc(Vector2.ZERO, radius * 0.55, 0.0, TAU, 40, c.lightened(0.3), 3.0)
+	draw_circle(Vector2.ZERO, radius * 0.62, Color(0.0, 0.0, 0.02).lerp(Color.WHITE, _flash * 0.4))
+	draw_arc(Vector2.ZERO, radius * 0.62, 0.0, TAU, 40, c.lightened(0.3), 3.0)
+	draw_arc(Vector2.ZERO, radius * 0.7, -_time * 2.0, -_time * 2.0 + PI * 0.5, 16, Color(1.0, 1.0, 1.0, 0.6), 2.0)

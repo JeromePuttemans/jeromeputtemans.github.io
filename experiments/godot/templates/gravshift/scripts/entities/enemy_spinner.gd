@@ -6,6 +6,9 @@ extends EnemyBase
 var _anchor: Vector2 = Vector2.ZERO
 var _spiral: float = 0.0
 
+func _ready() -> void:
+	sides = 6
+
 func _behave(delta: float) -> void:
 	if _anchor == Vector2.ZERO:
 		var arena: Rect2 = gm.call("arena_rect") as Rect2
@@ -18,10 +21,8 @@ func _behave(delta: float) -> void:
 
 func _shape(c: Color) -> void:
 	var a: float = _time * 2.0
-	var pts: Array = []
-	for k in 6:
-		pts.append(Vector2.RIGHT.rotated(a + TAU * k / 6.0) * radius)
-	polygon(pts, c, 2.5)
+	polygon(ngon(6, radius, a), c, 2.5)
 	for k in 3:
-		var arm: float = -a * 1.5 + TAU * k / 3.0
-		draw_line(Vector2.ZERO, Vector2.RIGHT.rotated(arm) * radius * 0.8, c, 2.0)
+		var arm: float = _spiral + TAU * k / 3.0
+		draw_line(Vector2.ZERO, Vector2.RIGHT.rotated(arm) * radius * 0.85, c, 2.5)
+	polygon(ngon(6, radius * 0.4, -a), c, 1.5)
