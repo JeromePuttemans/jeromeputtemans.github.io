@@ -34,6 +34,12 @@ var item_spawns:   Array[Dictionary] = []   # {pos: Vector2i, item_id: String}
 var items:         Dictionary        = {}   # Vector2i -> item definition (Dictionary)
 var floor_number:  int               = 1
 var is_last_floor: bool              = false
+var stairs_locked: bool              = true    # opened by the floor's key
+var barrels:       Dictionary        = {}      # Vector2i -> true; block walking, not sight
+var torches:       Array[Vector2i]   = []      # wall cells holding a torch (light)
+var decor:         Dictionary        = {}      # Vector2i -> "bones" (looks only)
+var footprints:    Dictionary        = {}      # Vector2i -> {turn, dir}: the thief's tracks
+var bone_piles:    Dictionary        = {}      # Vector2i -> {turns, data, hp}: fallen skeletons
 
 func _init(w: int, h: int) -> void:
 	width  = w
@@ -61,8 +67,13 @@ func set_tile(pos: Vector2i, type: TileType) -> void:
 func in_bounds(pos: Vector2i) -> bool:
 	return pos.x >= 0 and pos.x < width and pos.y >= 0 and pos.y < height
 
-## A tile is walkable if it is not a wall (floor or stairs).
+## A tile is walkable if it is not a wall (floor or stairs) and holds no
+## barrel.
 func is_walkable(pos: Vector2i) -> bool:
+	return get_tile(pos) != TileType.WALL and not barrels.has(pos)
+
+## Like is_walkable, but a barrel counts as floor (vision, wall faces).
+func is_open(pos: Vector2i) -> bool:
 	return get_tile(pos) != TileType.WALL
 
 ## True for a wall that touches at least one walkable tile (8 neighbours).
@@ -72,7 +83,7 @@ func is_wall_face(pos: Vector2i) -> bool:
 		return false
 	for dx in range(-1, 2):
 		for dy in range(-1, 2):
-			if (dx != 0 or dy != 0) and is_walkable(pos + Vector2i(dx, dy)):
+			if (dx != 0 or dy != 0) and is_open(pos + Vector2i(dx, dy)):
 				return true
 	return false
 
@@ -81,5 +92,5 @@ func reveal_all() -> void:
 	for x in width:
 		for y in height:
 			var p := Vector2i(x, y)
-			if is_walkable(p) or is_wall_face(p):
+			if is_open(p) or is_wall_face(p):
 				explored[x][y] = true

@@ -1,5 +1,5 @@
 {
-	"default_language": "en",
+	"default_language": "fr",
 
 	"dungeon_width": 50,
 	"dungeon_height": 30,
@@ -30,13 +30,35 @@
 
 	"enemies_per_room_min": 0,
 	"enemies_per_room_max": 2,
-	"enemies_bonus_per_floor": 0.25,
+	"enemies_bonus_per_floor": 0.5,
 	"enemy_hp_per_floor": 0.12,
-	"enemy_attack_per_floor": 0.75,
+	"enemy_attack_per_floor": 1.0,
 	"enemy_safe_radius": 6,
 	"items_per_floor_min": 3,
 	"items_per_floor_max": 5,
 	"alert_memory_turns": 8,
+
+	"thief_flee_range": 7,
+	"thief_flee_steps": 9,
+	"thief_tired_turns": 4,
+	"thief_dodge_chance": 0.5,
+	"key_hear_distance": 18,
+	"footprint_turns": 40,
+
+	"daggers_start": 2,
+	"daggers_max": 5,
+	"dagger_range": 6,
+	"dagger_attack_bonus": -2,
+
+	"barrels_per_floor_min": 4,
+	"barrels_per_floor_max": 8,
+	"barrel_loot_chance": 0.3,
+	"torch_chance_per_room": 0.75,
+	"torch_light_radius": 4.5,
+
+	"slime_split_min_hp": 4,
+	"skeleton_revive_turns": 7,
+	"skeleton_revive_ratio": 0.6,
 
 	"shake_decay": 2.2,
 	"shake_max_offset": 9.0,

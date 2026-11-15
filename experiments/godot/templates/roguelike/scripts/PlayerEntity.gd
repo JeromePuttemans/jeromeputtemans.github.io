@@ -24,12 +24,15 @@ var energy_max:     int   = 0
 var crit_chance:    float = 0.0
 var inventory:      Array[Dictionary] = []
 var inventory_size: int   = 0
+var has_key:        bool  = false   # the floor's key, used up by the stairs grille
+var daggers:        int   = 0       # throwing daggers carried
+var daggers_max:    int   = 0
 
 func _init() -> void:
 	id             = "player"
 	display_name   = "Player"
-	glyph          = "@"
-	color          = Color("eef4ff")
+	sprite         = "player"
+	color          = Color("6fd3dc")
 	hp_max         = ConfigManager.get_int("player_hp_max", 1)
 	hp             = hp_max
 	attack         = ConfigManager.get_int("player_attack", 1)
@@ -38,6 +41,8 @@ func _init() -> void:
 	energy_max     = ConfigManager.get_int("energy_max", 0)
 	energy         = energy_max
 	inventory_size = ConfigManager.get_int("inventory_size", 0)
+	daggers        = ConfigManager.get_int("daggers_start", 0)
+	daggers_max    = ConfigManager.get_int("daggers_max", 0)
 	xp_next        = xp_needed(level)
 
 static func xp_needed(lvl: int) -> int:

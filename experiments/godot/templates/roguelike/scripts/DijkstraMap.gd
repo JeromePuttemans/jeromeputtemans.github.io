@@ -59,6 +59,62 @@ static func compute(dungeon: DungeonData, origin: Vector2i, max_dist: int) -> Di
 			queue.append(n)
 	return m
 
+## Safety map for a fleeing creature (Brogue's technique): every reachable
+## cell starts at -1.2 x its distance to the player, then values relax so
+## that no cell is more than one step above a neighbour. Walking down this
+## map leads away from the player but towards open escape routes instead of
+## the nearest dead end (a plain "maximise the distance" runs into corners).
+## Values are shifted to stay positive; unreachable cells keep -1.
+static func flee(from_map: DijkstraMap) -> DijkstraMap:
+	var m := DijkstraMap.new()
+	m.width = from_map.width
+	m.height = from_map.height
+	m.dist.resize(m.width * m.height)
+	m.dist.fill(-1)
+	var top: int = 0
+	for d in from_map.dist:
+		top = maxi(top, d)
+	var shift: int = int(ceil(top * 1.2)) + 2
+	var buckets: Dictionary = {}
+	for i in from_map.dist.size():
+		var d: int = from_map.dist[i]
+		if d < 0:
+			continue
+		var v: int = shift - int(round(d * 1.2))
+		m.dist[i] = v
+		if not buckets.has(v):
+			buckets[v] = []
+		(buckets[v] as Array).append(i)
+	var keys: Array = buckets.keys()
+	keys.sort()
+	var level: int = 0
+	var max_level: int = shift + top + 2
+	if keys.is_empty():
+		return m
+	level = int(keys[0])
+	while level <= max_level:
+		if buckets.has(level):
+			var list: Array = buckets[level]
+			var k: int = 0
+			while k < list.size():
+				var i: int = int(list[k])
+				k += 1
+				if m.dist[i] != level:
+					continue
+				var p := Vector2i(i % m.width, floori(float(i) / m.width))
+				for dir in DIRS:
+					var n: Vector2i = p + dir
+					if n.x < 0 or n.y < 0 or n.x >= m.width or n.y >= m.height:
+						continue
+					var j: int = n.y * m.width + n.x
+					if m.dist[j] > level + 1:
+						m.dist[j] = level + 1
+						if not buckets.has(level + 1):
+							buckets[level + 1] = []
+						(buckets[level + 1] as Array).append(j)
+		level += 1
+	return m
+
 func get_dist(pos: Vector2i) -> int:
 	if pos.x < 0 or pos.y < 0 or pos.x >= width or pos.y >= height:
 		return -1

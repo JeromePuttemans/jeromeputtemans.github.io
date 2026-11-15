@@ -10,15 +10,33 @@
 #   PLAYER    -> VICTORY   (player takes the exit portal of the last floor)
 #
 # WHAT COSTS A TURN:
-#   move, attack (bump into an enemy), wait, use an item.
+#   move, attack (bump into an enemy), break a barrel (bump into it), wait,
+#   use an item, throw a dagger.
 #   Free: bumping into a wall, dropping an item, taking the stairs.
+#
+# THE KEY: the stairs of every floor are closed by a grille. On floors 1 to
+#   N-1 a key thief carries the key: he wanders between rooms, runs away as
+#   soon as he sees you (down a safety map that leads to escape routes),
+#   gets out of breath after thief_flee_steps steps and must rest
+#   thief_tired_turns turns, the only time daggers cannot miss him (he
+#   dodges thief_dodge_chance of them while running). Three ways to find
+#   him: you hear his keys when
+#   he is within key_hear_distance steps (direction shown around you, and
+#   in the log the first time), he leaves fresh footprints, and throwing
+#   daggers reaches him from afar. He drops the key when he dies; walking
+#   onto the stairs with it opens the grille. On the last floor the Warden
+#   carries the key of the portal.
 #
 # TWO KINDS OF SIGNALS:
 #   state signals   run_started, dungeon_ready, turn_ended, stats_changed, message_added,
 #                   player_died, player_won: the HUD refreshes from them.
 #   event signals   entity_moved, entity_attacked, entity_died,
 #                   projectile_fired, enemy_alerted, item_picked, item_used,
-#                   spell_hit, player_leveled, wall_bumped: one per thing
+#                   spell_hit, player_leveled, wall_bumped, key_dropped,
+#                   key_picked, stairs_unlocked, stairs_refused,
+#                   dagger_thrown, dagger_dodged, barrel_broken, enemy_split,
+#                   bones_crushed, skeleton_rose, thief_panicked,
+#                   thief_tired, keys_heard: one per thing
 #                   that HAPPENED. DungeonView turns them into animations,
 #                   particles, sounds and shakes. The logic resolves
 #                   instantly; the view catches up visually.
@@ -49,6 +67,19 @@ signal item_used(item: Dictionary, targets: Array)
 signal spell_hit(target: Entity, damage: int)
 signal player_leveled(level: int)
 signal wall_bumped(direction: Vector2i)
+signal key_dropped(pos: Vector2i)
+signal key_picked(pos: Vector2i)
+signal stairs_unlocked(pos: Vector2i)
+signal stairs_refused(pos: Vector2i)
+signal dagger_thrown(from: Vector2i, to: Vector2i)
+signal dagger_dodged(enemy: EnemyEntity)
+signal barrel_broken(pos: Vector2i)
+signal enemy_split(child: EnemyEntity, from: Vector2i)
+signal bones_crushed(pos: Vector2i)
+signal skeleton_rose(enemy: EnemyEntity)
+signal thief_panicked(thief: EnemyEntity)
+signal thief_tired(thief: EnemyEntity)
+signal keys_heard(strength: float)
 
 var phase:         Phase = Phase.PLAYER
 var current_floor: int   = 1
@@ -65,9 +96,16 @@ var enemies: Array[EnemyEntity] = []
 var enemy_positions: Dictionary = {}   # { Vector2i: EnemyEntity }
 var visible: Array = []                # 2D bool [x][y], current FOV
 var rng := RandomNumberGenerator.new()
+var thief: EnemyEntity = null          # the key thief of this floor, while alive
+var key_hint := Vector2.ZERO           # direction of the jingling keys (zero = not heard)
+var key_hint_strength: float = 0.0     # 1 next to you, 0 at the limit of hearing
+var keys_found: int = 0
+var daggers_thrown: int = 0
 
 var _hunger_warned: bool = false
 var _starve_warned: bool = false
+var _heard_once: bool = false
+var _jingle_turn: int = 0
 
 # =============================================================================
 # PUBLIC API
@@ -83,22 +121,29 @@ func new_game(seed_value: int = -1) -> void:
 	current_floor  = 1
 	turn           = 0
 	kills          = 0
+	keys_found     = 0
+	daggers_thrown = 0
 	death_killer   = null
 	_hunger_warned = false
 	_starve_warned = false
 	player = PlayerEntity.new()
 	run_started.emit()
-	_generate_floor()
 	log_msg(StringManager.t("welcome", {total = total_floors}), "info")
+	_generate_floor()
+	log_msg(StringManager.t("key_thief"), "hint")
 
 ## One player action. direction = movement delta, Vector2i.ZERO = wait.
 func player_action(direction: Vector2i) -> void:
 	if phase != Phase.PLAYER:
 		return
 	if direction != Vector2i.ZERO:
+		if direction.x != 0:
+			player.facing = signi(direction.x)
 		var target_pos: Vector2i = player.grid_pos + direction
 		if enemy_positions.has(target_pos):
 			_player_attack(enemy_positions[target_pos] as EnemyEntity)
+		elif dungeon.barrels.has(target_pos):
+			_break_barrel(target_pos)
 		elif dungeon.is_walkable(target_pos):
 			var from: Vector2i = player.grid_pos
 			player.grid_pos = target_pos
@@ -136,9 +181,96 @@ func drop_item(slot: int) -> void:
 	stats_changed.emit()
 	turn_ended.emit()
 
-## Takes the stairs (or the exit portal on the last floor).
+## Throws a dagger at the enemy on `target_pos`, or at the best visible
+## target in range when no position is given (the thief first, then the
+## nearest enemy). The dagger falls where it hits and can be picked up.
+func throw_dagger(target_pos: Vector2i = Vector2i(-1, -1)) -> void:
+	if phase != Phase.PLAYER:
+		return
+	if player.daggers <= 0:
+		log_msg(StringManager.t("no_daggers"), "warn")
+		return
+	var target: EnemyEntity = null
+	if dungeon.in_bounds(target_pos):
+		if enemy_positions.has(target_pos) and _can_throw_at(enemy_positions[target_pos] as EnemyEntity):
+			target = enemy_positions[target_pos] as EnemyEntity
+	else:
+		target = best_throw_target()
+	if target == null:
+		log_msg(StringManager.t("no_target", {range = ConfigManager.get_int("dagger_range", 6)}), "warn")
+		return
+	player.daggers -= 1
+	daggers_thrown += 1
+	if target.grid_pos.x != player.grid_pos.x:
+		player.facing = signi(target.grid_pos.x - player.grid_pos.x)
+	dagger_thrown.emit(player.grid_pos, target.grid_pos)
+	# the thief dodges daggers while he still has his breath
+	if target.ai == "thief" and target.tired <= 0 and rng.randf() < ConfigManager.get_float("thief_dodge_chance", 0.0):
+		dagger_dodged.emit(target)
+		log_msg(StringManager.t("thief_dodges"), "warn")
+		_drop_item_near(target.grid_pos, ItemDatabase.get_type("dagger"))
+		target.alerted = true
+		_end_player_turn()
+		return
+	var attack: int = maxi(1, player.attack + ConfigManager.get_int("dagger_attack_bonus", 0))
+	var r: Dictionary = CombatSystem.resolve(attack, target, player.crit_chance, rng)
+	var dmg: int = int(r["damage"])
+	entity_attacked.emit(player, target, dmg, bool(r["crit"]))
+	log_msg(StringManager.t("dagger_hits", {target = enemy_name(target), damage = dmg}), "combat")
+	_drop_item_near(target.grid_pos, ItemDatabase.get_type("dagger"))
+	if not target.is_alive():
+		_kill_enemy(target)
+	else:
+		_after_hit(target)
+	_end_player_turn()
+
+## True if a dagger can reach `e`: visible, within dagger_range, clear line.
+func can_throw_at(e: EnemyEntity) -> bool:
+	return _can_throw_at(e)
+
+func _can_throw_at(e: EnemyEntity) -> bool:
+	return bool(visible[e.grid_pos.x][e.grid_pos.y]) \
+		and AISystem.chebyshev(e.grid_pos, player.grid_pos) <= ConfigManager.get_int("dagger_range", 6) \
+		and FOVSystem.has_los(dungeon, player.grid_pos, e.grid_pos)
+
+## The target an automatic throw picks: the thief if reachable, otherwise
+## the nearest enemy (the weakest one on a tie). null if none.
+func best_throw_target() -> EnemyEntity:
+	if thief != null and thief.is_alive() and _can_throw_at(thief):
+		return thief
+	var best: EnemyEntity = null
+	var best_d: int = 1 << 20
+	for e in enemies:
+		if not _can_throw_at(e):
+			continue
+		var d: int = AISystem.chebyshev(e.grid_pos, player.grid_pos)
+		if d < best_d or (d == best_d and best != null and e.hp < best.hp):
+			best_d = d
+			best = e
+	return best
+
+## Puts an item on `pos`, or on the nearest free floor cell around it.
+func _drop_item_near(pos: Vector2i, item: Dictionary) -> Vector2i:
+	if item.is_empty():
+		return Vector2i(-1, -1)
+	for radius in 4:
+		for dx in range(-radius, radius + 1):
+			for dy in range(-radius, radius + 1):
+				if maxi(absi(dx), absi(dy)) != radius:
+					continue
+				var p: Vector2i = pos + Vector2i(dx, dy)
+				if dungeon.get_tile(p) == DungeonData.TileType.FLOOR and not dungeon.items.has(p) and not dungeon.barrels.has(p):
+					dungeon.items[p] = item
+					return p
+	return Vector2i(-1, -1)
+
+## Takes the stairs (or the exit portal on the last floor), once unlocked.
 func descend() -> void:
 	if phase != Phase.PLAYER or dungeon.get_tile(player.grid_pos) != DungeonData.TileType.STAIRS_DOWN:
+		return
+	if dungeon.stairs_locked:
+		log_msg(StringManager.t("grille_locked_portal" if dungeon.is_last_floor else "grille_locked"), "warn")
+		stairs_refused.emit(player.grid_pos)
 		return
 	if dungeon.is_last_floor:
 		phase = Phase.VICTORY
@@ -151,6 +283,7 @@ func descend() -> void:
 		name = StringManager.t(str(theme.get("name_key", "")))}), "level")
 	if dungeon.is_last_floor:
 		log_msg(StringManager.t("boss_floor"), "warn")
+	log_msg(StringManager.t("key_warden" if dungeon.is_last_floor else "key_thief"), "hint")
 
 func log_msg(text: String, kind: String = "info") -> void:
 	message_added.emit(text, kind)
@@ -170,6 +303,11 @@ func is_on_stairs() -> bool:
 func _generate_floor() -> void:
 	enemies.clear()
 	enemy_positions.clear()
+	thief = null
+	key_hint = Vector2.ZERO
+	key_hint_strength = 0.0
+	_heard_once = false
+	player.has_key = false
 	dungeon = DungeonGenerator.generate(ConfigManager.get_raw(), current_floor, total_floors,
 		rng, EnemyDatabase.pick_for_floor, ItemDatabase.pick_for_floor, EnemyDatabase.get_boss_id())
 	player.grid_pos = dungeon.player_start
@@ -183,6 +321,8 @@ func _generate_floor() -> void:
 		enemy.grid_pos = spawn["pos"] as Vector2i
 		enemies.append(enemy)
 		enemy_positions[enemy.grid_pos] = enemy
+		if enemy.ai == "thief":
+			thief = enemy
 	for spawn in dungeon.item_spawns:
 		var item: Dictionary = ItemDatabase.get_type(str(spawn["item_id"]))
 		if not item.is_empty():
@@ -205,8 +345,42 @@ func _player_attack(enemy: EnemyEntity) -> void:
 	if not enemy.is_alive():
 		_kill_enemy(enemy)
 	else:
-		enemy.alerted = true   # being hit wakes an enemy up
-		enemy.alert_turns = ConfigManager.get_int("alert_memory_turns", 0)
+		_after_hit(enemy)
+
+## A hit that did not kill: the enemy wakes up; a slime splits in two.
+func _after_hit(enemy: EnemyEntity) -> void:
+	enemy.alerted = true
+	enemy.alert_turns = ConfigManager.get_int("alert_memory_turns", 0)
+	if enemy.splits and enemy.hp >= ConfigManager.get_int("slime_split_min_hp", 4):
+		_split(enemy)
+
+## Half of the slime's HP goes into a new slime on a free neighbouring cell.
+func _split(enemy: EnemyEntity) -> void:
+	var cells: Array[Vector2i] = []
+	for dir in DijkstraMap.DIRS:
+		var p: Vector2i = enemy.grid_pos + dir
+		if dungeon.is_walkable(p) and not enemy_positions.has(p) and p != player.grid_pos:
+			cells.append(p)
+	if cells.is_empty():
+		return
+	var child := EnemyEntity.new()
+	child.setup_from_data(enemy.type_data)
+	var half: int = floori(enemy.hp / 2.0)
+	child.hp_max = maxi(half, 1)
+	child.hp = half
+	child.attack = enemy.attack
+	child.defense = enemy.defense
+	child.xp_value = maxi(1, floori(enemy.xp_value / 2.0))
+	child.alerted = true
+	child.alert_turns = enemy.alert_turns
+	child.facing = enemy.facing
+	child.grid_pos = cells[rng.randi_range(0, cells.size() - 1)]
+	enemy.hp -= half
+	enemy.hp_max = maxi(enemy.hp_max - half, enemy.hp)
+	enemies.append(child)
+	enemy_positions[child.grid_pos] = child
+	enemy_split.emit(child, enemy.grid_pos)
+	log_msg(StringManager.t("slime_splits"), "warn")
 
 func _kill_enemy(enemy: EnemyEntity) -> void:
 	kills += 1
@@ -214,6 +388,17 @@ func _kill_enemy(enemy: EnemyEntity) -> void:
 	enemies.erase(enemy)
 	entity_died.emit(enemy)
 	log_msg(StringManager.t("enemy_died", {Name = enemy_name(enemy, true), xp = enemy.xp_value}), "loot")
+	if enemy.key_carrier:
+		var at: Vector2i = _drop_item_near(enemy.grid_pos, ItemDatabase.get_type("key"))
+		key_dropped.emit(at)
+		log_msg(StringManager.t("key_dropped"), "loot")
+	if enemy == thief:
+		thief = null
+		key_hint = Vector2.ZERO
+		key_hint_strength = 0.0
+	if enemy.revives:
+		dungeon.bone_piles[enemy.grid_pos] = {turns = ConfigManager.get_int("skeleton_revive_turns", 7), data = enemy.type_data}
+		log_msg(StringManager.t("bones_fall"), "hint")
 	_gain_xp(enemy.xp_value)
 
 func _gain_xp(amount: int) -> void:
@@ -243,13 +428,60 @@ func _gain_xp(amount: int) -> void:
 func _on_player_enter(pos: Vector2i) -> void:
 	if dungeon.items.has(pos):
 		_try_pickup(pos)
+	if dungeon.bone_piles.has(pos):
+		dungeon.bone_piles.erase(pos)
+		bones_crushed.emit(pos)
+		log_msg(StringManager.t("bones_crushed"), "info")
 	if dungeon.get_tile(pos) == DungeonData.TileType.STAIRS_DOWN:
-		log_msg(StringManager.t("exit_here" if dungeon.is_last_floor else "stairs_here"), "hint")
+		if dungeon.stairs_locked and player.has_key:
+			player.has_key = false
+			dungeon.stairs_locked = false
+			stairs_unlocked.emit(pos)
+			log_msg(StringManager.t("grille_opens_portal" if dungeon.is_last_floor else "grille_opens"), "level")
+		if dungeon.stairs_locked:
+			log_msg(StringManager.t("grille_locked_portal" if dungeon.is_last_floor else "grille_locked"), "warn")
+		else:
+			log_msg(StringManager.t("exit_here" if dungeon.is_last_floor else "stairs_here"), "hint")
+
+## Bumping into a barrel breaks it; there may be something inside.
+func _break_barrel(pos: Vector2i) -> void:
+	dungeon.barrels.erase(pos)
+	barrel_broken.emit(pos)
+	if rng.randf() < ConfigManager.get_float("barrel_loot_chance", 0.4) and not dungeon.items.has(pos):
+		var roll: float = rng.randf()
+		var id: String = "ration"
+		if roll >= 0.85:
+			id = ItemDatabase.pick_for_floor(current_floor, rng)
+		elif roll >= 0.6:
+			id = "dagger"
+		elif roll >= 0.45:
+			id = "potion"
+		var item: Dictionary = ItemDatabase.get_type(id)
+		if not item.is_empty():
+			dungeon.items[pos] = item
+			log_msg(StringManager.t("barrel_loot", {name = ItemDatabase.display_name(item)}), "loot")
+			return
+	log_msg(StringManager.t("barrel_empty"), "info")
 
 func _try_pickup(pos: Vector2i) -> void:
 	var item: Dictionary = dungeon.items[pos]
 	var item_name: String = ItemDatabase.display_name(item)
-	if bool(item.get("instant", false)):
+	var effect: String = str(item.get("effect", ""))
+	if effect == "dagger":
+		if player.daggers >= player.daggers_max:
+			log_msg(StringManager.t("daggers_full", {max = player.daggers_max}), "warn")
+			return
+		dungeon.items.erase(pos)
+		player.daggers += 1
+		item_picked.emit(item, pos)
+		log_msg(StringManager.t("picked_dagger", {value = player.daggers, max = player.daggers_max}), "loot")
+	elif effect == "key":
+		dungeon.items.erase(pos)
+		player.has_key = true
+		keys_found += 1
+		key_picked.emit(pos)
+		log_msg(StringManager.t("key_picked_portal" if dungeon.is_last_floor else "key_picked"), "level")
+	elif bool(item.get("instant", false)):
 		dungeon.items.erase(pos)
 		_apply_upgrade(item)
 		item_picked.emit(item, pos)
@@ -312,8 +544,7 @@ func _apply_consumable(item: Dictionary) -> Dictionary:
 				if not e.is_alive():
 					_kill_enemy(e)
 				else:
-					e.alerted = true
-					e.alert_turns = ConfigManager.get_int("alert_memory_turns", 0)
+					_after_hit(e)
 		"blink":
 			var from: Vector2i = player.grid_pos
 			player.grid_pos = _blink_destination(int(value))
@@ -392,17 +623,141 @@ func _tick_needs() -> void:
 
 func _process_enemy_turns() -> void:
 	phase = Phase.ENEMY
-	var dmap: DijkstraMap = DijkstraMap.compute(dungeon, player.grid_pos, 40)
+	var dmap: DijkstraMap = DijkstraMap.compute(dungeon, player.grid_pos, 1 << 20)
+	var flee_map: DijkstraMap = null
 	for enemy in enemies.duplicate():
-		if not enemy.is_alive():
+		if not enemy.is_alive() or not enemies.has(enemy):
 			continue
 		enemy.action_points += enemy.speed
 		while enemy.action_points >= 1.0:
 			enemy.action_points -= 1.0
-			_enemy_act(enemy, dmap)
+			if enemy.ai == "thief":
+				if flee_map == null:
+					flee_map = DijkstraMap.flee(dmap)
+				_thief_act(enemy, flee_map)
+			else:
+				_enemy_act(enemy, dmap)
 			if phase == Phase.GAME_OVER:
 				return
+	_tick_bones()
+	_update_key_hint(dmap)
+	if turn % 10 == 0:
+		_prune_footprints()
 	phase = Phase.PLAYER
+
+func _prune_footprints() -> void:
+	var life: int = ConfigManager.get_int("footprint_turns", 40)
+	for pos in dungeon.footprints.keys():
+		if turn - int((dungeon.footprints[pos] as Dictionary).get("turn", 0)) > life:
+			dungeon.footprints.erase(pos)
+
+func _move_enemy(enemy: EnemyEntity, to: Vector2i) -> void:
+	var from: Vector2i = enemy.grid_pos
+	enemy_positions.erase(from)
+	enemy.grid_pos = to
+	enemy_positions[to] = enemy
+	if to.x != from.x:
+		enemy.facing = signi(to.x - from.x)
+	if enemy.ai == "thief":
+		dungeon.footprints[from] = {turn = turn, dir = to - from}
+	entity_moved.emit(enemy, from, to)
+
+## The key thief. Tired: rests (strikes back if cornered next to you).
+## Sees you: runs down the safety map; out of breath after thief_flee_steps
+## steps. Otherwise wanders from room to room, pausing now and then.
+func _thief_act(t: EnemyEntity, flee_map: DijkstraMap) -> void:
+	var dist: int = AISystem.chebyshev(t.grid_pos, player.grid_pos)
+	var sees: bool = bool(visible[t.grid_pos.x][t.grid_pos.y]) and dist <= ConfigManager.get_int("thief_flee_range", 7)
+	if t.tired > 0:
+		t.tired -= 1
+		if dist <= 1:
+			_enemy_attack(t, t.attack, "enemy_attacks")
+		return
+	if sees:
+		if not t.fleeing:
+			t.fleeing = true
+			thief_panicked.emit(t)
+			log_msg(StringManager.t("thief_flees"), "warn")
+		if t.flee_steps >= ConfigManager.get_int("thief_flee_steps", 9):
+			t.fleeing = false
+			t.flee_steps = 0
+			t.tired = ConfigManager.get_int("thief_tired_turns", 4)
+			thief_tired.emit(t)
+			log_msg(StringManager.t("thief_tired"), "hint")
+			return
+		var step: Vector2i = flee_map.step_toward(t.grid_pos, enemy_positions, player.grid_pos)
+		if step != t.grid_pos:
+			_move_enemy(t, step)
+			t.flee_steps += 1
+		elif dist <= 1:
+			_enemy_attack(t, t.attack, "enemy_attacks")
+		return
+	t.fleeing = false
+	t.flee_steps = maxi(t.flee_steps - 1, 0)
+	if rng.randf() < 0.4:
+		return
+	if t.wander_map == null or t.grid_pos == t.wander_target or t.wander_map.get_dist(t.grid_pos) < 0:
+		var room: Rect2i = dungeon.rooms[rng.randi_range(0, dungeon.rooms.size() - 1)]
+		t.wander_target = room.position + room.size / 2
+		t.wander_map = DijkstraMap.compute(dungeon, t.wander_target, 1 << 20)
+	var wstep: Vector2i = t.wander_map.step_toward(t.grid_pos, enemy_positions, player.grid_pos)
+	if wstep == t.grid_pos:
+		t.wander_map = null
+	else:
+		_move_enemy(t, wstep)
+
+## Fallen skeletons rise again after skeleton_revive_turns turns, unless
+## the player walks over their bones first (that crushes them).
+func _tick_bones() -> void:
+	for pos_v in dungeon.bone_piles.keys():
+		var pos: Vector2i = pos_v as Vector2i
+		var pile: Dictionary = dungeon.bone_piles[pos]
+		pile["turns"] = int(pile["turns"]) - 1
+		if int(pile["turns"]) > 0:
+			continue
+		if pos == player.grid_pos or enemy_positions.has(pos):
+			pile["turns"] = 1
+			continue
+		dungeon.bone_piles.erase(pos)
+		var e := EnemyEntity.new()
+		e.setup_from_data(pile["data"] as Dictionary)
+		e.scale_for_floor(current_floor)
+		e.hp = maxi(1, ceili(e.hp_max * ConfigManager.get_float("skeleton_revive_ratio", 0.6)))
+		e.revives = false
+		e.alerted = true
+		e.alert_turns = ConfigManager.get_int("alert_memory_turns", 0)
+		e.grid_pos = pos
+		enemies.append(e)
+		enemy_positions[pos] = e
+		skeleton_rose.emit(e)
+		log_msg(StringManager.t("skeleton_rises"), "warn")
+
+## The thief's keys can be heard within key_hear_distance steps (walking
+## distance, so walls muffle them): direction and loudness for the view,
+## and a line in the log the first time on the floor.
+func _update_key_hint(dmap: DijkstraMap) -> void:
+	key_hint = Vector2.ZERO
+	key_hint_strength = 0.0
+	if thief == null or not thief.is_alive() or bool(visible[thief.grid_pos.x][thief.grid_pos.y]):
+		return
+	var d: int = dmap.get_dist(thief.grid_pos)
+	var hear: int = ConfigManager.get_int("key_hear_distance", 18)
+	if d < 0 or d > hear:
+		return
+	key_hint = Vector2(thief.grid_pos - player.grid_pos).normalized()
+	key_hint_strength = 1.0 - float(d) / float(hear + 1)
+	if not _heard_once:
+		_heard_once = true
+		log_msg(StringManager.t("keys_heard", {dir = StringManager.t("dir_" + compass(key_hint))}), "hint")
+	if turn - _jingle_turn >= 3:
+		_jingle_turn = turn
+		keys_heard.emit(key_hint_strength)
+
+## "n", "ne", "e"... for a direction on screen (north is up).
+static func compass(v: Vector2) -> String:
+	var names: Array[String] = ["e", "se", "s", "sw", "w", "nw", "n", "ne"]
+	var a: float = fposmod(v.angle(), TAU)
+	return names[roundi(a / (TAU / 8.0)) % 8]
 
 ## Awareness first, then the AISystem decision.
 ## An enemy that just noticed the player spends its action on the "!":
@@ -428,6 +783,8 @@ func _enemy_act(enemy: EnemyEntity, dmap: DijkstraMap) -> void:
 		return
 
 	var action: Dictionary = AISystem.decide(enemy, player, dungeon, enemy_positions, dmap, sees, rng)
+	if str(action["type"]) != "move" and player.grid_pos.x != enemy.grid_pos.x:
+		enemy.facing = signi(player.grid_pos.x - enemy.grid_pos.x)
 	match str(action["type"]):
 		"attack":
 			_enemy_attack(enemy, enemy.attack, "enemy_attacks")
@@ -435,11 +792,7 @@ func _enemy_act(enemy: EnemyEntity, dmap: DijkstraMap) -> void:
 			projectile_fired.emit(enemy.grid_pos, player.grid_pos, enemy.color)
 			_enemy_attack(enemy, enemy.ranged_attack, "enemy_shoots")
 		"move":
-			var from: Vector2i = enemy.grid_pos
-			enemy_positions.erase(from)
-			enemy.grid_pos = action["pos"] as Vector2i
-			enemy_positions[enemy.grid_pos] = enemy
-			entity_moved.emit(enemy, from, enemy.grid_pos)
+			_move_enemy(enemy, action["pos"] as Vector2i)
 
 func _enemy_attack(enemy: EnemyEntity, attack: int, msg_key: String) -> void:
 	var r: Dictionary = CombatSystem.resolve(attack, player, 0.0, rng)

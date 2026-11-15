@@ -2,7 +2,9 @@
 # Minimap.gd (Control): explored layout of the current floor, 1 tile = N px.
 # =============================================================================
 # Shows what the player knows: explored floor, wall faces, the stairs once
-# seen, remembered items, enemies currently in view and the player. Redrawn
+# seen (grey while the grille is closed, gold once open), remembered items,
+# the key on the ground (blinking gold), enemies currently in view (the
+# thief in purple) and the player. Redrawn
 # on dungeon_ready / turn_ended only (no per-frame cost), except for the
 # blinking player dot.
 # =============================================================================
@@ -39,16 +41,23 @@ func _draw() -> void:
 				DungeonData.TileType.WALL:
 					draw_rect(r, Color("5d6680") if vis else Color("3a4152"))
 				DungeonData.TileType.STAIRS_DOWN:
-					draw_rect(r.grow(1.0), Color("7fe3ff") if d.is_last_floor else Color("ffd34d"))
+					var open_col: Color = Color("7fe3ff") if d.is_last_floor else Color("ffd34d")
+					draw_rect(r.grow(1.0), open_col if not d.stairs_locked else Color("b8bccb"))
 				_:
 					draw_rect(r, Color("8d97b0") if vis else Color("4a5266"))
 	for pos_v in d.items.keys():
 		var pos: Vector2i = pos_v as Vector2i
-		if bool(d.explored[pos.x][pos.y]):
-			draw_rect(Rect2(origin + Vector2(pos) * cell, Vector2(cell, cell)), Color("5fd6ff"))
+		if not bool(d.explored[pos.x][pos.y]):
+			continue
+		var r := Rect2(origin + Vector2(pos) * cell, Vector2(cell, cell))
+		if str((d.items[pos_v] as Dictionary).get("effect", "")) == "key":
+			draw_rect(r.grow(1.0 + 0.8 * sin(_blink * 8.0)), Color("ffd34d"))
+		else:
+			draw_rect(r, Color("5fd6ff"))
 	for e in GameState.enemies:
 		if bool(GameState.visible[e.grid_pos.x][e.grid_pos.y]):
-			draw_rect(Rect2(origin + Vector2(e.grid_pos) * cell, Vector2(cell, cell)).grow(0.5), Color("ff5d5d"))
+			draw_rect(Rect2(origin + Vector2(e.grid_pos) * cell, Vector2(cell, cell)).grow(0.5),
+				Color("c7a8ff") if e.ai == "thief" else Color("ff5d5d"))
 	var pp: Vector2 = origin + (Vector2(GameState.player.grid_pos) + Vector2(0.5, 0.5)) * cell
 	draw_circle(pp, cell * (1.4 + 0.3 * sin(_blink * 6.0)), Color(1, 1, 1, 0.35))
 	draw_circle(pp, cell, Color.WHITE)

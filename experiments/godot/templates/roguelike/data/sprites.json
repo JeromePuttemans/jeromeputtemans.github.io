@@ -1,0 +1,741 @@
+{
+ "outline": "1b1424",
+ "sprites": {
+  "player": {
+   "palette": {
+    "C": "6fd3dc",
+    "c": "2f8f9e",
+    "d": "21606b",
+    "s": "f3c7a0",
+    "e": "1b1424",
+    "b": "6e4a2c",
+    "m": "c8d2dc",
+    "M": "ffffff",
+    "y": "e8b84a"
+   },
+   "frames": [
+    [
+     "................",
+     "......kkkk......",
+     ".....kCCCCk.....",
+     "....kCCccCCk.M..",
+     "....kcsssssk.m..",
+     "....kcseseck.m..",
+     "....kcsssssk.m..",
+     "...kdcccccdkkm..",
+     "..kCccccccccks..",
+     "..kcbbbbbbbkyyy.",
+     "..kcccccccckks..",
+     "...kcccccccck...",
+     "...kcccckccck...",
+     "....kbbk.kbbk...",
+     "....kbbk.kbbk...",
+     "....kkkk.kkkk..."
+    ]
+   ]
+  },
+  "rat": {
+   "palette": {
+    "b": "9a6a3c",
+    "B": "c99a68",
+    "p": "e89aa8",
+    "e": "1b1424",
+    "t": "c98a8a"
+   },
+   "frames": [
+    [
+     "................",
+     "................",
+     "................",
+     "................",
+     "................",
+     "................",
+     "...........kk...",
+     "..........kpbk..",
+     "......kkkkkbbbk.",
+     ".....kbbbbbbebbk",
+     "....kbbbbbbbbbbk",
+     ".tt.kbbbbbbbbkk.",
+     "t..tkbBBBBbbbk..",
+     "t...kkBBBBkkbk..",
+     ".t....kk..kk.k..",
+     "................"
+    ]
+   ]
+  },
+  "bat": {
+   "palette": {
+    "w": "6b4f9e",
+    "W": "9a7fd1",
+    "b": "3e2d5c",
+    "e": "ff5d6c"
+   },
+   "frames": [
+    [
+     "................",
+     "................",
+     "................",
+     "..k..........k..",
+     "..kk........kk..",
+     "..kWk......kWk..",
+     "..kWwk.kk.kwWk..",
+     "..kWwwkbbkwwWk..",
+     "...kwwbebewwk...",
+     "....kkbbbbkk....",
+     "......kbbk......",
+     ".......kk.......",
+     "................",
+     "................",
+     "................",
+     "................"
+    ],
+    [
+     "................",
+     "................",
+     "................",
+     "................",
+     "................",
+     "................",
+     ".......kk.......",
+     "......kbbk......",
+     "...kkkbebekkk...",
+     "..kWwwbbbbwwWk..",
+     ".kWwwwkbbkwwwWk.",
+     ".kWw.k.kk.k.wWk.",
+     "..k..........k..",
+     "................",
+     "................",
+     "................"
+    ]
+   ]
+  },
+  "archer": {
+   "palette": {
+    "g": "7fbf4a",
+    "G": "a8e06a",
+    "h": "6e4a2c",
+    "H": "8f6440",
+    "Y": "ffe14d",
+    "o": "a0703c",
+    "w": "e8e0c8"
+   },
+   "frames": [
+    [
+     "................",
+     "......kkkk...k..",
+     ".....kHHHHk..ok.",
+     "....kHhhhhHk.kow",
+     ".kk.khgggghkk.ow",
+     "kGgkkgYggYgk..ow",
+     ".kggkggggggk..ow",
+     "..kkkkggggkk..ow",
+     "....khhhhhhkkkow",
+     "...kghhhhhhkGGow",
+     "...kgkhhhhk.kkow",
+     "....khhhhhhk..ow",
+     "....khhkkhhk.kow",
+     "....kggk.kggkok.",
+     "....khhk.khhk.k.",
+     "....kkkk.kkkk..."
+    ]
+   ]
+  },
+  "orc": {
+   "palette": {
+    "g": "4f9f4a",
+    "G": "7fca6a",
+    "a": "6a5040",
+    "A": "8a6a52",
+    "m": "b8c2cc",
+    "M": "eef2f6",
+    "t": "fff2d0",
+    "e": "ffcc4d"
+   },
+   "frames": [
+    [
+     "................",
+     ".....kkkkkk.....",
+     "....kGggggGk.kk.",
+     "...kGggggggGkMMk",
+     "...kgegggegkkMmk",
+     "...kggggggggkkmk",
+     "...kgtkkkktgk.mk",
+     "..kkkggggggkkkak",
+     ".kGgkaaaaaakgGak",
+     ".kgkAaaaaaaakgak",
+     ".kgkaaAAAAaakkak",
+     "..kkaaaaaaaak.k.",
+     "...kaaakkaaak...",
+     "...kgggk.kgggk..",
+     "...kaaak.kaaak..",
+     "...kkkkk.kkkkk.."
+    ]
+   ]
+  },
+  "troll": {
+   "palette": {
+    "t": "8a8f5a",
+    "T": "b0b57a",
+    "d": "5f6440",
+    "r": "c0504a",
+    "e": "ffd24d",
+    "c": "7a5a3c",
+    "C": "9c7650",
+    "n": "e8dcc0"
+   },
+   "frames": [
+    [
+     "....kkkkkkk.....",
+     "...kTttttttk....",
+     "..kTtetttettk...",
+     "..kttttdttttk...",
+     "..ktnknkknknk.kk",
+     ".kkttttttttkkkCk",
+     "kTtkkttttttkkCck",
+     "kttTtttttttttcck",
+     "ktdktttttttkkcck",
+     "ktdkttTTTTtk.kck",
+     ".kkktttttttk.kck",
+     "...ktttdtttk..k.",
+     "...kttdkdttk....",
+     "..kttdk.kdttk...",
+     "..kdddk.kdddk...",
+     "..kkkkk.kkkkk..."
+    ]
+   ],
+   "scale": 1.3
+  },
+  "warden": {
+   "palette": {
+    "a": "c9a03a",
+    "A": "f0d070",
+    "d": "8a6a22",
+    "r": "c0392b",
+    "R": "e85a4a",
+    "e": "7fe3ff",
+    "m": "aab4c0",
+    "M": "eef2f6",
+    "p": "4a2a6a"
+   },
+   "frames": [
+    [
+     ".....kRRk....kM.",
+     "....kRrrk...kMMk",
+     "....kkkkkk...km.",
+     "...kAaaaaAk..km.",
+     "...kakeekak..km.",
+     "...kaaaaaak..km.",
+     "..kkdkkkkdkk.km.",
+     ".kAakaaaaakaAkm.",
+     ".kaakaAAaakaakm.",
+     ".kdakaaaaakadkm.",
+     "..kkpppppppkkkm.",
+     "...kpppppppk.km.",
+     "...kaakkkaak..k.",
+     "...kAak.kAak....",
+     "...kddk.kddk....",
+     "...kkkk.kkkk...."
+    ]
+   ],
+   "scale": 1.45
+  },
+  "thief": {
+   "palette": {
+    "p": "5c4284",
+    "P": "8a6cbd",
+    "d": "2e2040",
+    "Y": "ffe14d",
+    "s": "c9a37a",
+    "g": "ffd24d",
+    "G": "fff2a0",
+    "b": "5a3e2a"
+   },
+   "frames": [
+    [
+     "................",
+     "......kkkk......",
+     ".....kPPPPk.....",
+     "....kPPppPPk....",
+     "....kpddddpk....",
+     "....kpdYdYpk....",
+     "....kpddddpk....",
+     "...kkpppppppk...",
+     "..kPpppppppppk..",
+     "..kppbbbbbbbpk..",
+     "..kpppppppppkgk.",
+     "...kpppppppkgGgk",
+     "...kppppkpppkgk.",
+     "....kddk.kddk...",
+     "....kbbk.kbbk...",
+     "....kkkk.kkkk..."
+    ]
+   ]
+  },
+  "slime": {
+   "palette": {
+    "g": "5fd36a",
+    "G": "a0f0a0",
+    "d": "2f8f4a",
+    "e": "1b1424",
+    "w": "ffffff"
+   },
+   "frames": [
+    [
+     "................",
+     "................",
+     "................",
+     "................",
+     "................",
+     "................",
+     "......kkkk......",
+     "....kkggggkk....",
+     "...kgGGgggggk...",
+     "..kgGwgggggggk..",
+     "..kggekggekggk..",
+     ".kgggggggggggdk.",
+     ".kggggggggggddk.",
+     ".kdgggggggggddk.",
+     "..kkdddddddddkk.",
+     "....kkkkkkkkk..."
+    ],
+    [
+     "................",
+     "................",
+     "................",
+     "................",
+     "................",
+     "................",
+     "................",
+     "................",
+     ".....kkkkkk.....",
+     "...kkgGGggggkk..",
+     "..kgGwgggggggk..",
+     ".kgggekggekgggk.",
+     "kgggggggggggggdk",
+     "kdggggggggggdddk",
+     ".kkdddddddddddk.",
+     "..kkkkkkkkkkkk.."
+    ]
+   ]
+  },
+  "skeleton": {
+   "palette": {
+    "w": "e8e4d8",
+    "W": "ffffff",
+    "g": "a8a49a",
+    "e": "1b1424",
+    "r": "9a5a3a",
+    "R": "c07a4a"
+   },
+   "frames": [
+    [
+     "................",
+     ".....kkkkk......",
+     "....kWwwwwk.....",
+     "....kweewek.....",
+     "....kwwwwwk..k..",
+     ".....kwkwk..kRk.",
+     "......kwk..krk..",
+     "....kkwwwkkrk...",
+     "...kw.kwk.wkk...",
+     "...kw.kwk.kwk...",
+     "......kwk.......",
+     ".....kwgwk......",
+     ".....kw.wk......",
+     ".....kw.wk......",
+     "....kgk.kgk.....",
+     "....kkk.kkk....."
+    ]
+   ]
+  },
+  "potion": {
+   "palette": {
+    "r": "e8505b",
+    "R": "ff8a8f",
+    "d": "a02a3a",
+    "g": "c9d4e0",
+    "c": "8a6a48",
+    "w": "ffffff"
+   },
+   "frames": [
+    [
+     "................",
+     "................",
+     "......kkkk......",
+     "......kcck......",
+     ".......kgk......",
+     ".......kgk......",
+     "......kgggk.....",
+     ".....kgrrrgk....",
+     "....kgrRwrrgk...",
+     "....krRwrrrrk...",
+     "....krrrrrrrk...",
+     "....krrrrrrdk...",
+     "....kdrrrrddk...",
+     ".....kddddkk....",
+     "......kkkkk.....",
+     "................"
+    ]
+   ]
+  },
+  "ration": {
+   "palette": {
+    "b": "d9a45b",
+    "B": "f0c87a",
+    "d": "a8763a",
+    "D": "7a5428"
+   },
+   "frames": [
+    [
+     "................",
+     "................",
+     "................",
+     "................",
+     "................",
+     "......kkkkk.....",
+     "....kkBBBBBkk...",
+     "...kBBbBBbBBbk..",
+     "..kBbbbbbbbbbbk.",
+     "..kbdbbdbbdbbdk.",
+     "..kbbbbbbbbbbbk.",
+     "..kdbbbbbbbbbdk.",
+     "...kddddddddddk.",
+     "....kkkkkkkkkk..",
+     "................",
+     "................"
+    ]
+   ]
+  },
+  "scroll": {
+   "tint": "x",
+   "palette": {
+    "p": "efe2bf",
+    "P": "fff6dc",
+    "d": "c9b88f",
+    "D": "9c8b66",
+    "x": "7cc4ff"
+   },
+   "frames": [
+    [
+     "................",
+     "................",
+     "...kkkkkkkkkk...",
+     "..kdPPPPPPPPdk..",
+     "..kDdddddddddk..",
+     "...kppppppppk...",
+     "...kpDDDDDDpk...",
+     "...kppppppppk...",
+     "...kpDDkkDDpk...",
+     "...kppkxxkppk...",
+     "...kpDkxxkDpk...",
+     "...kpppkkpppk...",
+     "..kdPPPPPPPPdk..",
+     "..kDdddddddddk..",
+     "...kkkkkkkkkk...",
+     "................"
+    ]
+   ]
+  },
+  "gem": {
+   "palette": {
+    "o": "ff8f6b",
+    "O": "ffc0a8",
+    "d": "c0583a",
+    "w": "ffffff"
+   },
+   "frames": [
+    [
+     "................",
+     "................",
+     "................",
+     ".......kk.......",
+     "......kOOk......",
+     ".....kOwOok.....",
+     "....kOwoooook...",
+     "...kOoooooooddk.",
+     "....kdooooodk...",
+     ".....kdooodk....",
+     "......kdodk.....",
+     ".......kdk......",
+     "........k.......",
+     "................",
+     "................",
+     "................"
+    ]
+   ]
+  },
+  "shield": {
+   "palette": {
+    "s": "9fb4cc",
+    "S": "d8e4f0",
+    "d": "5f7490",
+    "y": "e8b84a"
+   },
+   "frames": [
+    [
+     "................",
+     "................",
+     "...kkkkkkkkkk...",
+     "...kSSSSSSSSk...",
+     "...kSsssyssdk...",
+     "...kSsssyssdk...",
+     "...kSsyyyyydk...",
+     "...kSsssyssdk...",
+     "...ksssssyssdk..",
+     "....kssssydk....",
+     "....kdssyddk....",
+     ".....kdsddk.....",
+     "......kddk......",
+     ".......kk.......",
+     "................",
+     "................"
+    ]
+   ]
+  },
+  "heart": {
+   "palette": {
+    "r": "ff6b8f",
+    "R": "ffb0c4",
+    "d": "c03a62",
+    "w": "ffffff"
+   },
+   "frames": [
+    [
+     "................",
+     "................",
+     "................",
+     "...kkk...kkk....",
+     "..kRRrk.kRrrk...",
+     "..kRwrrkrrrrdk..",
+     "..krrrrrrrrrdk..",
+     "..krrrrrrrrrdk..",
+     "...krrrrrrrdk...",
+     "....krrrrrdk....",
+     ".....krrrdk.....",
+     "......krdk......",
+     ".......kk.......",
+     "................",
+     "................",
+     "................"
+    ]
+   ]
+  },
+  "key": {
+   "palette": {
+    "g": "ffd24d",
+    "G": "fff2a0",
+    "d": "c08a1a",
+    "D": "8a5a10"
+   },
+   "frames": [
+    [
+     "................",
+     "................",
+     "...kkkkk........",
+     "..kGGGggk.......",
+     ".kGgkkkgdk......",
+     ".kgk...kdk......",
+     ".kgk...kdk......",
+     ".kgdkkkddkkkkkk.",
+     "..kddddddgggggdk",
+     "...kkkkkkddkdkdk",
+     "..........kdkdk.",
+     "..........kk.kk.",
+     "................",
+     "................",
+     "................",
+     "................"
+    ]
+   ]
+  },
+  "dagger": {
+   "palette": {
+    "m": "c8d2dc",
+    "M": "ffffff",
+    "d": "7a8494",
+    "b": "6e4a2c",
+    "y": "e8b84a"
+   },
+   "frames": [
+    [
+     "................",
+     "................",
+     "...........kk...",
+     "..........kMk...",
+     ".........kMmk...",
+     "........kMmk....",
+     ".......kMmk.....",
+     "......kMmk......",
+     "..k..kMmk.......",
+     "..kykMmk........",
+     "...kymk.........",
+     "...kbyyk........",
+     "..kbk.kk........",
+     "..kk............",
+     "................",
+     "................"
+    ]
+   ]
+  },
+  "barrel": {
+   "palette": {
+    "w": "8a5a34",
+    "W": "b07a48",
+    "d": "5f3c22",
+    "m": "6a7280",
+    "M": "9aa4b2"
+   },
+   "frames": [
+    [
+     "................",
+     "................",
+     "....kkkkkkkk....",
+     "...kWWWWWWWWk...",
+     "...kmMMMMMMmk...",
+     "..kwWwwwwwwwdk..",
+     "..kwWwdwwdwwdk..",
+     "..kmMMMMMMMMmk..",
+     "..kwWwwwwwwwdk..",
+     "..kwWwdwwdwwdk..",
+     "..kwWwwwwwwwdk..",
+     "..kmMMMMMMMMmk..",
+     "...kwWwwwwwdk...",
+     "...kdddddddk....",
+     "....kkkkkkkk....",
+     "................"
+    ]
+   ]
+  },
+  "bones": {
+   "palette": {
+    "w": "d8d2c4",
+    "W": "f4f0e6",
+    "g": "8a8478"
+   },
+   "frames": [
+    [
+     "................",
+     "................",
+     "................",
+     "................",
+     "................",
+     "................",
+     "................",
+     "................",
+     "......kkk.......",
+     ".....kWwwk..kk..",
+     ".....kwkwk.kwWk.",
+     "..kk..kwk.kwwk..",
+     ".kWwkkkkkkwwk...",
+     ".kwwwwwwwwwk....",
+     "..kgk...kgk.....",
+     "..kk.....kk....."
+    ]
+   ]
+  },
+  "torch": {
+   "palette": {
+    "f": "ffb84d",
+    "F": "fff2a0",
+    "r": "ff6a3a",
+    "w": "6e4a2c",
+    "m": "6a7280"
+   },
+   "frames": [
+    [
+     "................",
+     ".......k........",
+     "......kfk.......",
+     ".....kfFfk......",
+     ".....kfFFk......",
+     "....krfFFfk.....",
+     "....krfFFfk.....",
+     ".....krffk......",
+     "......kkk.......",
+     ".....kmmmk......",
+     "......kwk.......",
+     "......kwk.......",
+     "......kwk.......",
+     ".....kmmmk......",
+     "................",
+     "................"
+    ],
+    [
+     "................",
+     "................",
+     "......kk........",
+     ".....kfFk.......",
+     ".....kfFfk......",
+     "....krfFFfk.....",
+     "....krFFFfk.....",
+     ".....krffk......",
+     "......kkk.......",
+     ".....kmmmk......",
+     "......kwk.......",
+     "......kwk.......",
+     "......kwk.......",
+     ".....kmmmk......",
+     "................",
+     "................"
+    ]
+   ]
+  },
+  "stairs": {
+   "palette": {
+    "s": "8a8478",
+    "S": "b0aa9c",
+    "d": "4a463e",
+    "D": "2a2722"
+   },
+   "frames": [
+    [
+     "kkkkkkkkkkkkkkkk",
+     "kSSSSSSSSSSSSSSk",
+     "kssssssssssssssk",
+     "kDDDDDDDDDDDDDDk",
+     "kdSSSSSSSSSSSSdk",
+     "kdsssssssssssdDk",
+     "kDDDDDDDDDDDDDDk",
+     "kDdSSSSSSSSSSdDk",
+     "kDdssssssssssdDk",
+     "kDDDDDDDDDDDDDDk",
+     "kDDdSSSSSSSSdDDk",
+     "kDDdssssssssdDDk",
+     "kDDDDDDDDDDDDDDk",
+     "kDDDdSSSSSSdDDDk",
+     "kDDDDDDDDDDDDDDk",
+     "kkkkkkkkkkkkkkkk"
+    ]
+   ]
+  },
+  "grille": {
+   "palette": {
+    "m": "6a7280",
+    "M": "aab4c0",
+    "y": "ffd24d",
+    "Y": "fff2a0",
+    "d": "a8761a"
+   },
+   "frames": [
+    [
+     "kkkkkkkkkkkkkkkk",
+     "kMMMMMMMMMMMMMMk",
+     "kmkMkkMkkMkkMkmk",
+     "kmkMk.Mk.Mk.Mkmk",
+     "kmkMk.Mk.Mk.Mkmk",
+     "kMMMMMMMMMMMMMMk",
+     "kmkMk.kkkk..Mkmk",
+     "kmkMk.kYYk..Mkmk",
+     "kmkMkkyddykkMkmk",
+     "kmkMk.kyyk..Mkmk",
+     "kmkMk.kydk..Mkmk",
+     "kMMMMMMkkMMMMMMk",
+     "kmkMk.Mk.Mk.Mkmk",
+     "kmkMk.Mk.Mk.Mkmk",
+     "kMMMMMMMMMMMMMMk",
+     "kkkkkkkkkkkkkkkk"
+    ]
+   ]
+  }
+ }
+}

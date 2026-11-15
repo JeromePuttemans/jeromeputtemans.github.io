@@ -16,6 +16,8 @@
 #   ranged   shoot when the player is within `range` tiles and in line of
 #            sight (FOVSystem.has_los); otherwise close in. Breaking line of
 #            sight around a corner is the counter-play.
+#   thief    not decided here: GameState._thief_act runs the key thief
+#            (wander between rooms, flee down a safety map, get tired).
 #
 # Distances use the Chebyshev metric max(|dx|, |dy|): a diagonal step costs
 # the same as a straight one, as for the player.

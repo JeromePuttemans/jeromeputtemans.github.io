@@ -59,7 +59,7 @@ grow_vertical = 2
 [node name="VBox" type="VBoxContainer" parent="UI/HUD/SidePanel"]
 layout_mode = 2
 mouse_filter = 2
-theme_override_constants/separation = 7
+theme_override_constants/separation = 5
 
 [node name="Header" type="HBoxContainer" parent="UI/HUD/SidePanel/VBox"]
 layout_mode = 2
@@ -151,7 +151,7 @@ layout_mode = 2
 autowrap_mode = 3
 
 [node name="Minimap" type="Control" parent="UI/HUD/SidePanel/VBox"]
-custom_minimum_size = Vector2(256, 154)
+custom_minimum_size = Vector2(256, 124)
 layout_mode = 2
 mouse_filter = 2
 script = ExtResource("7_minimap")

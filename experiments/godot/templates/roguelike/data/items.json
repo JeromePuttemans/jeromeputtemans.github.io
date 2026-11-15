@@ -1,34 +1,12 @@
 [
-	{
-		"id": "potion", "effect": "heal_ratio", "value": 0.4, "instant": false,
-		"shape": "potion", "color": "e8505b", "min_floor": 1, "weight": 6
-	},
-	{
-		"id": "ration", "effect": "energy", "value": 60, "instant": false,
-		"shape": "ration", "color": "d9a45b", "min_floor": 1, "weight": 4
-	},
-	{
-		"id": "thunder", "effect": "thunder", "value": 10, "radius": 4, "instant": false,
-		"shape": "scroll", "color": "7cc4ff", "min_floor": 2, "weight": 2
-	},
-	{
-		"id": "blink", "effect": "blink", "value": 8, "instant": false,
-		"shape": "scroll", "color": "c38bff", "min_floor": 2, "weight": 1
-	},
-	{
-		"id": "map", "effect": "reveal", "value": 0, "instant": false,
-		"shape": "scroll", "color": "e8d9a8", "min_floor": 1, "weight": 1
-	},
-	{
-		"id": "whetstone", "effect": "attack", "value": 1, "instant": true,
-		"shape": "gem", "color": "ff8f6b", "min_floor": 1, "weight": 2
-	},
-	{
-		"id": "plate", "effect": "defense", "value": 1, "instant": true,
-		"shape": "shield", "color": "9fb4cc", "min_floor": 1, "weight": 2
-	},
-	{
-		"id": "heart", "effect": "max_hp", "value": 5, "instant": true,
-		"shape": "heart", "color": "ff6b8f", "min_floor": 2, "weight": 1
-	}
+	{"id": "potion", "effect": "heal_ratio", "value": 0.4, "instant": false, "color": "e8505b", "min_floor": 1, "weight": 6, "sprite": "potion"},
+	{"id": "ration", "effect": "energy", "value": 60, "instant": false, "color": "d9a45b", "min_floor": 1, "weight": 4, "sprite": "ration"},
+	{"id": "thunder", "effect": "thunder", "value": 10, "radius": 4, "instant": false, "color": "7cc4ff", "min_floor": 2, "weight": 2, "sprite": "scroll"},
+	{"id": "blink", "effect": "blink", "value": 8, "instant": false, "color": "c38bff", "min_floor": 2, "weight": 1, "sprite": "scroll"},
+	{"id": "map", "effect": "reveal", "value": 0, "instant": false, "color": "e8d9a8", "min_floor": 1, "weight": 1, "sprite": "scroll"},
+	{"id": "whetstone", "effect": "attack", "value": 1, "instant": true, "color": "ff8f6b", "min_floor": 1, "weight": 2, "sprite": "gem"},
+	{"id": "plate", "effect": "defense", "value": 1, "instant": true, "color": "9fb4cc", "min_floor": 1, "weight": 2, "sprite": "shield"},
+	{"id": "heart", "effect": "max_hp", "value": 5, "instant": true, "color": "ff6b8f", "min_floor": 2, "weight": 1, "sprite": "heart"},
+	{"id": "dagger", "effect": "dagger", "value": 1, "instant": true, "sprite": "dagger", "color": "c8d2dc", "min_floor": 1, "weight": 3},
+	{"id": "key", "effect": "key", "value": 0, "instant": true, "sprite": "key", "color": "ffd24d", "min_floor": 99, "weight": 0}
 ]

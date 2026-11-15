@@ -3,7 +3,8 @@
 # =============================================================================
 # Responsibilities:
 #   - start a run, restart after death or victory
-#   - route keyboard input to GameState (move, wait, use, drop, descend)
+#   - route keyboard input to GameState (move, wait, use, drop, descend,
+#     throw a dagger with F; right click throws at the hovered enemy)
 #   - drive the camera (follow the player's animated position)
 #   - send the hovered tile to the view (outline) and the HUD (Look box)
 #   - end-of-run sequences (sound, shake, confetti, then the end screen)
@@ -72,6 +73,12 @@ func _update_hover() -> void:
 # ---------------------------------------------------------------------------
 
 func _unhandled_input(event: InputEvent) -> void:
+	var mb: InputEventMouseButton = event as InputEventMouseButton
+	if mb != null and mb.pressed and mb.button_index == MOUSE_BUTTON_RIGHT 			and GameState.phase == GameState.Phase.PLAYER and GameState.dungeon.in_bounds(view.hover_tile):
+		if GameState.enemy_positions.has(view.hover_tile):
+			GameState.throw_dagger(view.hover_tile)
+		get_viewport().set_input_as_handled()
+		return
 	var key: InputEventKey = event as InputEventKey
 	if key == null or not key.pressed:
 		return
@@ -88,6 +95,10 @@ func _unhandled_input(event: InputEvent) -> void:
 			GameState.drop_item(slot)
 		else:
 			GameState.use_item(slot)
+		get_viewport().set_input_as_handled()
+		return
+	if key.physical_keycode == KEY_F and not key.echo:
+		GameState.throw_dagger()
 		get_viewport().set_input_as_handled()
 		return
 	if (key.keycode == KEY_ENTER or key.keycode == KEY_KP_ENTER) and not key.echo:

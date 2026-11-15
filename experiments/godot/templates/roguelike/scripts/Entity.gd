@@ -14,8 +14,9 @@ extends RefCounted
 
 var id:           String   = ""
 var display_name: String   = ""
-var glyph:        String   = "?"    # single character drawn on the token
-var color:        Color    = Color.WHITE
+var sprite:       String   = ""     # pixel-art sprite id (data/sprites.json)
+var color:        Color    = Color.WHITE   # particles, texts, minimap
+var facing:       int      = 1      # 1 = right, -1 = left (sprite mirrored)
 var grid_pos:     Vector2i = Vector2i.ZERO
 
 var hp:      int = 1

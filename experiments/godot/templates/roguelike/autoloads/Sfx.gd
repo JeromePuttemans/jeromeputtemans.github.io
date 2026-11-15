@@ -178,6 +178,74 @@ func _build_library() -> void:
 	_tone(b, 0.07, 0.11, 125.0, 120.0, Wave.SQUARE, 0.14)
 	_add("error", b, 0.15)
 
+	b = _buf(0.34)                                     # Jingling keys (far: played quieter)
+	var notes_key: Array[float] = [2637.0, 3136.0, 2794.0, 3520.0, 2960.0]
+	for i in notes_key.size():
+		_tone(b, i * 0.045 + randf() * 0.01, 0.12, notes_key[i], notes_key[i] * 0.97, Wave.TRIANGLE, 0.12)
+		_tone(b, i * 0.045, 0.05, notes_key[i] * 1.5, notes_key[i] * 1.5, Wave.SINE, 0.05)
+	_add("jingle", b, 0.3)
+
+	b = _buf(0.30)                                     # Thief panics: fast jingle + squeak
+	for i in 6:
+		_tone(b, i * 0.03, 0.06, 2900.0 + (i % 2) * 500.0, 2800.0, Wave.TRIANGLE, 0.1)
+	_tone(b, 0.0, 0.14, 900.0, 1500.0, Wave.SQUARE, 0.08)
+	_add("panic", b, 0.3)
+
+	b = _buf(0.50)                                     # Thief out of breath
+	for i in 2:
+		_noise(b, i * 0.24, 0.18, 0.18, 0.25)
+	_add("pant", b, 0.4)
+
+	b = _buf(0.55)                                     # Key: bright arpeggio + metal
+	var notes_k: Array[float] = [1047.0, 1319.0, 1568.0, 2093.0]
+	for i in notes_k.size():
+		_tone(b, i * 0.06, 0.3, notes_k[i], notes_k[i], Wave.TRIANGLE, 0.2)
+	_tone(b, 0.0, 0.4, 3520.0, 3400.0, Wave.SINE, 0.06)
+	_add("key", b, 0.15)
+
+	b = _buf(0.80)                                     # Grille opens: clunk + rising rattle
+	_noise(b, 0.0, 0.08, 0.5, 0.35)
+	_tone(b, 0.0, 0.12, 140.0, 90.0, Wave.SQUARE, 0.2)
+	for i in 8:
+		_noise(b, 0.12 + i * 0.06, 0.04, 0.16, 0.7)
+		_tone(b, 0.12 + i * 0.06, 0.05, 600.0 + i * 70.0, 560.0 + i * 70.0, Wave.SQUARE, 0.04)
+	_tone(b, 0.55, 0.25, 784.0, 1568.0, Wave.TRIANGLE, 0.14)
+	_add("unlock", b, 0.4)
+
+	b = _buf(0.22)                                     # Grille locked: metal rattle
+	for i in 3:
+		_noise(b, i * 0.05, 0.05, 0.28, 0.8)
+		_tone(b, i * 0.05, 0.05, 420.0, 380.0, Wave.SQUARE, 0.08)
+	_add("locked", b, 0.2)
+
+	b = _buf(0.14)                                     # Dagger throw: whoosh
+	_noise(b, 0.0, 0.12, 0.3, 0.9)
+	_tone(b, 0.0, 0.1, 900.0, 2200.0, Wave.SINE, 0.08)
+	_add("throw", b, 0.06)
+
+	b = _buf(0.32)                                     # Barrel breaks: wood crack + debris
+	_noise(b, 0.0, 0.06, 0.6, 0.6)
+	_tone(b, 0.0, 0.08, 180.0, 90.0, Wave.SQUARE, 0.18)
+	for i in 4:
+		_noise(b, 0.08 + i * 0.05, 0.04, 0.2, 0.4)
+	_add("barrel", b, 0.08)
+
+	b = _buf(0.24)                                     # Slime splits: wet blob
+	_tone(b, 0.0, 0.2, 180.0, 520.0, Wave.SINE, 0.3)
+	_tone(b, 0.06, 0.16, 140.0, 380.0, Wave.SINE, 0.2)
+	_add("split", b, 0.08)
+
+	b = _buf(0.20)                                     # Bones crushed
+	for i in 4:
+		_noise(b, i * 0.035, 0.03, 0.35, 0.9)
+	_add("crush", b, 0.1)
+
+	b = _buf(0.60)                                     # Skeleton rises: rattle + low swell
+	for i in 7:
+		_noise(b, i * 0.06, 0.03, 0.22, 0.85)
+	_tone(b, 0.0, 0.55, 98.0, 147.0, Wave.SAW, 0.16)
+	_add("rise", b, 0.3)
+
 	b = _buf(0.03)                                     # UI click
 	_tone(b, 0.0, 0.025, 1300.0, 900.0, Wave.SINE, 0.2)
 	_add("click", b, 0.04)

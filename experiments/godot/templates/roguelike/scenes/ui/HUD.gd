@@ -3,7 +3,8 @@
 # =============================================================================
 # Layout (scene Main.tscn):
 #   SidePanel  floor title, HP / energy / XP bars, level and stats,
-#              inventory (6 slots, click = use, right-click = drop),
+#              key row (where the floor's key is, what you hear) and
+#              daggers, inventory (6 slots, click = use, right-click = drop),
 #              "Look" box (what is under the mouse), minimap, controls
 #   LogPanel   MessageLog (colored, rolling)
 #   Banner     floor name when arriving on a floor
@@ -68,21 +69,20 @@ class StatBar extends Control:
 		draw_string_outline(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, 4, Color(0, 0, 0, 0.7))
 		draw_string(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color.WHITE)
 
-## Item or actor icon (inventory slots, look box).
+## Pixel-art icon (inventory slots, look box, key row). Empty id = nothing.
 class SpriteIcon extends Control:
-	var mode: String = "none"   # none, item, token
-	var shape: String = ""
-	var color: Color = Color.WHITE
-	var glyph: String = ""
+	var sprite: String = ""
+	var modulate_icon: Color = Color.WHITE
 	func _ready() -> void:
 		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	func set_sprite(id: String, tint: Color = Color.WHITE) -> void:
+		sprite = id
+		modulate_icon = tint
+		queue_redraw()
 	func _draw() -> void:
-		var c: Vector2 = size * 0.5
-		var s: float = minf(size.x, size.y)
-		if mode == "item":
-			Sprites.draw_item(self, shape, color, c, s * 0.8)
-		elif mode == "token":
-			Sprites.draw_token(self, c + Vector2(0, -2), s * 0.38, color, glyph, 0.0)
+		if not sprite.is_empty():
+			PixelArt.draw_icon(self, sprite, Rect2(Vector2.ZERO, size), 0, modulate_icon)
 
 ## Speaker icon for the sound button.
 class SpeakerIcon extends Control:
@@ -142,6 +142,10 @@ var _slots:      Array[Button] = []
 var _slot_icons: Array[SpriteIcon] = []
 var _slot_names: Array[Label] = []
 var _look_tile:  Vector2i = Vector2i(-2, -2)
+var _key_icon:   SpriteIcon = null
+var _key_lbl:    Label = null
+var _dagger_icon: SpriteIcon = null
+var _dagger_lbl: Label = null
 var _controls_keys: String = "WASD"
 var _vignette_mat: ShaderMaterial = null
 var _flash:  float = 0.0
@@ -153,10 +157,12 @@ func _ready() -> void:
 	theme = _build_theme()
 	_setup_vignette()
 	_build_bars()
+	_build_key_row()
 	_build_inventory()
 	_build_look_icon()
 	_style_nodes()
 	GameState.stats_changed.connect(refresh)
+	GameState.turn_ended.connect(_refresh_key_row)
 	GameState.dungeon_ready.connect(_on_dungeon_ready)
 	GameState.entity_attacked.connect(_on_entity_attacked)
 	StringManager.language_changed.connect(_on_language_changed)
@@ -211,6 +217,7 @@ func refresh() -> void:
 	stats_lbl.text = "%s %d   %s %d   %s" % [StringManager.t("stat_attack"), p.attack,
 		StringManager.t("stat_defense"), p.defense, StringManager.t("stat_turns", {value = GameState.turn})]
 	_refresh_inventory()
+	_refresh_key_row()
 	var tile: Vector2i = _look_tile
 	_look_tile = Vector2i(-2, -2)
 	set_look(tile)
@@ -222,12 +229,11 @@ func set_look(tile: Vector2i) -> void:
 	_look_tile = tile
 	var d: DungeonData = GameState.dungeon
 	look_name.remove_theme_color_override("font_color")
-	_look_icon.mode = "none"
+	_look_icon.set_sprite("")
 	look_text.text = ""
 	if d == null or not d.in_bounds(tile):
 		look_name.text = ""
 		look_text.text = StringManager.t("look_hint")
-		_look_icon.queue_redraw()
 		return
 	var vis: bool = bool(GameState.visible[tile.x][tile.y])
 	if not vis and not bool(d.explored[tile.x][tile.y]):
@@ -240,18 +246,39 @@ func set_look(tile: Vector2i) -> void:
 		var item: Dictionary = d.items[tile]
 		look_name.text = ItemDatabase.display_name(item)
 		look_text.text = ItemDatabase.description(item) + ("" if vis else "\n" + StringManager.t("look_remembered"))
-		_look_icon.mode = "item"
-		_look_icon.shape = str(item.get("shape", ""))
-		_look_icon.color = Color("#" + str(item.get("color", "ffffff")))
+		_look_icon.set_sprite(PixelArt.item_sprite(item))
+	elif d.barrels.has(tile):
+		look_name.text = StringManager.t("look_barrel_name")
+		look_text.text = StringManager.t("look_barrel", {pct = int(round(ConfigManager.get_float("barrel_loot_chance", 0.4) * 100.0))})
+		_look_icon.set_sprite("barrel")
+	elif vis and d.bone_piles.has(tile):
+		look_name.text = StringManager.t("look_remains_name")
+		look_text.text = StringManager.t("look_remains", {turns = int((d.bone_piles[tile] as Dictionary).get("turns", 0))})
+		_look_icon.set_sprite("bones", Color("d8ffc8"))
+	elif d.get_tile(tile) == DungeonData.TileType.STAIRS_DOWN:
+		look_name.text = StringManager.t("look_exit_name" if d.is_last_floor else "look_stairs_name")
+		if d.stairs_locked:
+			look_text.text = StringManager.t("look_locked_portal" if d.is_last_floor else "look_locked")
+			_look_icon.set_sprite("grille")
+		else:
+			look_text.text = StringManager.t("look_exit" if d.is_last_floor else "look_stairs")
+			_look_icon.set_sprite("" if d.is_last_floor else "stairs")
+	elif vis and d.footprints.has(tile) and GameState.turn - int((d.footprints[tile] as Dictionary).get("turn", 0)) <= ConfigManager.get_int("footprint_turns", 40):
+		var age: int = GameState.turn - int((d.footprints[tile] as Dictionary).get("turn", 0))
+		look_name.text = StringManager.t("look_tracks_name")
+		look_text.text = StringManager.t("look_tracks", {turns = age, dir = StringManager.t("dir_" + GameState.compass(Vector2((d.footprints[tile] as Dictionary).get("dir", Vector2i.RIGHT) as Vector2i)))})
+	elif d.torches.has(tile):
+		look_name.text = StringManager.t("look_torch")
+		_look_icon.set_sprite("torch")
+	elif d.decor.has(tile):
+		look_name.text = StringManager.t("look_bones")
+		_look_icon.set_sprite("bones")
 	else:
 		match d.get_tile(tile):
-			DungeonData.TileType.STAIRS_DOWN:
-				look_name.text = StringManager.t("look_exit" if d.is_last_floor else "look_stairs")
 			DungeonData.TileType.WALL:
 				look_name.text = StringManager.t("look_wall")
 			_:
 				look_name.text = StringManager.t("look_floor")
-	_look_icon.queue_redraw()
 
 func flash_damage(strength: float) -> void:
 	_flash = maxf(_flash, strength)
@@ -334,7 +361,7 @@ func _fill_end_texts() -> void:
 	end_title.add_theme_color_override("font_color", COL_GOLD if _victory else COL_HP)
 	end_cause.text = StringManager.t("victory_text") if _victory else GameState.death_text()
 	var p: PlayerEntity = GameState.player
-	end_stats.text = StringManager.t("end_stats", {level = p.level, kills = GameState.kills, turns = GameState.turn})
+	end_stats.text = StringManager.t("end_stats", {level = p.level, kills = GameState.kills, turns = GameState.turn, keys = GameState.keys_found})
 
 # ---------------------------------------------------------------------------
 # Look descriptions
@@ -344,9 +371,7 @@ func _describe_player() -> void:
 	var p: PlayerEntity = GameState.player
 	look_name.text = StringManager.t("level_label", {value = p.level})
 	look_text.text = StringManager.t("look_player", {atk = p.attack, def = p.defense, crit = int(round(p.crit_chance * 100.0))})
-	_look_icon.mode = "token"
-	_look_icon.color = p.color
-	_look_icon.glyph = "@"
+	_look_icon.set_sprite("player")
 
 func _describe_enemy(e: EnemyEntity) -> void:
 	look_name.text = GameState.enemy_name(e, true)
@@ -361,10 +386,16 @@ func _describe_enemy(e: EnemyEntity) -> void:
 		lines.append(StringManager.t("look_fast"))
 	elif e.speed < 1.0:
 		lines.append(StringManager.t("look_slow"))
+	if e.ai == "thief":
+		lines[1] = StringManager.t("look_thief_tired" if e.tired > 0 else ("look_thief_fleeing" if e.fleeing else "look_thief"))
+	if e.key_carrier:
+		lines.append(StringManager.t("look_key_carrier"))
+	if e.splits:
+		lines.append(StringManager.t("look_splits"))
+	if e.revives:
+		lines.append(StringManager.t("look_revives"))
 	look_text.text = "\n".join(lines)
-	_look_icon.mode = "token"
-	_look_icon.color = e.color
-	_look_icon.glyph = e.glyph
+	_look_icon.set_sprite(e.sprite)
 
 # ---------------------------------------------------------------------------
 # Building blocks
@@ -382,10 +413,81 @@ func _build_bars() -> void:
 			"energy": _energy_bar = bar
 			_: _xp_bar = bar
 
+## Key row: where the floor's key is and how to find it; daggers on the right.
+func _build_key_row() -> void:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 6)
+	var vbox: Node = bars_box.get_parent()
+	vbox.add_child(row)
+	vbox.move_child(row, $SidePanel/VBox/LevelRow.get_index() + 1)
+	_key_icon = SpriteIcon.new()
+	_key_icon.custom_minimum_size = Vector2(32, 32)
+	_key_icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(_key_icon)
+	_key_lbl = Label.new()
+	_key_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_key_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_key_lbl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_key_lbl.add_theme_font_size_override("font_size", 12)
+	_key_lbl.mouse_filter = Control.MOUSE_FILTER_PASS
+	row.add_child(_key_lbl)
+	_dagger_icon = SpriteIcon.new()
+	_dagger_icon.custom_minimum_size = Vector2(32, 32)
+	_dagger_icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_dagger_icon.set_sprite("dagger")
+	row.add_child(_dagger_icon)
+	_dagger_lbl = Label.new()
+	_dagger_lbl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_dagger_lbl.add_theme_font_override("font", Sprites.bold_font())
+	_dagger_lbl.add_theme_font_size_override("font_size", 14)
+	_dagger_lbl.mouse_filter = Control.MOUSE_FILTER_PASS
+	row.add_child(_dagger_lbl)
+
+func _refresh_key_row() -> void:
+	var p: PlayerEntity = GameState.player
+	var d: DungeonData = GameState.dungeon
+	if p == null or d == null or _key_lbl == null:
+		return
+	var text: String
+	var col: Color = COL_MUTED.lightened(0.3)
+	if not d.stairs_locked:
+		text = StringManager.t("keyrow_open_portal" if d.is_last_floor else "keyrow_open")
+		col = Color("7ee08a")
+		_key_icon.set_sprite("stairs" if not d.is_last_floor else "key", Color.WHITE)
+	elif p.has_key:
+		text = StringManager.t("keyrow_have")
+		col = COL_GOLD
+		_key_icon.set_sprite("key", Color.WHITE)
+	elif d.is_last_floor:
+		text = StringManager.t("keyrow_warden")
+		_key_icon.set_sprite("key", Color(0.55, 0.55, 0.6))
+	elif GameState.thief == null:
+		text = StringManager.t("keyrow_dropped")
+		col = COL_GOLD
+		_key_icon.set_sprite("key", Color.WHITE)
+	elif GameState.key_hint != Vector2.ZERO:
+		text = StringManager.t("keyrow_heard", {dir = StringManager.t("dir_" + GameState.compass(GameState.key_hint))})
+		col = COL_GOLD.lerp(COL_TEXT, 0.4)
+		_key_icon.set_sprite("key", Color(1, 1, 1, 0.5 + 0.5 * GameState.key_hint_strength))
+	elif GameState.thief.tired > 0 and bool(GameState.visible[GameState.thief.grid_pos.x][GameState.thief.grid_pos.y]):
+		text = StringManager.t("keyrow_tired")
+		col = COL_GOLD.lerp(COL_TEXT, 0.4)
+		_key_icon.set_sprite("thief", Color.WHITE)
+	else:
+		text = StringManager.t("keyrow_thief")
+		_key_icon.set_sprite("key", Color(0.55, 0.55, 0.6))
+	_key_lbl.text = text
+	_key_lbl.add_theme_color_override("font_color", col)
+	_key_lbl.tooltip_text = StringManager.t("keyrow_tooltip", {hear = ConfigManager.get_int("key_hear_distance", 18)})
+	_dagger_lbl.text = "%d/%d" % [p.daggers, p.daggers_max]
+	_dagger_lbl.add_theme_color_override("font_color", COL_TEXT if p.daggers > 0 else Color(COL_MUTED, 0.6))
+	_dagger_lbl.tooltip_text = StringManager.t("dagger_tooltip", {range = ConfigManager.get_int("dagger_range", 6)})
+	_dagger_icon.set_sprite("dagger", Color.WHITE if p.daggers > 0 else Color(1, 1, 1, 0.35))
+
 func _build_inventory() -> void:
 	for i in ConfigManager.get_int("inventory_size", 0):
 		var btn := Button.new()
-		btn.custom_minimum_size = Vector2(126, 40)
+		btn.custom_minimum_size = Vector2(126, 36)
 		btn.focus_mode = Control.FOCUS_NONE
 		btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		btn.pressed.connect(func() -> void: item_use_requested.emit(i))
@@ -403,7 +505,7 @@ func _build_inventory() -> void:
 		key.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		row.add_child(key)
 		var icon := SpriteIcon.new()
-		icon.custom_minimum_size = Vector2(28, 28)
+		icon.custom_minimum_size = Vector2(32, 32)
 		icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		row.add_child(icon)
 		var name_lbl := Label.new()
@@ -428,22 +530,19 @@ func _refresh_inventory() -> void:
 		var icon: SpriteIcon = _slot_icons[i]
 		if i < inv.size():
 			var item: Dictionary = inv[i]
-			icon.mode = "item"
-			icon.shape = str(item.get("shape", ""))
-			icon.color = Color("#" + str(item.get("color", "ffffff")))
+			icon.set_sprite(PixelArt.item_sprite(item))
 			_slot_names[i].text = ItemDatabase.display_name(item)
 			_slot_names[i].add_theme_color_override("font_color", COL_TEXT)
 			_slots[i].tooltip_text = ItemDatabase.description(item)
 		else:
-			icon.mode = "none"
+			icon.set_sprite("")
 			_slot_names[i].text = StringManager.t("slot_empty")
 			_slot_names[i].add_theme_color_override("font_color", Color(COL_MUTED, 0.6))
 			_slots[i].tooltip_text = ""
-		icon.queue_redraw()
 
 func _build_look_icon() -> void:
 	_look_icon = SpriteIcon.new()
-	_look_icon.custom_minimum_size = Vector2(40, 40)
+	_look_icon.custom_minimum_size = Vector2(48, 48)
 	look_slot.add_child(_look_icon)
 	_look_icon.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_speaker = SpeakerIcon.new()

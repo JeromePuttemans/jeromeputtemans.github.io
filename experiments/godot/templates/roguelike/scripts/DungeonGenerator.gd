@@ -20,8 +20,15 @@
 #    that grows with depth, each type drawn from the depth-aware spawn table.
 #    No enemy within `enemy_safe_radius` of the start, never two on the same
 #    cell. On the last floor the boss stands next to the exit.
-# 7. Items: a few per floor on free cells; the first one is always a healing
+# 7. The key: on every floor but the last, a key thief starts in a room far
+#    from the start (at least 40 % of the longest walk away) that is not the
+#    stairs room. On the last floor the Warden carries the key of the portal.
+# 8. Items: a few per floor on free cells; the first one is always a healing
 #    potion, so every floor offers at least one way to recover.
+# 9. Scenery with a use: barrels against room walls (they block the way and
+#    may hold something), torches on the top walls of most rooms (light),
+#    scattered bones (looks only). A barrel is kept only if every floor cell
+#    stays reachable without breaking it.
 #
 # The generator is pure: it receives the config, the floor number, a seeded
 # RandomNumberGenerator and two pickers (Callables), and returns a
@@ -56,7 +63,12 @@ static func generate(cfg: Dictionary, floor_number: int, total_floors: int,
 	_spawn_enemies(data, cfg, rng, enemy_picker, occupied)
 	if data.is_last_floor and not boss_id.is_empty():
 		_spawn_boss(data, boss_id, occupied)
+	elif not data.is_last_floor:
+		_spawn_thief(data, rng, occupied)
 	_spawn_items(data, cfg, rng, item_picker, occupied)
+	_place_barrels(data, cfg, rng, occupied)
+	_place_torches(data, cfg, rng)
+	_place_decor(data, rng, occupied)
 	return data
 
 # =============================================================================
@@ -168,6 +180,30 @@ static func _spawn_boss(data: DungeonData, boss_id: String, occupied: Dictionary
 			data.enemy_spawns.append({pos = p, type_id = boss_id})
 			return
 
+## The key thief starts in a far room that does not hold the stairs.
+static func _spawn_thief(data: DungeonData, rng: RandomNumberGenerator, occupied: Dictionary) -> void:
+	var dmap: DijkstraMap = DijkstraMap.compute(data, data.player_start, 1 << 20)
+	var longest: int = 1
+	for i in range(1, data.rooms.size()):
+		longest = maxi(longest, dmap.get_dist(_room_center(data.rooms[i])))
+	var candidates: Array[int] = []
+	for i in range(1, data.rooms.size()):
+		var room: Rect2i = data.rooms[i]
+		if room.has_point(data.stairs_pos):
+			continue
+		if dmap.get_dist(_room_center(room)) >= longest * 0.4:
+			candidates.append(i)
+	if candidates.is_empty():
+		for i in range(1, data.rooms.size()):
+			candidates.append(i)
+	for _attempt in 10:
+		var room: Rect2i = data.rooms[candidates[rng.randi_range(0, candidates.size() - 1)]]
+		var pos: Vector2i = _free_cell_in_room(data, room, occupied, rng)
+		if pos.x >= 0:
+			occupied[pos] = true
+			data.enemy_spawns.append({pos = pos, type_id = "thief"})
+			return
+
 static func _spawn_items(data: DungeonData, cfg: Dictionary, rng: RandomNumberGenerator,
 		picker: Callable, occupied: Dictionary) -> void:
 	var count: int = rng.randi_range(int(cfg.get("items_per_floor_min", 0)), int(cfg.get("items_per_floor_max", 0)))
@@ -191,6 +227,80 @@ static func _free_cell_in_room(data: DungeonData, room: Rect2i, occupied: Dictio
 		if data.get_tile(pos) == DungeonData.TileType.FLOOR and not occupied.has(pos):
 			return pos
 	return Vector2i(-1, -1)
+
+# =============================================================================
+# SCENERY
+# =============================================================================
+
+static func _in_any_room(data: DungeonData, p: Vector2i) -> bool:
+	for room in data.rooms:
+		if room.has_point(p):
+			return true
+	return false
+
+## Barrels against room walls, never next to a corridor, never cutting off
+## part of the floor.
+static func _place_barrels(data: DungeonData, cfg: Dictionary, rng: RandomNumberGenerator, occupied: Dictionary) -> void:
+	var count: int = rng.randi_range(int(cfg.get("barrels_per_floor_min", 0)), int(cfg.get("barrels_per_floor_max", 0)))
+	var placed: int = 0
+	for _attempt in count * 12:
+		if placed >= count or data.rooms.size() < 2:
+			break
+		var room: Rect2i = data.rooms[rng.randi_range(1, data.rooms.size() - 1)]
+		var pos := Vector2i(rng.randi_range(room.position.x, room.end.x - 1), rng.randi_range(room.position.y, room.end.y - 1))
+		var on_border: bool = pos.x == room.position.x or pos.x == room.end.x - 1 or pos.y == room.position.y or pos.y == room.end.y - 1
+		if not on_border or occupied.has(pos) or data.get_tile(pos) != DungeonData.TileType.FLOOR:
+			continue
+		var near_corridor: bool = false
+		for dir in DijkstraMap.DIRS:
+			var n: Vector2i = pos + dir
+			if data.is_open(n) and not _in_any_room(data, n):
+				near_corridor = true
+		if near_corridor:
+			continue
+		data.barrels[pos] = true
+		if not _all_reachable(data):
+			data.barrels.erase(pos)
+			continue
+		occupied[pos] = true
+		placed += 1
+
+static func _all_reachable(data: DungeonData) -> bool:
+	var dmap: DijkstraMap = DijkstraMap.compute(data, data.player_start, 1 << 20)
+	for x in data.width:
+		for y in data.height:
+			var p := Vector2i(x, y)
+			if data.is_walkable(p) and dmap.get_dist(p) < 0:
+				return false
+	return true
+
+## Torches on the top wall of most rooms (two in wide rooms): light sources.
+static func _place_torches(data: DungeonData, cfg: Dictionary, rng: RandomNumberGenerator) -> void:
+	var chance: float = float(cfg.get("torch_chance_per_room", 0.75))
+	for room in data.rooms:
+		if rng.randf() > chance:
+			continue
+		var y: int = room.position.y - 1
+		var spots: Array[Vector2i] = []
+		for x in range(room.position.x, room.end.x):
+			var p := Vector2i(x, y)
+			if data.get_tile(p) == DungeonData.TileType.WALL and data.get_tile(p + Vector2i(0, 1)) == DungeonData.TileType.FLOOR:
+				spots.append(p)
+		if spots.is_empty():
+			continue
+		var wanted: int = 2 if room.size.x >= 7 and spots.size() >= 5 else 1
+		if wanted == 2:
+			data.torches.append(spots[1])
+			data.torches.append(spots[spots.size() - 2])
+		else:
+			data.torches.append(spots[rng.randi_range(0, spots.size() - 1)])
+
+static func _place_decor(data: DungeonData, rng: RandomNumberGenerator, occupied: Dictionary) -> void:
+	for _i in rng.randi_range(5, 10):
+		var room: Rect2i = data.rooms[rng.randi_range(0, data.rooms.size() - 1)]
+		var pos: Vector2i = _free_cell_in_room(data, room, occupied, rng)
+		if pos.x >= 0 and pos != data.player_start:
+			data.decor[pos] = "bones"
 
 static func _chebyshev(a: Vector2i, b: Vector2i) -> int:
 	return maxi(absi(a.x - b.x), absi(a.y - b.y))
