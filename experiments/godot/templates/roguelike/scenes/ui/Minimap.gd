@@ -29,7 +29,7 @@ func _draw() -> void:
 		return
 	var cell: float = floorf(minf(size.x / d.width, size.y / d.height))
 	var origin: Vector2 = ((size - Vector2(d.width, d.height) * cell) * 0.5).floor()
-	draw_rect(Rect2(origin - Vector2(2, 2), Vector2(d.width, d.height) * cell + Vector2(4, 4)), Color(0, 0, 0, 0.45))
+	draw_rect(Rect2(origin - Vector2(2, 2), Vector2(d.width, d.height) * cell + Vector2(4, 4)), Color(0.03, 0.01, 0.06, 0.55))
 	for x in d.width:
 		for y in d.height:
 			if not bool(d.explored[x][y]):
@@ -39,12 +39,12 @@ func _draw() -> void:
 			var vis: bool = bool(GameState.visible[x][y])
 			match d.get_tile(p):
 				DungeonData.TileType.WALL:
-					draw_rect(r, Color("5d6680") if vis else Color("3a4152"))
+					draw_rect(r, Color("b0644e") if vis else Color("5c3a40"))
 				DungeonData.TileType.STAIRS_DOWN:
 					var open_col: Color = Color("7fe3ff") if d.is_last_floor else Color("ffd34d")
 					draw_rect(r.grow(1.0), open_col if not d.stairs_locked else Color("b8bccb"))
 				_:
-					draw_rect(r, Color("8d97b0") if vis else Color("4a5266"))
+					draw_rect(r, Color("8fb0b0") if vis else Color("44546a"))
 	for pos_v in d.items.keys():
 		var pos: Vector2i = pos_v as Vector2i
 		if not bool(d.explored[pos.x][pos.y]):
@@ -54,6 +54,10 @@ func _draw() -> void:
 			draw_rect(r.grow(1.0 + 0.8 * sin(_blink * 8.0)), Color("ffd34d"))
 		else:
 			draw_rect(r, Color("5fd6ff"))
+	for pos_v in d.fuses.keys():
+		var pos: Vector2i = pos_v as Vector2i
+		if bool(d.explored[pos.x][pos.y]):
+			draw_rect(Rect2(origin + Vector2(pos) * cell, Vector2(cell, cell)).grow(0.5 + 0.5 * sin(_blink * 12.0)), Color("ff8a2a"))
 	for e in GameState.enemies:
 		if bool(GameState.visible[e.grid_pos.x][e.grid_pos.y]):
 			draw_rect(Rect2(origin + Vector2(e.grid_pos) * cell, Vector2(cell, cell)).grow(0.5),

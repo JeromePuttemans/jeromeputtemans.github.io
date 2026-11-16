@@ -3,9 +3,9 @@
  "sprites": {
   "player": {
    "palette": {
-    "C": "6fd3dc",
-    "c": "2f8f9e",
-    "d": "21606b",
+    "C": "e8665a",
+    "c": "ad3d46",
+    "d": "6c2238",
     "s": "f3c7a0",
     "e": "1b1424",
     "b": "6e4a2c",
@@ -734,6 +734,173 @@
      "kmkMk.Mk.Mk.Mkmk",
      "kMMMMMMMMMMMMMMk",
      "kkkkkkkkkkkkkkkk"
+    ]
+   ]
+  },
+  "candles": {
+   "palette": {
+    "w": "efe2c4",
+    "W": "fff7e2",
+    "d": "c8b08a",
+    "s": "5d6474",
+    "S": "858c9c",
+    "f": "ffb84d",
+    "F": "fff2a0",
+    "r": "ff6a3a"
+   },
+   "frames": [
+    [
+     "................",
+     "................",
+     "................",
+     "................",
+     "....r...........",
+     "...kFk.....r....",
+     "...kfk....kFk...",
+     "....k...r.kfk...",
+     "...kWk.kFk.k....",
+     "...kwk.kfk.kWk..",
+     "...kwk..k..kwk..",
+     "...kdk.kWk.kwk..",
+     "..kkdkkkwkkkdkk.",
+     ".kSSSSSSSSSSSSSk",
+     ".ksssssssssssssk",
+     "..kkkkkkkkkkkkk."
+    ],
+    [
+     "................",
+     "................",
+     "................",
+     "...........r....",
+     "................",
+     "...kfk..........",
+     "...kFk....kfk...",
+     "....k..r..kFk...",
+     "...kWk.kfk.k....",
+     "...kwk.kFk.kWk..",
+     "...kwk..k..kwk..",
+     "...kdk.kWk.kwk..",
+     "..kkdkkkwkkkdkk.",
+     ".kSSSSSSSSSSSSSk",
+     ".ksssssssssssssk",
+     "..kkkkkkkkkkkkk."
+    ]
+   ]
+  },
+  "rubble": {
+   "palette": {
+    "S": "a3acb0",
+    "s": "717c82",
+    "d": "4c5559"
+   },
+   "frames": [
+    [
+     "................",
+     "................",
+     "................",
+     "................",
+     "................",
+     "................",
+     "................",
+     "................",
+     "..........kk....",
+     ".........kSsk...",
+     "...kk....kssk.k.",
+     "..kSsk....kk.kSk",
+     "..ksdk..kk....k.",
+     "...kk..kSsk.....",
+     ".......ksdk..kk.",
+     "........kk...kk."
+    ]
+   ]
+  },
+  "banner": {
+   "palette": {
+    "r": "a8323a",
+    "R": "d24a48",
+    "y": "e8b84a",
+    "Y": "ffe08a",
+    "d": "6e1e2a",
+    "m": "5a4a3a",
+    "M": "8a7050"
+   },
+   "frames": [
+    [
+     "................",
+     "..kkkkkkkkkkkk..",
+     "..kmMMMMMMMMmk..",
+     "...krrrrrrrrk...",
+     "...kRrrrrrrRk...",
+     "...kRrryyrrRk...",
+     "...kRryYYyrRk...",
+     "...kRrryyrrRk...",
+     "...kRrrrrrrRk...",
+     "...kRrrrrrrRk...",
+     "...kRrrrrrrRk...",
+     "...kddddddddk...",
+     "...kRrrkkrrRk...",
+     "...kRrk..krRk...",
+     "...kRk....kRk...",
+     "...kk......kk..."
+    ]
+   ]
+  },
+  "rune": {
+   "palette": {
+    "g": "7a4cc8",
+    "G": "d2b0ff"
+   },
+   "frames": [
+    [
+     "................",
+     "................",
+     "................",
+     ".....gggggg.....",
+     "...gg..GG..gg...",
+     "..g...G..G...g..",
+     "..g..G....G..g..",
+     "..gGGGGGGGGGGg..",
+     "..g..G....G..g..",
+     "..g...G..G...g..",
+     "...gg..GG..gg...",
+     ".....gggggg.....",
+     "................",
+     "................",
+     "................",
+     "................"
+    ]
+   ],
+   "tint": "g",
+   "tint_light": "G"
+  },
+  "keg": {
+   "palette": {
+    "w": "3e3646",
+    "W": "5e5468",
+    "d": "241e2c",
+    "r": "9a2a2a",
+    "R": "d84a3a",
+    "Y": "ffd24d",
+    "f": "c9a070"
+   },
+   "frames": [
+    [
+     "................",
+     "........kk......",
+     ".......kfk......",
+     "....kkkkkkkk....",
+     "...kWWWWWWWWk...",
+     "...krRRRRRRrk...",
+     "..kwWwwwwwwwdk..",
+     "..kwWwYwwYwwdk..",
+     "..kwWwwYYwwwdk..",
+     "..kwWwYwwYwwdk..",
+     "..kwWwwwwwwwdk..",
+     "..krRRRRRRRRrk..",
+     "...kwWwwwwwdk...",
+     "...kdddddddk....",
+     "....kkkkkkkk....",
+     "................"
     ]
    ]
   }

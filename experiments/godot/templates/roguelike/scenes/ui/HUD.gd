@@ -10,7 +10,10 @@
 #   Banner     floor name when arriving on a floor
 #   Fade       black fade-in after taking the stairs
 #   EndOverlay death / victory screen with the cause and run stats
-#   Vignette   red screen-edge flash when hurt, pulse at low HP (shader)
+#   ActionBar  top left of the map: dash (ready or recharging) and elan
+#              (flames, damage bonus, turns left before it drops)
+#   Vignette   dark violet edges around the map, red flash when hurt,
+#              pulse at low HP (shader)
 #
 # The HUD never changes the game: it emits intents (item_use_requested,
 # item_drop_requested, restart_requested) that Main.gd turns into GameState
@@ -29,14 +32,15 @@ const SIDE_W:  float = 288.0
 const LOG_H:   float = 116.0
 const MARGIN:  float = 8.0
 
-const COL_TEXT   := Color("e8edf5")
-const COL_MUTED  := Color("8a97ab")
-const COL_PANEL  := Color(0.07, 0.08, 0.12, 0.94)
-const COL_BORDER := Color("2c3550")
-const COL_HP     := Color("e8505b")
-const COL_ENERGY := Color("f0b44a")
-const COL_XP     := Color("a77dff")
-const COL_GOLD   := Color("ffd34d")
+const COL_TEXT   := Color("efe7dc")
+const COL_MUTED  := Color("9a8fa6")
+const COL_PANEL  := Color(0.075, 0.058, 0.11, 0.95)
+const COL_BORDER := Color("4c3446")
+const COL_ACCENT := Color("d07a45")
+const COL_HP     := Color("e0464f")
+const COL_ENERGY := Color("eba046")
+const COL_XP     := Color("a070f0")
+const COL_GOLD   := Color("ffcf5a")
 
 # --- Small custom-drawn controls -------------------------------------------
 
@@ -103,6 +107,74 @@ class SpeakerIcon extends Control:
 			draw_arc(c + Vector2(r * 0.05, 0), r * 0.35, -0.9, 0.9, 10, col, 1.8, true)
 			draw_arc(c + Vector2(r * 0.05, 0), r * 0.65, -0.9, 0.9, 12, col, 1.8, true)
 
+## Dash and elan, top left of the map. Redrawn every frame (it pulses).
+class ActionBar extends Control:
+	var _time: float = 0.0
+	func _ready() -> void:
+		mouse_filter = Control.MOUSE_FILTER_PASS
+	func _process(delta: float) -> void:
+		_time += delta
+		queue_redraw()
+	func _draw() -> void:
+		var p: PlayerEntity = GameState.player
+		if p == null:
+			return
+		var bold: Font = Sprites.bold_font()
+		var font: Font = ThemeDB.fallback_font
+		var muted := Color("9a8fa6")
+		var flame := Color("ff9a3c")
+		var r := Rect2(Vector2.ZERO, size)
+		draw_rect(r, Color(0.06, 0.04, 0.09, 0.78))
+		draw_rect(r, Color("4c3446"), false, 1.0)
+		draw_rect(Rect2(Vector2.ZERO, Vector2(size.x, 2)), Color(0.82, 0.48, 0.27, 0.8))
+		# dash
+		var ready: bool = p.dash_cd <= 0
+		var y: float = 24.0
+		draw_string(bold, Vector2(10, y), StringManager.t("dash_label"), HORIZONTAL_ALIGNMENT_LEFT, -1, 12, muted)
+		var cx: float = 96.0
+		var pulse: float = 0.5 + 0.5 * sin(_time * 5.0)
+		var chev: Color = Color("ffcf5a").lerp(Color.WHITE, 0.3 * pulse) if ready else Color(0.55, 0.5, 0.6)
+		for i in 2:
+			var x0: float = cx + i * 7.0
+			draw_polyline(PackedVector2Array([Vector2(x0, y - 12), Vector2(x0 + 6, y - 6), Vector2(x0, y)]), chev, 2.5)
+		if ready:
+			draw_string(bold, Vector2(cx + 24, y), StringManager.t("dash_ready"), HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color("ffcf5a"))
+			draw_string(font, Vector2(cx + 76, y), StringManager.t("dash_key"), HORIZONTAL_ALIGNMENT_LEFT, -1, 11, muted)
+		else:
+			var full: int = maxi(ConfigManager.get_int("dash_cooldown", 6), 1)
+			var w: float = 70.0
+			var bar := Rect2(Vector2(cx + 24, y - 9), Vector2(w, 6))
+			draw_rect(bar, Color(0, 0, 0, 0.5))
+			draw_rect(Rect2(bar.position, Vector2(w * (1.0 - float(p.dash_cd) / full), 6)), Color(0.75, 0.62, 0.4))
+			draw_string(font, Vector2(cx + 102, y), StringManager.t("dash_wait", {turns = p.dash_cd}), HORIZONTAL_ALIGNMENT_LEFT, -1, 11, muted)
+		# elan
+		y = 50.0
+		draw_string(bold, Vector2(10, y), StringManager.t("elan_label"), HORIZONTAL_ALIGNMENT_LEFT, -1, 12, muted)
+		var emax: int = ConfigManager.get_int("elan_max", 5)
+		for i in emax:
+			var c := Vector2(cx + 4 + i * 16.0, y - 6)
+			var lit: bool = i < p.elan
+			var flick: float = 1.0 + (0.12 * sin(_time * 12.0 + i * 1.7) if lit else 0.0)
+			var pts := PackedVector2Array([c + Vector2(0, -8) * flick, c + Vector2(4.5, -1), c + Vector2(3.5, 4),
+				c + Vector2(0, 6), c + Vector2(-3.5, 4), c + Vector2(-4.5, -1)])
+			if lit:
+				draw_colored_polygon(pts, flame)
+				draw_circle(c + Vector2(0, 2), 2.2, Color("ffe08a"))
+			else:
+				pts.append(pts[0])
+				draw_polyline(pts, Color(0.45, 0.4, 0.5), 1.2)
+		var tx: float = cx + 6 + emax * 16.0
+		if p.elan > 0:
+			var bonus: int = GameState.elan_bonus()
+			if bonus > 0:
+				draw_string(bold, Vector2(tx, y), StringManager.t("elan_bonus", {value = bonus}), HORIZONTAL_ALIGNMENT_LEFT, -1, 12, flame)
+			var win: int = maxi(ConfigManager.get_int("elan_window", 4), 1)
+			for i in win:
+				draw_rect(Rect2(Vector2(cx - 4 + i * (80.0 / win), y + 5), Vector2(80.0 / win - 3.0, 3)),
+					flame if i < p.elan_timer else Color(0.3, 0.26, 0.34))
+		else:
+			draw_string(font, Vector2(tx, y), StringManager.t("elan_none"), HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(0.6, 0.55, 0.65))
+
 # --- Nodes ------------------------------------------------------------------
 
 @onready var floor_title:  Label          = $SidePanel/VBox/Header/FloorTitle
@@ -152,6 +224,7 @@ var _flash:  float = 0.0
 var _time:   float = 0.0
 var _victory: bool = false
 var _banner_tween: Tween = null
+var _action_bar: ActionBar = null
 
 func _ready() -> void:
 	theme = _build_theme()
@@ -160,11 +233,17 @@ func _ready() -> void:
 	_build_key_row()
 	_build_inventory()
 	_build_look_icon()
+	_action_bar = ActionBar.new()
+	add_child(_action_bar)
+	move_child(_action_bar, banner.get_index())
+	_action_bar.position = Vector2(MARGIN + 4.0, MARGIN + 4.0)
+	_action_bar.size = Vector2(320, 62)
 	_style_nodes()
 	GameState.stats_changed.connect(refresh)
 	GameState.turn_ended.connect(_refresh_key_row)
 	GameState.dungeon_ready.connect(_on_dungeon_ready)
 	GameState.entity_attacked.connect(_on_entity_attacked)
+	GameState.entity_hurt.connect(_on_entity_hurt)
 	StringManager.language_changed.connect(_on_language_changed)
 	Sfx.mute_changed.connect(_on_mute_changed)
 	lang_btn.pressed.connect(_on_lang_pressed)
@@ -183,6 +262,10 @@ func _process(delta: float) -> void:
 		low = float(GameState.player.hp) <= float(GameState.player.hp_max) * 0.3
 	var pulse: float = (0.22 + 0.1 * sin(_time * 4.0)) if low else 0.0
 	_vignette_mat.set_shader_parameter("intensity", maxf(_flash, pulse))
+	var vp: Vector2 = get_viewport_rect().size
+	var area: Rect2 = map_area()
+	_vignette_mat.set_shader_parameter("area", Vector4(area.position.x / vp.x, area.position.y / vp.y,
+		area.size.x / vp.x, area.size.y / vp.y))
 
 # ---------------------------------------------------------------------------
 # Public API (Main.gd)
@@ -247,6 +330,14 @@ func set_look(tile: Vector2i) -> void:
 		look_name.text = ItemDatabase.display_name(item)
 		look_text.text = ItemDatabase.description(item) + ("" if vis else "\n" + StringManager.t("look_remembered"))
 		_look_icon.set_sprite(PixelArt.item_sprite(item))
+	elif d.is_keg(tile):
+		look_name.text = StringManager.t("look_keg_name")
+		if d.fuses.has(tile):
+			look_text.text = StringManager.t("look_keg_lit", {turns = int(d.fuses[tile])})
+		else:
+			look_text.text = StringManager.t("look_keg", {turns = ConfigManager.get_int("keg_fuse_turns", 3),
+				damage = GameState.keg_damage(), radius = ConfigManager.get_int("keg_radius", 1)})
+		_look_icon.set_sprite("keg")
 	elif d.barrels.has(tile):
 		look_name.text = StringManager.t("look_barrel_name")
 		look_text.text = StringManager.t("look_barrel", {pct = int(round(ConfigManager.get_float("barrel_loot_chance", 0.4) * 100.0))})
@@ -270,15 +361,27 @@ func set_look(tile: Vector2i) -> void:
 	elif d.torches.has(tile):
 		look_name.text = StringManager.t("look_torch")
 		_look_icon.set_sprite("torch")
+	elif d.banners.has(tile):
+		look_name.text = StringManager.t("look_banner")
+		_look_icon.set_sprite("banner")
+	elif d.candles.has(tile):
+		look_name.text = StringManager.t("look_candles")
+		_look_icon.set_sprite("candles")
+	elif d.runes.has(tile):
+		look_name.text = StringManager.t("look_rune")
+		_look_icon.set_sprite("rune@" + str(ConfigManager.get_floor_theme(GameState.current_floor).get("rune", "a865ff")))
 	elif d.decor.has(tile):
-		look_name.text = StringManager.t("look_bones")
-		_look_icon.set_sprite("bones")
+		var rubble: bool = str(d.decor[tile]) == "rubble"
+		look_name.text = StringManager.t("look_rubble" if rubble else "look_bones")
+		_look_icon.set_sprite("rubble" if rubble else "bones")
 	else:
 		match d.get_tile(tile):
 			DungeonData.TileType.WALL:
 				look_name.text = StringManager.t("look_wall")
 			_:
 				look_name.text = StringManager.t("look_floor")
+	if vis and GameState.is_cell_threatened(tile):
+		look_text.text = (look_text.text + "\n" if not look_text.text.is_empty() else "") + StringManager.t("look_danger")
 
 func flash_damage(strength: float) -> void:
 	_flash = maxf(_flash, strength)
@@ -330,6 +433,9 @@ func _on_entity_attacked(_attacker: Entity, target: Entity, damage: int, _crit: 
 	if target == GameState.player:
 		flash_damage(0.35 + 0.6 * float(damage) / float(maxi(GameState.player.hp_max, 1)))
 
+func _on_entity_hurt(target: Entity, damage: int, _kind: String) -> void:
+	_on_entity_attacked(null, target, damage, false)
+
 func _on_mute_changed(muted: bool) -> void:
 	_speaker.muted = muted
 	_speaker.queue_redraw()
@@ -351,6 +457,10 @@ func _refresh_texts() -> void:
 	look_title.text = StringManager.t("look_title")
 	restart_btn.text = StringManager.t("restart_button")
 	controls_lbl.text = StringManager.t("controls", {keys = _controls_keys})
+	_action_bar.tooltip_text = StringManager.t("dash_tooltip", {range = ConfigManager.get_int("dash_range", 3),
+		bonus = ConfigManager.get_int("dash_attack_bonus", 1), cooldown = ConfigManager.get_int("dash_cooldown", 6)}) \
+		+ "\n\n" + StringManager.t("elan_tooltip", {max = ConfigManager.get_int("elan_max", 5),
+		every = ConfigManager.get_int("elan_damage_every", 2), window = ConfigManager.get_int("elan_window", 4)})
 	_energy_bar.tooltip_text = StringManager.t("energy_tooltip", {
 		drain = ConfigManager.get_int("energy_drain_every", 0),
 		regen = ConfigManager.get_int("hp_regen_every", 0),
@@ -361,7 +471,8 @@ func _fill_end_texts() -> void:
 	end_title.add_theme_color_override("font_color", COL_GOLD if _victory else COL_HP)
 	end_cause.text = StringManager.t("victory_text") if _victory else GameState.death_text()
 	var p: PlayerEntity = GameState.player
-	end_stats.text = StringManager.t("end_stats", {level = p.level, kills = GameState.kills, turns = GameState.turn, keys = GameState.keys_found})
+	end_stats.text = StringManager.t("end_stats", {level = p.level, kills = GameState.kills, turns = GameState.turn,
+		keys = GameState.keys_found, elan = GameState.best_elan})
 
 # ---------------------------------------------------------------------------
 # Look descriptions
@@ -394,6 +505,17 @@ func _describe_enemy(e: EnemyEntity) -> void:
 		lines.append(StringManager.t("look_splits"))
 	if e.revives:
 		lines.append(StringManager.t("look_revives"))
+	if e.heavy == "cleave":
+		lines.append(StringManager.t("look_heavy"))
+	elif e.heavy == "slam":
+		lines.append(StringManager.t("look_enraged") if e.enraged else StringManager.t("look_slam", {every = e.heavy_every}))
+	if e.massive:
+		lines.append(StringManager.t("look_massive"))
+	var dz: Dictionary = GameState.danger_of(e)
+	if e.stunned > 0:
+		lines.insert(1, StringManager.t("look_stunned"))
+	elif not dz.is_empty():
+		lines.insert(1, StringManager.t("look_aiming" if str(dz["kind"]) == "arrow" else "look_winding_up"))
 	look_text.text = "\n".join(lines)
 	_look_icon.set_sprite(e.sprite)
 
@@ -511,6 +633,7 @@ func _build_inventory() -> void:
 		var name_lbl := Label.new()
 		name_lbl.add_theme_font_size_override("font_size", 11)
 		name_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		name_lbl.max_lines_visible = 2   # "Parchemin de téléportation" spilled out of the slot
 		name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		name_lbl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		name_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -566,25 +689,31 @@ func _sb(bg: Color, border: Color, radius: int, border_w: int, margin: float) ->
 	s.anti_aliasing = true
 	return s
 
+## Dark plum panel, thin border, thicker on top: the panels sit in the same
+## warm-dark range as the dungeon.
+func _panel_box() -> StyleBoxFlat:
+	var panel := _sb(COL_PANEL, COL_BORDER, 6, 1, 12)
+	panel.border_width_top = 2
+	panel.shadow_color = Color(0.02, 0.0, 0.05, 0.55)
+	panel.shadow_size = 10
+	return panel
+
 func _build_theme() -> Theme:
 	var th := Theme.new()
 	th.default_font_size = 14
 	th.set_color("font_color", "Label", COL_TEXT)
 	th.set_color("font_outline_color", "Label", Color(0, 0, 0, 0.7))
-	var panel := _sb(COL_PANEL, COL_BORDER, 10, 1, 12)
-	panel.shadow_color = Color(0, 0, 0, 0.4)
-	panel.shadow_size = 8
-	th.set_stylebox("panel", "PanelContainer", panel)
-	th.set_stylebox("normal", "Button", _sb(Color("1d2436"), Color("2f3a56"), 7, 1, 8))
-	th.set_stylebox("hover", "Button", _sb(Color("263049"), Color("5a73a0"), 7, 1, 8))
-	th.set_stylebox("pressed", "Button", _sb(Color("151b2a"), Color("5a73a0"), 7, 1, 8))
-	th.set_stylebox("disabled", "Button", _sb(Color("161b28"), Color("232a3d"), 7, 1, 8))
+	th.set_stylebox("panel", "PanelContainer", _panel_box())
+	th.set_stylebox("normal", "Button", _sb(Color("1e1727"), Color("3e2d40"), 4, 1, 8))
+	th.set_stylebox("hover", "Button", _sb(Color("2a2033"), COL_ACCENT, 4, 1, 8))
+	th.set_stylebox("pressed", "Button", _sb(Color("150f1c"), COL_ACCENT, 4, 1, 8))
+	th.set_stylebox("disabled", "Button", _sb(Color("17111d"), Color("2a2030"), 4, 1, 8))
 	th.set_stylebox("focus", "Button", StyleBoxEmpty.new())
 	th.set_color("font_color", "Button", COL_TEXT)
 	th.set_color("font_hover_color", "Button", Color.WHITE)
 	th.set_font("font", "Button", Sprites.bold_font())
 	th.set_font_size("font_size", "Button", 14)
-	th.set_stylebox("panel", "TooltipPanel", _sb(Color("0b0e16"), COL_BORDER, 6, 1, 8))
+	th.set_stylebox("panel", "TooltipPanel", _sb(Color("0f0b15"), COL_ACCENT.darkened(0.3), 4, 1, 8))
 	th.set_color("font_color", "TooltipLabel", COL_TEXT)
 	th.set_font_size("font_size", "TooltipLabel", 13)
 	return th
@@ -601,14 +730,15 @@ func _style_nodes() -> void:
 		(lbl as Label).add_theme_font_override("font", Sprites.bold_font())
 		(lbl as Label).add_theme_font_size_override("font_size", 12)
 		(lbl as Label).add_theme_color_override("font_color", COL_MUTED)
-	look_panel.add_theme_stylebox_override("panel", _sb(Color(0, 0, 0, 0.25), Color(1, 1, 1, 0.06), 8, 1, 8))
+	look_panel.add_theme_stylebox_override("panel", _sb(Color(0.02, 0.0, 0.04, 0.35), Color(1, 0.85, 0.7, 0.07), 4, 1, 8))
 	look_name.add_theme_font_override("font", Sprites.bold_font())
 	look_name.add_theme_font_size_override("font_size", 14)
 	look_text.add_theme_font_size_override("font_size", 12)
 	look_text.add_theme_color_override("font_color", COL_MUTED.lightened(0.25))
 	controls_lbl.add_theme_font_size_override("font_size", 11)
 	controls_lbl.add_theme_color_override("font_color", Color(COL_MUTED, 0.85))
-	log_panel.add_theme_stylebox_override("panel", _sb(COL_PANEL, COL_BORDER, 10, 1, 12))
+	log_panel.add_theme_stylebox_override("panel", _panel_box())
+	floor_title.add_theme_color_override("font_color", COL_GOLD)
 	banner_title.add_theme_font_override("font", Sprites.bold_font())
 	banner_title.add_theme_font_size_override("font_size", 40)
 	banner_title.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
@@ -621,7 +751,7 @@ func _style_nodes() -> void:
 	end_cause.add_theme_font_size_override("font_size", 16)
 	end_stats.add_theme_font_size_override("font_size", 15)
 	end_stats.add_theme_color_override("font_color", COL_MUTED.lightened(0.3))
-	var accent := Color("38b866")
+	var accent := Color("c0603a")
 	restart_btn.add_theme_stylebox_override("normal", _sb(accent.darkened(0.15), accent.lightened(0.2), 8, 1, 10))
 	restart_btn.add_theme_stylebox_override("hover", _sb(accent, accent.lightened(0.4), 8, 1, 10))
 	restart_btn.add_theme_font_size_override("font_size", 17)
@@ -631,12 +761,17 @@ func _setup_vignette() -> void:
 	shader.code = """
 shader_type canvas_item;
 uniform float intensity = 0.0;
+uniform float base = 0.62;
 uniform vec4 tint : source_color = vec4(0.9, 0.08, 0.12, 1.0);
+uniform vec4 shade : source_color = vec4(0.03, 0.01, 0.07, 1.0);
+uniform vec4 area = vec4(0.0, 0.0, 1.0, 1.0);   // map area in screen UV: x, y, w, h
 void fragment() {
-	vec2 uv = UV - vec2(0.5);
-	float d = length(uv * vec2(1.0, 0.8));
-	float v = smoothstep(0.3, 0.78, d);
-	COLOR = vec4(tint.rgb, v * intensity);
+	vec2 uv = (UV - area.xy) / area.zw - vec2(0.5);
+	float d = length(uv * vec2(1.0, 0.86));
+	float v = smoothstep(0.3, 0.86, d);
+	float hurt = clamp(intensity, 0.0, 1.0);
+	vec3 col = mix(shade.rgb, tint.rgb, clamp(hurt * 2.2, 0.0, 1.0));
+	COLOR = vec4(col, v * max(base, hurt));
 }
 """
 	_vignette_mat = ShaderMaterial.new()

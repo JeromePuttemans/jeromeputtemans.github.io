@@ -35,9 +35,13 @@ var items:         Dictionary        = {}   # Vector2i -> item definition (Dicti
 var floor_number:  int               = 1
 var is_last_floor: bool              = false
 var stairs_locked: bool              = true    # opened by the floor's key
-var barrels:       Dictionary        = {}      # Vector2i -> true; block walking, not sight
+var barrels:       Dictionary        = {}      # Vector2i -> "barrel" or "keg"; block walking, not sight
+var fuses:         Dictionary        = {}      # Vector2i -> turns left: lit powder kegs
 var torches:       Array[Vector2i]   = []      # wall cells holding a torch (light)
-var decor:         Dictionary        = {}      # Vector2i -> "bones" (looks only)
+var candles:       Array[Vector2i]   = []      # floor cells with candles (light, walkable)
+var runes:         Array[Vector2i]   = []      # glowing floor runes (coloured light, walkable)
+var banners:       Dictionary        = {}      # wall cell -> true: banner hung on the wall face
+var decor:         Dictionary        = {}      # Vector2i -> "bones" or "rubble" (looks only)
 var footprints:    Dictionary        = {}      # Vector2i -> {turn, dir}: the thief's tracks
 var bone_piles:    Dictionary        = {}      # Vector2i -> {turns, data, hp}: fallen skeletons
 
@@ -71,6 +75,10 @@ func in_bounds(pos: Vector2i) -> bool:
 ## barrel.
 func is_walkable(pos: Vector2i) -> bool:
 	return get_tile(pos) != TileType.WALL and not barrels.has(pos)
+
+## True for a powder keg (a barrel that explodes).
+func is_keg(pos: Vector2i) -> bool:
+	return str(barrels.get(pos, "")) == "keg"
 
 ## Like is_walkable, but a barrel counts as floor (vision, wall faces).
 func is_open(pos: Vector2i) -> bool:

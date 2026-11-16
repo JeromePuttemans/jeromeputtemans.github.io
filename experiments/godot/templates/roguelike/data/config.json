@@ -50,11 +50,37 @@
 	"dagger_range": 6,
 	"dagger_attack_bonus": -2,
 
+	"dash_range": 3,
+	"dash_cooldown": 6,
+	"dash_attack_bonus": 1,
+	"impact_damage": 3,
+	"impact_damage_per_floor": 0.5,
+	"stun_turns": 1,
+
+	"elan_max": 5,
+	"elan_window": 4,
+	"elan_heal_per_stack": 1,
+	"elan_damage_every": 2,
+
 	"barrels_per_floor_min": 4,
 	"barrels_per_floor_max": 8,
 	"barrel_loot_chance": 0.3,
+	"keg_chance": 0.3,
+	"keg_fuse_turns": 3,
+	"keg_radius": 1,
+	"keg_damage": 8,
+	"keg_damage_per_floor": 2,
+	"keg_slide": 4,
+
 	"torch_chance_per_room": 0.75,
-	"torch_light_radius": 4.5,
+	"torch_light_radius": 5.0,
+	"candle_chance_per_room": 0.6,
+	"candle_light_radius": 3.0,
+	"rune_chance": 0.7,
+	"banner_chance": 0.35,
+	"lantern_color": "ffa86a",
+	"lantern_radius": 5.0,
+	"lantern_strength": 0.6,
 
 	"slime_split_min_hp": 4,
 	"skeleton_revive_turns": 7,
@@ -65,10 +91,10 @@
 	"sfx_volume_db": -8.0,
 
 	"floor_themes": [
-		{ "name_key": "floor_name_1", "wall": "4b5468", "wall_top": "68728a", "floor": "394057", "floor_alt": "3d445c", "light": "ffd9a6" },
-		{ "name_key": "floor_name_2", "wall": "5a4a38", "wall_top": "7a664c", "floor": "3d372c", "floor_alt": "423b30", "light": "ffcf8a" },
-		{ "name_key": "floor_name_3", "wall": "4c3d63", "wall_top": "6a5689", "floor": "382f47", "floor_alt": "3c334c", "light": "d8c4ff" },
-		{ "name_key": "floor_name_4", "wall": "6a3a30", "wall_top": "8f5141", "floor": "452a24", "floor_alt": "4a2e27", "light": "ffb37a" },
-		{ "name_key": "floor_name_5", "wall": "5c5236", "wall_top": "857749", "floor": "3a3421", "floor_alt": "3f3824", "light": "ffe7a0" }
+		{ "name_key": "floor_name_1", "floor": "8c9696", "floor_alt": "808b8e", "wall": "a65a46", "wall_top": "6fa39c", "light": "ff7a30", "ambient": "36608c", "rune": "a865ff" },
+		{ "name_key": "floor_name_2", "floor": "8e9286", "floor_alt": "838878", "wall": "8a5a3c", "wall_top": "7aa070", "light": "ffa040", "ambient": "385876", "rune": "8f7bff" },
+		{ "name_key": "floor_name_3", "floor": "8c8c9a", "floor_alt": "82828f", "wall": "7a4a6c", "wall_top": "8a92c0", "light": "c78aff", "ambient": "4a4690", "rune": "ff6ad5" },
+		{ "name_key": "floor_name_4", "floor": "8c8a8c", "floor_alt": "817f82", "wall": "a8432f", "wall_top": "8a7a72", "light": "ff6a2a", "ambient": "573e74", "rune": "ff9a4c" },
+		{ "name_key": "floor_name_5", "floor": "8e9890", "floor_alt": "838d86", "wall": "946538", "wall_top": "90a888", "light": "ffc860", "ambient": "3c5684", "rune": "7fe3ff" }
 	]
 }

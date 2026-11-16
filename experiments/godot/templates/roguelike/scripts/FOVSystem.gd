@@ -53,6 +53,10 @@ static func compute(dungeon: DungeonData, origin: Vector2i, radius: int) -> Arra
 static func has_los(dungeon: DungeonData, from: Vector2i, to: Vector2i) -> bool:
 	return _has_los(dungeon, from, to)
 
+## Grid cells on the line from `from` to `to`, both included (arrows).
+static func line(from: Vector2i, to: Vector2i) -> Array:
+	return _bresenham(from, to)
+
 ## Returns true if there is a clear line of sight from `from` to `to`.
 ## Checks all intermediate cells; the target cell itself is always considered
 ## visible (you can see a wall face even though you cannot walk through it).

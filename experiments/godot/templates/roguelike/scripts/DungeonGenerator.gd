@@ -26,9 +26,11 @@
 # 8. Items: a few per floor on free cells; the first one is always a healing
 #    potion, so every floor offers at least one way to recover.
 # 9. Scenery with a use: barrels against room walls (they block the way and
-#    may hold something), torches on the top walls of most rooms (light),
-#    scattered bones (looks only). A barrel is kept only if every floor cell
-#    stays reachable without breaking it.
+#    may hold something; keg_chance of them are powder kegs that explode),
+#    torches on the top walls of most rooms and candles in room corners
+#    (light), a glowing rune on most floors (coloured light), banners on
+#    some walls, bones and rubble (looks only). A barrel is kept only if
+#    every floor cell stays reachable without breaking it.
 #
 # The generator is pure: it receives the config, the floor number, a seeded
 # RandomNumberGenerator and two pickers (Callables), and returns a
@@ -68,6 +70,8 @@ static func generate(cfg: Dictionary, floor_number: int, total_floors: int,
 	_spawn_items(data, cfg, rng, item_picker, occupied)
 	_place_barrels(data, cfg, rng, occupied)
 	_place_torches(data, cfg, rng)
+	_place_banners(data, cfg, rng)
+	_place_lights(data, cfg, rng, occupied)
 	_place_decor(data, rng, occupied)
 	return data
 
@@ -258,7 +262,7 @@ static func _place_barrels(data: DungeonData, cfg: Dictionary, rng: RandomNumber
 				near_corridor = true
 		if near_corridor:
 			continue
-		data.barrels[pos] = true
+		data.barrels[pos] = "keg" if rng.randf() < float(cfg.get("keg_chance", 0.0)) else "barrel"
 		if not _all_reachable(data):
 			data.barrels.erase(pos)
 			continue
@@ -295,12 +299,63 @@ static func _place_torches(data: DungeonData, cfg: Dictionary, rng: RandomNumber
 		else:
 			data.torches.append(spots[rng.randi_range(0, spots.size() - 1)])
 
+## Banners on free spots of the top walls (not on a torch).
+static func _place_banners(data: DungeonData, cfg: Dictionary, rng: RandomNumberGenerator) -> void:
+	var chance: float = float(cfg.get("banner_chance", 0.0))
+	for room in data.rooms:
+		if rng.randf() > chance:
+			continue
+		var spots: Array[Vector2i] = []
+		for x in range(room.position.x, room.end.x):
+			var p := Vector2i(x, room.position.y - 1)
+			if data.get_tile(p) == DungeonData.TileType.WALL and data.get_tile(p + Vector2i(0, 1)) == DungeonData.TileType.FLOOR 					and not data.torches.has(p) and not data.torches.has(p + Vector2i(1, 0)) and not data.torches.has(p - Vector2i(1, 0)):
+				spots.append(p)
+		if not spots.is_empty():
+			data.banners[spots[rng.randi_range(0, spots.size() - 1)]] = true
+
+## Candles in room corners, and one glowing rune near the middle of a room
+## (never the start room nor the stairs room). Both are walkable light sources.
+static func _place_lights(data: DungeonData, cfg: Dictionary, rng: RandomNumberGenerator, occupied: Dictionary) -> void:
+	var chance: float = float(cfg.get("candle_chance_per_room", 0.0))
+	for room in data.rooms:
+		if rng.randf() > chance:
+			continue
+		var corners: Array[Vector2i] = [room.position, Vector2i(room.end.x - 1, room.position.y),
+			Vector2i(room.position.x, room.end.y - 1), room.end - Vector2i.ONE]
+		var c: Vector2i = corners[rng.randi_range(0, 3)]
+		if data.get_tile(c) == DungeonData.TileType.FLOOR and not occupied.has(c) and c != data.player_start:
+			occupied[c] = true
+			data.candles.append(c)
+	if data.rooms.size() < 3 or rng.randf() > float(cfg.get("rune_chance", 0.0)):
+		return
+	for _attempt in 10:
+		var room: Rect2i = data.rooms[rng.randi_range(1, data.rooms.size() - 1)]
+		if room.has_point(data.stairs_pos):
+			continue
+		var p: Vector2i = _free_cell_in_room(data, room.grow(-1) if room.size.x > 4 and room.size.y > 4 else room, occupied, rng)
+		if p.x >= 0:
+			occupied[p] = true
+			data.runes.append(p)
+			return
+
 static func _place_decor(data: DungeonData, rng: RandomNumberGenerator, occupied: Dictionary) -> void:
 	for _i in rng.randi_range(5, 10):
 		var room: Rect2i = data.rooms[rng.randi_range(0, data.rooms.size() - 1)]
 		var pos: Vector2i = _free_cell_in_room(data, room, occupied, rng)
 		if pos.x >= 0 and pos != data.player_start:
 			data.decor[pos] = "bones"
+	# rubble along the walls: floor cells that touch a wall
+	for _i in rng.randi_range(8, 14):
+		var room: Rect2i = data.rooms[rng.randi_range(0, data.rooms.size() - 1)]
+		var pos: Vector2i = _free_cell_in_room(data, room, occupied, rng)
+		if pos.x < 0 or pos == data.player_start or data.decor.has(pos):
+			continue
+		var by_wall: bool = false
+		for dir in DijkstraMap.DIRS:
+			if data.get_tile(pos + dir) == DungeonData.TileType.WALL:
+				by_wall = true
+		if by_wall:
+			data.decor[pos] = "rubble"
 
 static func _chebyshev(a: Vector2i, b: Vector2i) -> int:
 	return maxi(absi(a.x - b.x), absi(a.y - b.y))

@@ -27,12 +27,15 @@ var inventory_size: int   = 0
 var has_key:        bool  = false   # the floor's key, used up by the stairs grille
 var daggers:        int   = 0       # throwing daggers carried
 var daggers_max:    int   = 0
+var dash_cd:        int   = 0       # turns before the next dash (0 = ready)
+var elan:           int   = 0       # momentum stacks, one per kill in a row
+var elan_timer:     int   = 0       # turns without hitting before elan drops
 
 func _init() -> void:
 	id             = "player"
 	display_name   = "Player"
 	sprite         = "player"
-	color          = Color("6fd3dc")
+	color          = Color("e8665a")
 	hp_max         = ConfigManager.get_int("player_hp_max", 1)
 	hp             = hp_max
 	attack         = ConfigManager.get_int("player_attack", 1)

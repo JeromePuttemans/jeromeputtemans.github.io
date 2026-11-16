@@ -3,8 +3,9 @@
 # =============================================================================
 # Responsibilities:
 #   - start a run, restart after death or victory
-#   - route keyboard input to GameState (move, wait, use, drop, descend,
-#     throw a dagger with F; right click throws at the hovered enemy)
+#   - route keyboard input to GameState (move, dash with Shift + direction,
+#     wait, use, drop, descend, throw a dagger with F; right click throws
+#     at the hovered enemy or powder keg)
 #   - drive the camera (follow the player's animated position)
 #   - send the hovered tile to the view (outline) and the HUD (Look box)
 #   - end-of-run sequences (sound, shake, confetti, then the end screen)
@@ -75,7 +76,7 @@ func _update_hover() -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	var mb: InputEventMouseButton = event as InputEventMouseButton
 	if mb != null and mb.pressed and mb.button_index == MOUSE_BUTTON_RIGHT 			and GameState.phase == GameState.Phase.PLAYER and GameState.dungeon.in_bounds(view.hover_tile):
-		if GameState.enemy_positions.has(view.hover_tile):
+		if GameState.enemy_positions.has(view.hover_tile) or GameState.dungeon.is_keg(view.hover_tile):
 			GameState.throw_dagger(view.hover_tile)
 		get_viewport().set_input_as_handled()
 		return
@@ -105,6 +106,18 @@ func _unhandled_input(event: InputEvent) -> void:
 		GameState.descend()
 		get_viewport().set_input_as_handled()
 		return
+	# Shift + direction: dash (never repeated by a held key)
+	if key.shift_pressed:
+		var dir := Vector2i(-9, -9)
+		if KEYCODE_MOVES.has(key.keycode):
+			dir = KEYCODE_MOVES[key.keycode] as Vector2i
+		elif PHYSICAL_MOVES.has(key.physical_keycode):
+			dir = PHYSICAL_MOVES[key.physical_keycode] as Vector2i
+		if dir != Vector2i(-9, -9):
+			if not key.echo and dir != Vector2i.ZERO:
+				GameState.player_dash(dir)
+			get_viewport().set_input_as_handled()
+			return
 	# Held keys repeat (echo): walking or resting by holding a key is allowed
 	if KEYCODE_MOVES.has(key.keycode):
 		GameState.player_action(KEYCODE_MOVES[key.keycode] as Vector2i)

@@ -157,6 +157,18 @@ static func draw(ci: CanvasItem, id: String, foot: Vector2, size: float, frame: 
 		var wtex: Texture2D = (_white[id] as Array)[posmod(frame, list.size())] as Texture2D
 		ci.draw_texture_rect(wtex, rect, false, Color(1, 1, 1, flash * modulate.a))
 
+## Draws only the silhouette of the sprite, filled with `color` (dash
+## afterimages, the red glow of an enemy winding up a blow).
+static func draw_silhouette(ci: CanvasItem, id: String, foot: Vector2, size: float, frame: int,
+		flip: bool, color: Color) -> void:
+	var list: Array = _frames(id)
+	if list.is_empty():
+		return
+	var rect := Rect2(foot - Vector2(size * 0.5, size), Vector2(size, size))
+	if flip:
+		rect = Rect2(rect.position, Vector2(-size, size))
+	ci.draw_texture_rect((_white[id] as Array)[posmod(frame, list.size())] as Texture2D, rect, false, color)
+
 ## Draws the sprite centred in `rect` (inventory slots, look box).
 static func draw_icon(ci: CanvasItem, id: String, rect: Rect2, frame: int = 0, modulate: Color = Color.WHITE) -> void:
 	var tex: Texture2D = texture(id, frame)

@@ -47,8 +47,9 @@ func _ready() -> void:
 		_players.append(p)
 	_build_library()
 
-## Plays a sound by name. pitch_jitter = random pitch variation (+/-).
-func play(sound: String, pitch_jitter: float = 0.05, volume_offset_db: float = 0.0) -> void:
+## Plays a sound by name. pitch_jitter = random pitch variation (+/-);
+## pitch = base pitch (the elan chime rises with each stack).
+func play(sound: String, pitch_jitter: float = 0.05, volume_offset_db: float = 0.0, pitch: float = 1.0) -> void:
 	if muted or not _streams.has(sound):
 		return
 	var now: int = Time.get_ticks_msec()
@@ -59,7 +60,7 @@ func play(sound: String, pitch_jitter: float = 0.05, volume_offset_db: float = 0
 	var p: AudioStreamPlayer = _players[_next]
 	_next = (_next + 1) % POOL_SIZE
 	p.stream      = _streams[sound] as AudioStreamWAV
-	p.pitch_scale = 1.0 + randf_range(-pitch_jitter, pitch_jitter)
+	p.pitch_scale = pitch + randf_range(-pitch_jitter, pitch_jitter)
 	p.volume_db   = _volume_db + volume_offset_db
 	p.play()
 
@@ -245,6 +246,73 @@ func _build_library() -> void:
 		_noise(b, i * 0.06, 0.03, 0.22, 0.85)
 	_tone(b, 0.0, 0.55, 98.0, 147.0, Wave.SAW, 0.16)
 	_add("rise", b, 0.3)
+
+	b = _buf(0.22)                                     # Dash: airy whoosh, rising
+	_noise(b, 0.0, 0.2, 0.35, 0.55)
+	_tone(b, 0.0, 0.18, 300.0, 900.0, Wave.SINE, 0.12)
+	_add("dash", b, 0.1)
+
+	b = _buf(0.16)                                     # Knockback: short shove
+	_noise(b, 0.0, 0.1, 0.3, 0.3)
+	_tone(b, 0.0, 0.1, 160.0, 90.0, Wave.SINE, 0.22)
+	_add("knock", b, 0.06)
+
+	b = _buf(0.40)                                     # Impact against a wall: crunch + thud
+	_noise(b, 0.0, 0.08, 0.7, 0.7)
+	_tone(b, 0.0, 0.3, 110.0, 45.0, Wave.SINE, 0.5)
+	for i in 3:
+		_noise(b, 0.08 + i * 0.05, 0.05, 0.22, 0.5)
+	_add("impact", b, 0.08)
+
+	b = _buf(0.36)                                     # Stunned: little bird chirps
+	for i in 3:
+		_tone(b, i * 0.1, 0.08, 1800.0 + i * 200.0, 2400.0 + i * 200.0, Wave.SINE, 0.08)
+	_add("stun", b, 0.2)
+
+	b = _buf(0.40)                                     # Wind-up: rising growl
+	_tone(b, 0.0, 0.38, 70.0, 140.0, Wave.SAW, 0.2)
+	_noise(b, 0.0, 0.3, 0.12, 0.15)
+	_add("windup", b, 0.15)
+
+	b = _buf(0.28)                                     # Archer takes aim: bowstring creak
+	_tone(b, 0.0, 0.26, 520.0, 760.0, Wave.TRIANGLE, 0.08)
+	_noise(b, 0.0, 0.24, 0.08, 0.9)
+	_add("aim", b, 0.15)
+
+	b = _buf(0.50)                                     # Heavy blow lands: boom + rubble
+	_noise(b, 0.0, 0.12, 0.8, 0.5)
+	_tone(b, 0.0, 0.42, 90.0, 35.0, Wave.SINE, 0.6)
+	for i in 4:
+		_noise(b, 0.1 + i * 0.07, 0.05, 0.2, 0.5)
+	_add("slam", b, 0.1)
+
+	b = _buf(0.30)                                     # Interrupted: metallic clang
+	_tone(b, 0.0, 0.28, 1250.0, 1180.0, Wave.TRIANGLE, 0.2)
+	_tone(b, 0.0, 0.2, 1870.0, 1800.0, Wave.SINE, 0.1)
+	_noise(b, 0.0, 0.04, 0.3, 0.9)
+	_add("interrupt", b, 0.15)
+
+	b = _buf(0.50)                                     # Fuse lit: crackling hiss
+	_noise(b, 0.0, 0.48, 0.2, 0.95)
+	for i in 6:
+		_noise(b, i * 0.07, 0.02, 0.25, 1.0)
+	_add("fuse", b, 0.2)
+
+	b = _buf(0.16)                                     # Kicked keg: wooden thump
+	_tone(b, 0.0, 0.12, 200.0, 120.0, Wave.TRIANGLE, 0.3)
+	_noise(b, 0.0, 0.06, 0.25, 0.5)
+	_add("kick", b, 0.08)
+
+	b = _buf(1.0)                                      # Explosion: blast + rumble
+	_noise(b, 0.0, 0.12, 1.0, 0.9)
+	_noise(b, 0.05, 0.9, 0.6, 0.06)
+	_tone(b, 0.0, 0.7, 70.0, 28.0, Wave.SINE, 0.6)
+	_add("explode", b, 0.1)
+
+	b = _buf(0.24)                                     # Elan: bright chime (pitched up per stack)
+	_tone(b, 0.0, 0.2, 880.0, 880.0, Wave.TRIANGLE, 0.18)
+	_tone(b, 0.03, 0.2, 1320.0, 1320.0, Wave.SINE, 0.12)
+	_add("elan", b, 0.05)
 
 	b = _buf(0.03)                                     # UI click
 	_tone(b, 0.0, 0.025, 1300.0, 900.0, Wave.SINE, 0.2)

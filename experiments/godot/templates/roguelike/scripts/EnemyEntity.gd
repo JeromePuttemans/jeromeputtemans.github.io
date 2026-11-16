@@ -12,6 +12,18 @@
 # SPECIAL TRAITS (enemies.json): key_carrier (the thief, the Warden),
 #   split (slime), revive (skeleton); handled by GameState.
 #
+# HEAVY BLOWS (enemies.json "heavy"): instead of hitting at once, the enemy
+#   winds up and marks the cells it will strike (red on the map); the blow
+#   lands at the start of the next enemy turn, on whoever stands there.
+#   "cleave"  the three cells in front of it (orc, troll), heavy_chance
+#             per attack
+#   "slam"    every cell around it (the Warden), every heavy_every actions;
+#             twice as wide once it is enraged (half HP)
+#   massive   not pushed back by charges, critical hits or blasts
+#
+# STUN: stunned > 0 skips that many actions (an impact against a wall, a
+#   charge). Being pushed or stunned cancels a blow being wound up.
+#
 # AWARENESS:
 #   alerted becomes true when the enemy sees the player (or gets hit).
 #   alert_turns counts down while the player is out of sight; at 0 the enemy
@@ -31,7 +43,18 @@ var is_boss:       bool   = false
 var key_carrier:   bool   = false     # drops the floor's key when it dies
 var splits:        bool   = false     # slime: splits in two when hit
 var revives:       bool   = false     # skeleton: rises again from its bones
+var massive:       bool   = false     # never pushed back
+var heavy:         String = ""        # "cleave", "slam" or "" (see above)
+var heavy_chance:  float  = 0.0       # cleave: chance per attack
+var heavy_every:   int    = 0         # slam: actions between two slams
+var heavy_mult:    float  = 2.0       # damage multiplier of the heavy blow
+var heavy_charge:  int    = 0         # actions since the last heavy blow
+var enraged:       bool   = false     # the Warden below half HP
 var type_data:     Dictionary = {}
+
+var stunned:       int    = 0         # actions to skip
+var struck:        bool   = false     # just landed a heavy blow: recovers this turn
+var aiming:        bool   = false     # archer: aimed at the player last turn
 
 # Thief state (ai "thief"): wanders, flees once it sees the player, runs
 # out of breath after thief_flee_steps steps and rests thief_tired_turns.
@@ -64,6 +87,11 @@ func setup_from_data(data: Dictionary) -> void:
 	key_carrier   = bool(data.get("key_carrier", false))
 	splits        = bool(data.get("split", false))
 	revives       = bool(data.get("revive", false))
+	massive       = bool(data.get("massive", false))
+	heavy         = str(data.get("heavy", ""))
+	heavy_chance  = float(data.get("heavy_chance", 0.0))
+	heavy_every   = int(data.get("heavy_every", 3))
+	heavy_mult    = float(data.get("heavy_mult", 2.0))
 	var hex: String = str(data.get("color", "e05050"))
 	color = Color("#" + hex if not hex.begins_with("#") else hex)
 
