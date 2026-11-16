@@ -1,11 +1,12 @@
 # =============================================================================
-# GameState.gd — Autoload (Singleton): the run in progress
+# GameState.gd: Autoload (Singleton) holding the run in progress
 # =============================================================================
-# Progress of the run (shards, seals, raised gnomon, falls, clock, last
-# island visited, hour) and the one-shot tips. Main and the world call its
-# methods; the HUD listens to its signals. The run is saved on every
-# meaningful event (new island, shard, seal), so closing the browser tab
-# loses at most the walk since the last island.
+# Progress of the run (shards, seals, raised gnomon, falls, dashes,
+# launches, clock, last platform visited, hour, the time of the first
+# arrival on each platform) and the one-shot tips. Main and the world call
+# its methods; the HUD listens to its signals. The run is saved on every
+# meaningful event (new platform, shard, seal), so closing the browser tab
+# loses at most the walk since the last platform.
 #
 # PHASES: MENU (title) -> PLAYING <-> PAUSED -> ENDING (sunset, no control)
 #   -> END (results) -> MENU.
@@ -20,6 +21,7 @@ signal shards_changed(count: int)
 signal seals_changed()
 signal tip_requested(key: String)
 signal banner_requested(title: String, subtitle: String)
+signal split_reached(island: String, time: float)
 
 var phase: Phase = Phase.MENU
 var shards: Array[int] = []
@@ -27,11 +29,14 @@ var seals_taken: Array[String] = []
 var seals_placed: Array[String] = []
 var gnomon_raised: bool = false
 var falls: int = 0
+var dashes: int = 0
+var launches: int = 0
 var time: float = 0.0
 var checkpoint: String = ""
 var hour: float = 12.0
 var tips_seen: Array[String] = []
 var visited: Array[String] = []
+var splits: Dictionary = {}          # island -> time of the first arrival
 var shard_total: int = 0
 
 func set_phase(value: Phase) -> void:
@@ -44,7 +49,10 @@ func new_run(start_island: String, start_hour: float) -> void:
 	seals_placed.clear()
 	gnomon_raised = false
 	falls = 0
+	dashes = 0
+	launches = 0
 	time = 0.0
+	splits = {}
 	checkpoint = start_island
 	hour = start_hour
 	tips_seen.clear()
@@ -66,6 +74,10 @@ func load_run(d: Dictionary) -> void:
 		visited.append(str(s))
 	gnomon_raised = bool(d.get("gnomon_raised", false))
 	falls = int(d.get("falls", 0))
+	dashes = int(d.get("dashes", 0))
+	launches = int(d.get("launches", 0))
+	if d.get("splits") is Dictionary:
+		splits = (d["splits"] as Dictionary).duplicate()
 	time = float(d.get("time", 0.0))
 	shards_changed.emit(shards.size())
 	seals_changed.emit()
@@ -73,8 +85,9 @@ func load_run(d: Dictionary) -> void:
 func to_dict() -> Dictionary:
 	return {
 		shards = shards, seals_taken = seals_taken, seals_placed = seals_placed,
-		gnomon_raised = gnomon_raised, falls = falls, time = time,
-		checkpoint = checkpoint, hour = hour, tips_seen = tips_seen, visited = visited,
+		gnomon_raised = gnomon_raised, falls = falls, dashes = dashes, launches = launches,
+		time = time, checkpoint = checkpoint, hour = hour, tips_seen = tips_seen,
+		visited = visited, splits = splits,
 	}
 
 func save_run() -> void:
@@ -126,14 +139,28 @@ func show_tip(key: String) -> void:
 func banner(title: String, subtitle: String = "") -> void:
 	banner_requested.emit(title, subtitle)
 
-## Returns true the first time an island is visited in this run.
+## Returns true the first time a platform is visited in this run, and
+## records the time of that first arrival (the split).
 func visit(island: String) -> bool:
 	checkpoint = island
 	if visited.has(island):
 		return false
 	visited.append(island)
+	if visited.size() > 1:
+		splits[island] = time
+		split_reached.emit(island, time)
 	return true
 
 static func format_time(seconds: float) -> String:
 	var total: int = int(seconds)
 	return "%d:%02d" % [floori(total / 60.0), total % 60]
+
+## "1:04.3": the clock of the HUD, to the tenth of a second.
+static func format_precise(seconds: float) -> String:
+	var tenths: int = int(seconds * 10.0)
+	return "%d:%02d.%d" % [floori(tenths / 600.0), floori(tenths / 10.0) % 60, tenths % 10]
+
+## "-0:03.2" / "+0:12.0": a split compared with the best run.
+static func format_delta(seconds: float) -> String:
+	var sign_text: String = "-" if seconds < 0.0 else "+"
+	return sign_text + format_precise(absf(seconds))

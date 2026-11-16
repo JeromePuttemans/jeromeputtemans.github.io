@@ -1,5 +1,5 @@
 # =============================================================================
-# Fade.gd — Full-screen colour fades (falls, light columns, start)
+# Fade.gd: Full-screen colour fades (falls, light columns, start)
 # =============================================================================
 # fade_to(color, time) and fade_from(time) are awaitable: Main waits for the
 # screen to be covered before moving the player, so no jump is ever seen.

@@ -1,5 +1,5 @@
 # =============================================================================
-# Sfx.gd — Autoload (Singleton): procedural sound, no audio files
+# Sfx.gd: Autoload (Singleton) for procedural sound, without audio files
 # =============================================================================
 # Every sound is synthesized once at startup into an AudioStreamWAV (16-bit
 # mono, 22 050 Hz) from oscillators gliding between two frequencies
@@ -83,10 +83,10 @@ func _build_body() -> void:
 	_noise(b, 0.0, 0.06, 0.32, 0.2)
 	_tone(b, 0.0, 0.07, 120.0, 80.0, Wave.SINE, 0.22)
 	_add("step_stone", b, 0.12)
-	b = _buffer(0.11)                                  # Step on grass: soft swish
-	_noise(b, 0.0, 0.1, 0.22, 0.45)
-	_tone(b, 0.0, 0.05, 140.0, 100.0, Wave.SINE, 0.1)
-	_add("step_grass", b, 0.12)
+	b = _buffer(0.07)                                  # Step on concrete: crisp tap
+	_noise(b, 0.0, 0.05, 0.26, 0.55)
+	_tone(b, 0.0, 0.05, 210.0, 150.0, Wave.SINE, 0.16)
+	_add("step_concrete", b, 0.12)
 	b = _buffer(0.32)                                  # Step on a shadow: hollow glassy note
 	_tone(b, 0.0, 0.3, 196.0, 190.0, Wave.SINE, 0.2)
 	_tone(b, 0.0, 0.22, 587.0, 587.0, Wave.SINE, 0.06)
@@ -101,6 +101,24 @@ func _build_body() -> void:
 	_noise(b, 0.0, 0.12, 0.42, 0.18)
 	_tone(b, 0.0, 0.12, 110.0, 55.0, Wave.SINE, 0.34)
 	_add("land", b, 0.08)
+	b = _buffer(0.28)                                  # Dash: short airy whoosh
+	_noise(b, 0.0, 0.26, 0.42, 0.6)
+	_tone(b, 0.0, 0.2, 520.0, 260.0, Wave.SINE, 0.08)
+	_add("dash", b, 0.08)
+	b = _buffer(0.22)                                  # Ledge grab: soft grip and pull
+	_noise(b, 0.0, 0.08, 0.3, 0.25)
+	_tone(b, 0.0, 0.1, 150.0, 95.0, Wave.SINE, 0.22)
+	_tone(b, 0.08, 0.12, 220.0, 330.0, Wave.SINE, 0.06)
+	_add("mantle", b, 0.15)
+	b = _buffer(0.6)                                   # Launch off a moving shadow: rising sweep
+	_noise(b, 0.0, 0.5, 0.25, 0.45)
+	_tone(b, 0.0, 0.55, 220.0, 660.0, Wave.SINE, 0.1)
+	_tone(b, 0.05, 0.4, 587.0, 1174.0, Wave.TRIANGLE, 0.03)
+	_add("launch", b, 0.3)
+	b = _buffer(0.16)                                  # Dash given back: small glass blip
+	_tone(b, 0.0, 0.14, 1568.0, 1568.0, Wave.SINE, 0.08)
+	_tone(b, 0.0, 0.08, 3136.0, 3136.0, Wave.SINE, 0.025)
+	_add("refill", b, 0.1)
 	b = _buffer(1.0)                                   # Fall: falling whistle
 	_noise(b, 0.0, 0.95, 0.25, 0.5)
 	_tone(b, 0.0, 0.95, 700.0, 140.0, Wave.SINE, 0.12)
@@ -144,6 +162,10 @@ func _build_world() -> void:
 		_tone(b, i * 0.05, 0.9, 330.0 * (i + 1), 660.0 * (i + 1), Wave.SINE, 0.07)
 	_noise(b, 0.0, 0.8, 0.12, 0.6)
 	_add("beam", b, 0.5)
+	b = _buffer(0.5)                                   # Split: two quick high notes
+	_tone(b, 0.0, 0.25, 1174.7, 1174.7, Wave.SINE, 0.09)
+	_tone(b, 0.07, 0.35, 1760.0, 1760.0, Wave.SINE, 0.07)
+	_add("split", b, 0.3)
 	b = _buffer(1.4)                                   # Ambient bell
 	_tone(b, 0.0, 1.35, 659.25, 659.25, Wave.SINE, 0.14)
 	_tone(b, 0.0, 0.9, 1318.5, 1318.5, Wave.SINE, 0.03)

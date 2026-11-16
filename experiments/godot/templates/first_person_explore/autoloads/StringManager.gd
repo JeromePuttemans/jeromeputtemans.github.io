@@ -1,5 +1,5 @@
 # =============================================================================
-# StringManager.gd — Autoload (Singleton)
+# StringManager.gd: Autoload (Singleton)
 # =============================================================================
 # Loads data/strings_<lang>.json and replaces {placeholders}. The language
 # is kept in the save. Every node showing text listens to language_changed.

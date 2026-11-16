@@ -1,11 +1,11 @@
 # =============================================================================
-# PauseMenu.gd — Pause with the settings
+# PauseMenu.gd: Pause with the settings
 # =============================================================================
 # Opens with Esc (the browser also frees the mouse with Esc: losing the
 # mouse lock while playing opens this menu too). Resume locks the mouse
 # again, which the browser only allows in answer to a click or a key.
 # Settings (kept in the save): mouse sensitivity in steps of 0.02, inverted
-# vertical axis, sound, language.
+# vertical axis, sound, language. The controls are recalled at the bottom.
 # =============================================================================
 
 class_name PauseMenu
@@ -17,6 +17,7 @@ signal settings_changed()
 
 var _stats: Label = null
 var _title: Label = null
+var _controls: Label = null
 var _resume: Button = null
 var _sens: Button = null
 var _invert: Button = null
@@ -34,24 +35,27 @@ func _ready() -> void:
 	var panel := PanelContainer.new()
 	centre.add_child(panel)
 	var column := VBoxContainer.new()
-	column.add_theme_constant_override("separation", 10)
-	column.alignment = BoxContainer.ALIGNMENT_CENTER
+	column.add_theme_constant_override("separation", 6)
 	panel.add_child(column)
-	_title = UiTheme.label("", 40, UiTheme.TEXT, 6)
-	_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_title = UiTheme.label("", 30, UiTheme.INK, 0, 12)
 	column.add_child(_title)
-	_stats = UiTheme.label("", 17, UiTheme.MUTED)
-	_stats.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	column.add_child(UiTheme.rule(50.0, UiTheme.ACCENT, 2.0))
+	_stats = UiTheme.label("", 15, UiTheme.MUTED, 0, 1)
 	column.add_child(_stats)
+	var gap := Control.new()
+	gap.custom_minimum_size = Vector2(0.0, 10.0)
+	column.add_child(gap)
 	_resume = UiTheme.button("", func() -> void: resume_requested.emit())
 	column.add_child(_resume)
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 6)
-	var minus := UiTheme.button("-", func() -> void: _change_sensitivity(-0.02), 44.0)
-	_sens = UiTheme.button("", func() -> void: pass, 220.0)
-	var plus := UiTheme.button("+", func() -> void: _change_sensitivity(0.02), 44.0)
-	row.add_child(minus)
+	row.add_theme_constant_override("separation", 4)
+	var minus := UiTheme.button("-", func() -> void: _change_sensitivity(-0.02), 36.0)
+	minus.alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_sens = UiTheme.button("", func() -> void: pass, 240.0)
+	var plus := UiTheme.button("+", func() -> void: _change_sensitivity(0.02), 36.0)
+	plus.alignment = HORIZONTAL_ALIGNMENT_CENTER
 	row.add_child(_sens)
+	row.add_child(minus)
 	row.add_child(plus)
 	column.add_child(row)
 	_invert = UiTheme.button("", func() -> void:
@@ -69,6 +73,14 @@ func _ready() -> void:
 	column.add_child(_language)
 	_quit = UiTheme.button("", func() -> void: title_requested.emit())
 	column.add_child(_quit)
+	var gap_2 := Control.new()
+	gap_2.custom_minimum_size = Vector2(0.0, 10.0)
+	column.add_child(gap_2)
+	column.add_child(UiTheme.rule(560.0, UiTheme.FAINT))
+	_controls = UiTheme.label("", 13, UiTheme.MUTED)
+	_controls.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_controls.custom_minimum_size = Vector2(560.0, 0.0)
+	column.add_child(_controls)
 	refresh()
 
 func open() -> void:
@@ -84,10 +96,11 @@ func _change_sensitivity(step: float) -> void:
 
 func refresh() -> void:
 	_title.text = StringManager.t("pause_title")
-	_stats.text = StringManager.t("pause_stats", {shards = GameState.shards.size(), total = GameState.shard_total, seals = GameState.seals_placed.size(), time = GameState.format_time(GameState.time)})
+	_stats.text = StringManager.t("pause_stats", {shards = GameState.shards.size(), total = GameState.shard_total, seals = GameState.seals_placed.size(), time = GameState.format_precise(GameState.time)})
 	_resume.text = StringManager.t("pause_resume")
 	_sens.text = StringManager.t("pause_sensitivity", {v = "%.2f" % float(SaveManager.get_setting("sensitivity", ConfigManager.get_float("mouse_sensitivity", 0.12)))})
 	_invert.text = StringManager.t("pause_invert", {v = StringManager.t("yes" if bool(SaveManager.get_setting("invert_y", false)) else "no")})
 	_sound.text = StringManager.t("pause_sound", {v = StringManager.t("sound_off" if Sfx.muted else "sound_on")})
 	_language.text = StringManager.t("pause_language")
 	_quit.text = StringManager.t("pause_title_screen")
+	_controls.text = UiTheme.keys(StringManager.t("title_controls") + "\n" + StringManager.t("title_controls_2"))

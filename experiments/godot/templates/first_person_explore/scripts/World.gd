@@ -1,20 +1,26 @@
 # =============================================================================
-# World.gd — Builds the archipelago from data/world.json
+# World.gd: Builds the white archipelago from data/world.json
 # =============================================================================
-# ISLANDS: a flat grassy disc (a 48-sided convex prism for collision: Godot
-#   Physics lets bodies sink through cylinder shapes; top at the island height)
-#   over a jagged rock cone generated with SurfaceTool, tufts of grass in a
-#   MultiMesh. Every island body carries meta "surface" and "island".
-# BLACK STONES: handed to ShadowSystem (the great gnomon starts low and
-#   rises once the three seals are set).
-# OTHER PIECES: light marble props (columns, low walls, braziers) and steps,
-#   sun shards, the three seals with their light columns, the return beams,
-#   the sockets around the gnomon, the observatory's armillary sphere, a
-#   small sundial on the Dial whose hour marks show where the needle's
-#   shadow points, distant decorative islands and the sea of clouds below.
+# PLATFORMS: slabs of white concrete 0.8 m thick floating over the mist, on
+#   slender pilotis that vanish into it. Three shapes: "disc", "rect" (with
+#   optional rectangular wells, "holes", cut through it) and "ring" (the
+#   Oculus, a disc around a dark well with a spiral ramp). Collision: convex
+#   prisms and boxes only (Godot Physics lets bodies sink through cylinder
+#   shapes); a rect with holes is cut into boxes. Every platform body
+#   carries meta "surface" and "island".
+# BLACK STONES: handed to ShadowSystem. A spinning stone (the jib) stands on
+#   a white mast; a sliding stone (the ferry) hangs from a white rail that
+#   floats like everything else. White pieces cast no shadow: that is the
+#   rule of the world.
+# OTHER PIECES: frameless glass balustrades, white walls, benches and
+#   portal frames, standable blocks, grey figures for scale, sun shards,
+#   the three seals (circle, square, triangle) with their markers, the
+#   return beams, the sockets near the gnomon, a small sundial whose lines
+#   show where its needle's shadow falls, distant monumental volumes and
+#   the mist below.
 # PICKUPS: update_pickups() runs every physics frame with the player's
 #   position: shards drift towards the player inside the magnet radius and
-#   are taken inside the pick radius; seals, beams and the observatory are
+#   are taken inside the pick radius; seals, beams and the Oculus are
 #   simple distance triggers. Results go out as signals.
 # =============================================================================
 
@@ -27,21 +33,25 @@ signal beam_entered(id: String)
 signal observatory_reached()
 
 const ROMAN: Array[String] = ["VII", "VIII", "IX", "X", "XI", "XII", "XIII", "XIV", "XV", "XVI", "XVII"]
-const SEAL_COLORS: Dictionary = {dawn = Color(1.0, 0.62, 0.55), noon = Color(1.0, 0.95, 0.7), dusk = Color(1.0, 0.5, 0.25)}
+const ACCENT: Color = Color(1.0, 0.38, 0.1)
+const SLAB_THICKNESS: float = 0.8
+const MIST_Y: float = -70.0
+const RAIL_HEIGHT: float = 1.05
 
 var data: Dictionary = {}
 var islands: Dictionary = {}          # id -> definition
 var shadows: ShadowSystem = null
 var lowest_y: float = 0.0
 
-var _grass_material: ShaderMaterial = null
-var _rock_material: ShaderMaterial = null
-var _marble: StandardMaterial3D = null
-var _gold: StandardMaterial3D = null
+var _concrete: ShaderMaterial = null
+var _concrete_plain: ShaderMaterial = null
+var _metal: StandardMaterial3D = null
+var _glass: StandardMaterial3D = null
+var _figure: StandardMaterial3D = null
+var _ink: StandardMaterial3D = null
 var _shards: Array[Dictionary] = []   # {node, home, pos, taken, offset}
-var _seals: Array[Dictionary] = []    # {id, node, beam, island, pos, taken, beam_pos}
-var _sockets: Array[Dictionary] = []  # {node, seal}
-var _armillary: Node3D = null
+var _seals: Array[Dictionary] = []    # {id, node, sky, beam, pos, beam_pos, taken}
+var _sockets: Array[Dictionary] = []  # {node, seal, base}
 var _time: float = 0.0
 var _magnet: float = 2.6
 var _pick: float = 1.0
@@ -66,7 +76,8 @@ func build(shadow_system: ShadowSystem) -> void:
 		var plane: float = float(def.get("base_y", 0.0))
 		if def.has("island"):
 			plane = float((islands[str(def["island"])] as Dictionary)["y"])
-		shadows.add_caster(def, plane)
+		var caster: ShadowSystem.Caster = shadows.add_caster(def, plane)
+		_build_caster_support(caster, def)
 	for d in data.get("blocks", []) as Array:
 		_build_block(d as Dictionary)
 	for d in data.get("props", []) as Array:
@@ -75,10 +86,9 @@ func build(shadow_system: ShadowSystem) -> void:
 	_build_shards()
 	_build_seals()
 	_build_sockets()
-	_build_observatory()
 	_build_sundial()
-	_build_far_islands()
-	_build_sea()
+	_build_far_architecture()
+	_build_mist()
 
 func shard_total() -> int:
 	return _shards.size()
@@ -87,13 +97,48 @@ func island(id: String) -> Dictionary:
 	return islands.get(id, {}) as Dictionary
 
 ## Island whose flat top holds these feet, or "" (a shadow lying on an
-## island does not hide it: arrivals are read from the geometry).
+## island does not hide it: arrivals are read from the geometry; a well cut
+## through a slab is not part of it).
 func island_at(feet: Vector3) -> String:
 	for id in islands:
 		var d: Dictionary = islands[id]
-		if absf(feet.y - float(d["y"])) < 0.25 and Vector2(feet.x - float(d["x"]), feet.z - float(d["z"])).length() <= float(d["r"]) + 0.05:
+		if absf(feet.y - float(d["y"])) < 0.25 and contains(d, feet.x, feet.z, 0.05):
 			return str(id)
 	return ""
+
+## True when (x, z) lies on the platform, `margin` metres around it included.
+static func contains(d: Dictionary, x: float, z: float, margin: float) -> bool:
+	var dx: float = x - float(d["x"])
+	var dz: float = z - float(d["z"])
+	match str(d.get("shape", "disc")):
+		"rect":
+			if absf(dx) > float(d["w"]) * 0.5 + margin or absf(dz) > float(d["d"]) * 0.5 + margin:
+				return false
+			for h in d.get("holes", []) as Array:
+				var hole: Array = h as Array
+				if absf(x - float(hole[0])) < float(hole[2]) * 0.5 - margin and absf(z - float(hole[1])) < float(hole[3]) * 0.5 - margin:
+					return false
+			return true
+		"ring":
+			var dist: float = Vector2(dx, dz).length()
+			return dist <= float(d["r"]) + margin and dist >= float(d.get("inner", 0.0)) - margin
+	return Vector2(dx, dz).length() <= float(d["r"]) + margin
+
+## Outline of a platform seen from above (wells ignored), for the checks.
+static func outline(d: Dictionary) -> PackedVector2Array:
+	var pts := PackedVector2Array()
+	var cx: float = float(d["x"])
+	var cz: float = float(d["z"])
+	if str(d.get("shape", "disc")) == "rect":
+		var hw: float = float(d["w"]) * 0.5
+		var hd: float = float(d["d"]) * 0.5
+		pts.append_array(PackedVector2Array([Vector2(cx - hw, cz - hd), Vector2(cx + hw, cz - hd), Vector2(cx + hw, cz + hd), Vector2(cx - hw, cz + hd)]))
+		return pts
+	var r: float = float(d["r"])
+	for i in 48:
+		var a: float = TAU * i / 48.0
+		pts.append(Vector2(cx + cos(a) * r, cz + sin(a) * r))
+	return pts
 
 func spawn_point(id: String) -> Vector3:
 	var d: Dictionary = island(id)
@@ -105,20 +150,27 @@ func spawn_point(id: String) -> Vector3:
 # --- materials ---------------------------------------------------------------
 
 func _make_materials() -> void:
-	_grass_material = ShaderMaterial.new()
-	_grass_material.shader = preload("res://shaders/grass.gdshader")
-	_rock_material = ShaderMaterial.new()
-	_rock_material.shader = preload("res://shaders/rock.gdshader")
-	_marble = StandardMaterial3D.new()
-	_marble.albedo_color = Color(0.9, 0.86, 0.78)
-	_marble.roughness = 0.6
-	_gold = StandardMaterial3D.new()
-	_gold.albedo_color = Color(1.0, 0.78, 0.35)
-	_gold.metallic = 0.6
-	_gold.roughness = 0.3
-	_gold.emission_enabled = true
-	_gold.emission = Color(1.0, 0.7, 0.3)
-	_gold.emission_energy_multiplier = 0.6
+	_concrete = ShaderMaterial.new()
+	_concrete.shader = preload("res://shaders/concrete.gdshader")
+	_concrete_plain = ShaderMaterial.new()
+	_concrete_plain.shader = preload("res://shaders/concrete.gdshader")
+	_concrete_plain.set_shader_parameter("detail", 0.0)
+	_metal = StandardMaterial3D.new()
+	_metal.albedo_color = Color(0.42, 0.43, 0.45)
+	_metal.metallic = 0.7
+	_metal.roughness = 0.35
+	_glass = StandardMaterial3D.new()
+	_glass.albedo_color = Color(0.78, 0.86, 0.88, 0.16)
+	_glass.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	_glass.roughness = 0.05
+	_glass.metallic_specular = 0.9
+	_glass.cull_mode = BaseMaterial3D.CULL_DISABLED
+	_figure = StandardMaterial3D.new()
+	_figure.albedo_color = Color(0.5, 0.5, 0.52)
+	_figure.roughness = 0.85
+	_ink = StandardMaterial3D.new()
+	_ink.albedo_color = Color(0.16, 0.16, 0.17)
+	_ink.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 
 func _glow_material(color: Color, energy: float) -> StandardMaterial3D:
 	var m := StandardMaterial3D.new()
@@ -129,15 +181,6 @@ func _glow_material(color: Color, energy: float) -> StandardMaterial3D:
 	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	return m
 
-func _halo_material(color: Color) -> StandardMaterial3D:
-	var m := StandardMaterial3D.new()
-	m.albedo_color = Color(color.r, color.g * 0.85, color.b * 0.6, 0.12)
-	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
-	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	m.no_depth_test = false
-	return m
-
 func _beam_material(color: Color, height: float, strength: float) -> ShaderMaterial:
 	var m := ShaderMaterial.new()
 	m.shader = preload("res://shaders/beam.gdshader")
@@ -146,198 +189,374 @@ func _beam_material(color: Color, height: float, strength: float) -> ShaderMater
 	m.set_shader_parameter("strength", strength)
 	return m
 
-# --- islands -----------------------------------------------------------------
+# --- platforms ---------------------------------------------------------------
 
 func _build_island(d: Dictionary) -> void:
-	var r: float = float(d["r"])
 	var body := StaticBody3D.new()
 	body.name = "Island_" + str(d["id"])
 	body.position = Vector3(float(d["x"]), float(d["y"]), float(d["z"]))
-	body.set_meta("surface", "grass")
+	body.set_meta("surface", "concrete")
 	body.set_meta("island", str(d["id"]))
 	add_child(body)
-	var top := MeshInstance3D.new()
-	var cyl := CylinderMesh.new()
-	cyl.top_radius = r
-	cyl.bottom_radius = r * 0.97
-	cyl.height = 0.6
-	cyl.radial_segments = 48
-	cyl.rings = 1
-	top.mesh = cyl
-	top.material_override = _grass_material
-	top.position.y = -0.3
-	body.add_child(top)
-	var shape := _prism(r, 0.6, 48)
-	var col := CollisionShape3D.new()
-	col.shape = shape
-	col.position.y = -0.3
-	body.add_child(col)
-	var under := MeshInstance3D.new()
-	under.mesh = _rock_mesh(r * 0.97, float(d.get("depth", 8.0)), hash(str(d["id"])))
-	under.material_override = _rock_material
-	under.position.y = -0.55
-	body.add_child(under)
-	_add_grass(body, r, hash(str(d["id"])) + 7)
+	match str(d.get("shape", "disc")):
+		"rect":
+			_build_rect_slab(body, d)
+		"ring":
+			_build_ring_slab(body, d)
+		_:
+			var r: float = float(d["r"])
+			var top := MeshInstance3D.new()
+			var cyl := CylinderMesh.new()
+			cyl.top_radius = r
+			cyl.bottom_radius = r
+			cyl.height = SLAB_THICKNESS
+			cyl.radial_segments = 64
+			cyl.rings = 1
+			top.mesh = cyl
+			top.material_override = _concrete
+			top.position.y = -SLAB_THICKNESS * 0.5
+			body.add_child(top)
+			_add_shape(body, _prism(r, SLAB_THICKNESS, 48), Vector3(0.0, -SLAB_THICKNESS * 0.5, 0.0))
+	_build_pilotis(d)
+	for seg in d.get("rails", []) as Array:
+		var s: Array = seg as Array
+		var y: float = float(d["y"])
+		_build_rail(Vector3(float(s[0]), y, float(s[1])), Vector3(float(s[2]), y, float(s[3])))
+	for arc in d.get("rail_arcs", []) as Array:
+		_build_rail_arc(d, float((arc as Array)[0]), float((arc as Array)[1]))
 
-## Jagged cone hanging under an island: rings shrinking from the rim to a
-## tip, each vertex pushed in or out by a few sine waves.
-func _rock_mesh(r: float, depth: float, seed_value: int) -> ArrayMesh:
-	var rng := RandomNumberGenerator.new()
-	rng.seed = seed_value
-	var segments: int = 28
-	var rings: int = 7
-	var phase_a: float = rng.randf() * TAU
-	var phase_b: float = rng.randf() * TAU
-	var grid: Array[PackedVector3Array] = []
-	for k in rings + 1:
-		var t: float = float(k) / float(rings)
-		var ring := PackedVector3Array()
-		var radius: float = r * pow(1.0 - t, 0.75) * (1.0 if k == 0 else rng.randf_range(0.85, 1.05))
-		var y: float = -depth * pow(t, 1.15)
-		for s in segments:
-			var a: float = TAU * float(s) / float(segments)
-			var j: float = 1.0
-			if k > 0 and k < rings:
-				j = 0.85 + 0.12 * sin(a * 3.0 + phase_a + k) + 0.08 * sin(a * 7.0 + phase_b - k * 2.0) + rng.randf_range(-0.05, 0.05)
-			ring.append(Vector3(cos(a) * radius * j, y + (rng.randf_range(-0.3, 0.3) if k > 0 else 0.0), sin(a) * radius * j))
-		grid.append(ring)
-	var st := SurfaceTool.new()
-	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	for k in rings:
-		for s in segments:
-			var a0: Vector3 = grid[k][s]
-			var a1: Vector3 = grid[k][(s + 1) % segments]
-			var b0: Vector3 = grid[k + 1][s]
-			var b1: Vector3 = grid[k + 1][(s + 1) % segments]
-			st.add_vertex(a0)
-			st.add_vertex(a1)
-			st.add_vertex(b1)
-			st.add_vertex(a0)
-			st.add_vertex(b1)
-			st.add_vertex(b0)
-	st.generate_normals()
-	return st.commit()
+## A rectangle minus its wells, cut into boxes: the x and z edges of the
+## wells split it into a grid; each row keeps its runs of solid cells.
+func _build_rect_slab(body: StaticBody3D, d: Dictionary) -> void:
+	var cx: float = float(d["x"])
+	var cz: float = float(d["z"])
+	var x0: float = cx - float(d["w"]) * 0.5
+	var x1: float = cx + float(d["w"]) * 0.5
+	var z0: float = cz - float(d["d"]) * 0.5
+	var z1: float = cz + float(d["d"]) * 0.5
+	var holes: Array = d.get("holes", []) as Array
+	var xs: Array[float] = [x0, x1]
+	var zs: Array[float] = [z0, z1]
+	for h in holes:
+		var hole: Array = h as Array
+		xs.append_array([float(hole[0]) - float(hole[2]) * 0.5, float(hole[0]) + float(hole[2]) * 0.5])
+		zs.append_array([float(hole[1]) - float(hole[3]) * 0.5, float(hole[1]) + float(hole[3]) * 0.5])
+	xs.sort()
+	zs.sort()
+	for j in zs.size() - 1:
+		var za: float = zs[j]
+		var zb: float = zs[j + 1]
+		if zb - za < 0.01:
+			continue
+		var run_start: float = NAN
+		for i in xs.size():
+			var solid: bool = false
+			if i < xs.size() - 1 and xs[i + 1] - xs[i] > 0.01:
+				solid = contains(d, (xs[i] + xs[i + 1]) * 0.5, (za + zb) * 0.5, 0.0)
+			elif i < xs.size() - 1:
+				continue
+			if solid and is_nan(run_start):
+				run_start = xs[i]
+			elif not solid and not is_nan(run_start):
+				_slab_box(body, Rect2(run_start, za, xs[i] - run_start, zb - za))
+				run_start = NAN
+		if not is_nan(run_start):
+			_slab_box(body, Rect2(run_start, za, x1 - run_start, zb - za))
 
-func _add_grass(parent: Node3D, r: float, seed_value: int) -> void:
-	var rng := RandomNumberGenerator.new()
-	rng.seed = seed_value
-	var count: int = int(r * r * 2.2)
-	var mm := MultiMesh.new()
-	mm.transform_format = MultiMesh.TRANSFORM_3D
-	mm.use_colors = true
-	mm.mesh = _tuft_mesh()
-	mm.instance_count = count
-	for i in count:
-		var a: float = rng.randf() * TAU
-		var dist: float = sqrt(rng.randf()) * (r - 0.4)
-		var s: float = rng.randf_range(0.6, 1.3)
-		var xf := Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3(s, s * rng.randf_range(0.7, 1.4), s)), Vector3(cos(a) * dist, 0.0, sin(a) * dist))
-		mm.set_instance_transform(i, xf)
-		var flower: bool = rng.randf() < 0.07
-		mm.set_instance_color(i, Color(1.0, 0.85, 0.4) if flower else Color.from_hsv(rng.randf_range(0.17, 0.25), rng.randf_range(0.45, 0.7), rng.randf_range(0.45, 0.7)))
-	var inst := MultiMeshInstance3D.new()
-	inst.multimesh = mm
-	var mat := StandardMaterial3D.new()
-	mat.vertex_color_use_as_albedo = true
-	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
-	mat.roughness = 1.0
-	inst.material_override = mat
-	inst.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	parent.add_child(inst)
-
-## Three thin blades leaning outwards.
-func _tuft_mesh() -> ArrayMesh:
-	var st := SurfaceTool.new()
-	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	for k in 3:
-		var a: float = TAU * k / 3.0
-		var side := Vector3(cos(a + PI * 0.5), 0.0, sin(a + PI * 0.5)) * 0.03
-		var lean := Vector3(cos(a), 0.0, sin(a)) * 0.09
-		st.set_normal(Vector3.UP)
-		st.add_vertex(-side)
-		st.add_vertex(side)
-		st.add_vertex(lean + Vector3(0.0, 0.22, 0.0))
-	return st.commit()
-
-# --- props -------------------------------------------------------------------
-
-func _build_block(d: Dictionary) -> void:
-	var size := Vector3(float(d["w"]), float(d["h"]), float(d["d"]))
-	var body := StaticBody3D.new()
-	body.position = Vector3(float(d["x"]), float(d.get("y", 0.0)) + size.y * 0.5, float(d["z"]))
-	body.set_meta("surface", "stone")
-	add_child(body)
-	var mesh := MeshInstance3D.new()
-	var box := BoxMesh.new()
-	box.size = size
-	mesh.mesh = box
-	mesh.material_override = _marble
-	body.add_child(mesh)
+func _slab_box(body: StaticBody3D, r: Rect2) -> void:
+	var size := Vector3(r.size.x, SLAB_THICKNESS, r.size.y)
+	var pos := Vector3(r.position.x + r.size.x * 0.5 - body.position.x, -SLAB_THICKNESS * 0.5, r.position.y + r.size.y * 0.5 - body.position.z)
+	_add_box(body, size, pos, _concrete)
 	var shape := BoxShape3D.new()
 	shape.size = size
-	var col := CollisionShape3D.new()
-	col.shape = shape
-	body.add_child(col)
+	_add_shape(body, shape, pos)
 
-func _ground_y(x: float, z: float) -> float:
+## The Oculus: a ring of concrete, a parapet around the well, the well's
+## walls fading to black and a spiral ramp winding down into it.
+func _build_ring_slab(body: StaticBody3D, d: Dictionary) -> void:
+	var r: float = float(d["r"])
+	var inner: float = float(d.get("inner", 1.5))
+	var segments: int = 48
+	body.add_child(_annulus(inner, r, 0.0, -SLAB_THICKNESS, segments, _concrete))
+	for i in 24:
+		var a0: float = TAU * i / 24.0
+		var a1: float = TAU * (i + 1) / 24.0
+		var pts := PackedVector3Array()
+		for a in [a0, a1]:
+			for rad in [inner, r / cos(PI / 24.0)]:
+				pts.append(Vector3(cos(a) * rad, 0.0, sin(a) * rad))
+				pts.append(Vector3(cos(a) * rad, -SLAB_THICKNESS, sin(a) * rad))
+		var shape := ConvexPolygonShape3D.new()
+		shape.points = pts
+		_add_shape(body, shape, Vector3.ZERO)
+	# parapet: a low concrete ring, solid, so nobody falls into the well
+	body.add_child(_annulus(inner, inner + 0.22, 0.95, 0.0, segments, _concrete_plain))
+	for i in 24:
+		var a: float = TAU * (i + 0.5) / 24.0
+		var wall := BoxShape3D.new()
+		wall.size = Vector3(0.3, 0.95, TAU * (inner + 0.11) / 24.0 + 0.05)
+		var col := CollisionShape3D.new()
+		col.shape = wall
+		col.transform = Transform3D(Basis(Vector3.UP, -a), Vector3(cos(a) * (inner + 0.11), 0.475, sin(a) * (inner + 0.11)))
+		body.add_child(col)
+	# the well: a hollow tower down into the mist, its inside fading to black
+	# a few metres down; outside, plain concrete
+	var depth: float = float(d["y"]) - SLAB_THICKNESS - MIST_Y
+	var well_mat := ShaderMaterial.new()
+	well_mat.shader = preload("res://shaders/concrete.gdshader")
+	well_mat.set_shader_parameter("fade_top", float(d["y"]) - SLAB_THICKNESS)
+	well_mat.set_shader_parameter("fade_len", 7.0)
+	body.add_child(_annulus(inner, inner, -SLAB_THICKNESS, -SLAB_THICKNESS - depth, segments, well_mat))
+	body.add_child(_annulus(inner + 0.35, inner + 0.35, -SLAB_THICKNESS, -SLAB_THICKNESS - depth, segments, _concrete_plain))
+	body.add_child(_spiral_ramp(inner - 0.02, well_mat))
+
+## Flat ring between two radii, from y_top down to y_bottom, all faces.
+func _annulus(r_in: float, r_out: float, y_top: float, y_bottom: float, segments: int, mat: Material) -> MeshInstance3D:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for i in segments:
+		var a0: float = TAU * i / segments
+		var a1: float = TAU * (i + 1) / segments
+		var c0 := Vector3(cos(a0), 0.0, sin(a0))
+		var c1 := Vector3(cos(a1), 0.0, sin(a1))
+		var top := Vector3(0.0, y_top, 0.0)
+		var low := Vector3(0.0, y_bottom, 0.0)
+		_quad(st, c0 * r_in + top, c1 * r_in + top, c1 * r_out + top, c0 * r_out + top)
+		_quad(st, c0 * r_out + low, c1 * r_out + low, c1 * r_in + low, c0 * r_in + low)
+		_quad(st, c0 * r_out + top, c1 * r_out + top, c1 * r_out + low, c0 * r_out + low)
+		_quad(st, c0 * r_in + low, c1 * r_in + low, c1 * r_in + top, c0 * r_in + top)
+	st.generate_normals()
+	var m := MeshInstance3D.new()
+	m.mesh = st.commit()
+	m.material_override = mat
+	return m
+
+## Quad a, b, c, d, given counter-clockwise as seen from the side it faces;
+## written clockwise, the winding of Godot's front faces.
+func _quad(st: SurfaceTool, a: Vector3, b: Vector3, c: Vector3, d: Vector3) -> void:
+	st.add_vertex(a)
+	st.add_vertex(c)
+	st.add_vertex(b)
+	st.add_vertex(a)
+	st.add_vertex(d)
+	st.add_vertex(c)
+
+## Ramp winding down the inside of the well, three turns, 1.1 m wide.
+func _spiral_ramp(r: float, mat: Material) -> MeshInstance3D:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var steps: int = 120
+	var drop: float = 18.0
+	var width: float = 1.1
+	for i in steps:
+		var t0: float = float(i) / steps
+		var t1: float = float(i + 1) / steps
+		var a0: float = t0 * TAU * 3.0
+		var a1: float = t1 * TAU * 3.0
+		var y0: float = -SLAB_THICKNESS - 0.6 - t0 * drop
+		var y1: float = -SLAB_THICKNESS - 0.6 - t1 * drop
+		var o0 := Vector3(cos(a0) * r, y0, sin(a0) * r)
+		var o1 := Vector3(cos(a1) * r, y1, sin(a1) * r)
+		var i0 := Vector3(cos(a0) * (r - width), y0, sin(a0) * (r - width))
+		var i1 := Vector3(cos(a1) * (r - width), y1, sin(a1) * (r - width))
+		var down := Vector3(0.0, 0.25, 0.0)
+		_quad(st, i0, i1, o1, o0)
+		_quad(st, o0 - down, o1 - down, i1 - down, i0 - down)
+		_quad(st, i0 - down, i1 - down, i1, i0)
+	st.generate_normals()
+	var m := MeshInstance3D.new()
+	m.mesh = st.commit()
+	m.material_override = mat
+	return m
+
+## Slender columns under some platforms, down into the mist ("pilotis":
+## offsets from the centre). The others float.
+func _build_pilotis(d: Dictionary) -> void:
+	var y: float = float(d["y"]) - SLAB_THICKNESS
+	var cx: float = float(d["x"])
+	var cz: float = float(d["z"])
+	if not d.has("pilotis"):
+		return
+	var spots: Array[Vector2] = []
+	var radius: float = float(d.get("pilotis_radius", 0.3))
+	for p in d["pilotis"] as Array:
+		spots.append(Vector2(cx + float((p as Array)[0]), cz + float((p as Array)[1])))
+	for s in spots:
+		if not contains(d, s.x, s.y, -radius):
+			continue
+		var h: float = y - MIST_Y
+		_add_cylinder(self, radius, radius, h, Vector3(s.x, y - h * 0.5, s.y), _concrete_plain, 12)
+
+## Frameless glass balustrade between two points at deck height: a glass
+## panel, a slim handrail, a base shoe. Its collision stops the walk but
+## is never climbed (meta "no_mantle").
+func _build_rail(a: Vector3, b: Vector3) -> void:
+	var length: float = Vector2(b.x - a.x, b.z - a.z).length()
+	if length < 0.2:
+		return
+	var body := StaticBody3D.new()
+	body.position = (a + b) * 0.5
+	body.rotation.y = atan2(-(b.z - a.z), b.x - a.x)
+	body.set_meta("surface", "stone")
+	body.set_meta("no_mantle", true)
+	add_child(body)
+	_add_box(body, Vector3(length, RAIL_HEIGHT - 0.12, 0.02), Vector3(0.0, 0.06 + (RAIL_HEIGHT - 0.12) * 0.5, 0.0), _glass)
+	_add_box(body, Vector3(length, 0.045, 0.06), Vector3(0.0, RAIL_HEIGHT, 0.0), _metal)
+	_add_box(body, Vector3(length, 0.08, 0.07), Vector3(0.0, 0.04, 0.0), _metal)
+	var shape := BoxShape3D.new()
+	shape.size = Vector3(length, RAIL_HEIGHT, 0.1)
+	_add_shape(body, shape, Vector3(0.0, RAIL_HEIGHT * 0.5, 0.0))
+
+## Balustrade along the rim of a disc, between two angles in degrees
+## (0 = east, 90 = south).
+func _build_rail_arc(d: Dictionary, from_deg: float, to_deg: float) -> void:
+	var r: float = float(d["r"]) - 0.12
+	var centre := Vector3(float(d["x"]), float(d["y"]), float(d["z"]))
+	var steps: int = maxi(ceili(absf(to_deg - from_deg) / 12.0), 1)
+	for i in steps:
+		var a0: float = deg_to_rad(lerpf(from_deg, to_deg, float(i) / steps))
+		var a1: float = deg_to_rad(lerpf(from_deg, to_deg, float(i + 1) / steps))
+		_build_rail(centre + Vector3(cos(a0), 0.0, sin(a0)) * r, centre + Vector3(cos(a1), 0.0, sin(a1)) * r)
+
+# --- kinetic stones' supports --------------------------------------------------
+
+func _build_caster_support(c: ShadowSystem.Caster, def: Dictionary) -> void:
+	match c.motion:
+		"spin":
+			var top: float = c.foot.y + c.size.y + 0.5
+			var h: float = top - c.plane
+			var mast := StaticBody3D.new()
+			mast.position = Vector3(c.pivot.x, c.plane, c.pivot.z)
+			mast.set_meta("surface", "stone")
+			mast.set_meta("no_mantle", true)
+			add_child(mast)
+			_add_cylinder(mast, 0.3, 0.38, h, Vector3(0.0, h * 0.5, 0.0), _concrete_plain, 16)
+			_add_shape(mast, _prism(0.36, h, 12), Vector3(0.0, h * 0.5, 0.0))
+		"slide":
+			var rail_y: float = c.foot.y + c.size.y + 1.6
+			var a := Vector3(c.pivot.x, rail_y, c.pivot.z)
+			var b := Vector3(c.slide_to.x, rail_y, c.slide_to.z)
+			var along: Vector3 = (b - a).normalized()
+			var length: float = a.distance_to(b) + 2.0
+			var rail := MeshInstance3D.new()
+			var box := BoxMesh.new()
+			box.size = Vector3(length, 0.28, 0.28)
+			rail.mesh = box
+			rail.material_override = _concrete_plain
+			rail.position = (a + b) * 0.5
+			rail.rotation.y = atan2(-along.z, along.x)
+			add_child(rail)
+			var rod := MeshInstance3D.new()
+			var rod_box := BoxMesh.new()
+			rod_box.size = Vector3(0.14, 1.6, 0.14)
+			rod.mesh = rod_box
+			rod.material_override = _concrete_plain
+			rod.position = Vector3(0.0, c.size.y * 0.5 + 0.8, 0.0)
+			c.stone_body.add_child(rod)
+
+# --- blocks and props ---------------------------------------------------------
+
+func _build_block(d: Dictionary) -> void:
+	var x: float = float(d["x"])
+	var z: float = float(d["z"])
+	var size := Vector3(float(d["w"]), float(d["h"]), float(d["d"]))
+	var body := StaticBody3D.new()
+	body.position = Vector3(x, float(d.get("y", ground_y(x, z))) + size.y * 0.5, z)
+	body.set_meta("surface", "concrete")
+	add_child(body)
+	_add_box(body, size, Vector3.ZERO, _concrete)
+	var shape := BoxShape3D.new()
+	shape.size = size
+	_add_shape(body, shape, Vector3.ZERO)
+
+## Height of the platform under (x, z), wells ignored, 0 over the void.
+func ground_y(x: float, z: float) -> float:
 	for id in islands:
 		var d: Dictionary = islands[id]
-		if Vector2(x - float(d["x"]), z - float(d["z"])).length() <= float(d["r"]):
+		if contains(d, x, z, 0.0) or (str(d.get("shape", "")) == "rect" and absf(x - float(d["x"])) <= float(d["w"]) * 0.5 and absf(z - float(d["z"])) <= float(d["d"]) * 0.5):
 			return float(d["y"])
 	return 0.0
 
 func _build_prop(d: Dictionary) -> void:
 	var x: float = float(d["x"])
 	var z: float = float(d["z"])
-	var base := Vector3(x, _ground_y(x, z), z)
 	var body := StaticBody3D.new()
-	body.position = base
+	body.position = Vector3(x, ground_y(x, z), z)
 	body.rotation.y = deg_to_rad(float(d.get("yaw", 0.0)))
-	body.set_meta("surface", "stone")
+	body.set_meta("surface", "concrete")
 	add_child(body)
 	match str(d["type"]):
-		"column":
-			var h: float = float(d.get("h", 2.0))
-			_add_cylinder(body, 0.42, 0.42, h, Vector3(0.0, h * 0.5, 0.0), _marble)
-			_add_cylinder(body, 0.62, 0.62, 0.3, Vector3(0.0, 0.15, 0.0), _marble)
-			if h > 2.0:
-				_add_box(body, Vector3(1.2, 0.25, 1.2), Vector3(0.0, h + 0.12, 0.0), _marble)
-			var shape := _prism(0.5, h, 16)
-			_add_shape(body, shape, Vector3(0.0, h * 0.5, 0.0))
 		"wall":
-			_add_box(body, Vector3(2.6, 0.55, 0.45), Vector3(0.0, 0.275, 0.0), _marble)
-			_add_box(body, Vector3(1.1, 0.35, 0.45), Vector3(-0.6, 0.72, 0.0), _marble)
+			var size := Vector3(float(d.get("w", 4.0)), float(d.get("h", 2.6)), 0.3)
+			_add_box(body, size, Vector3(0.0, size.y * 0.5, 0.0), _concrete)
 			var shape := BoxShape3D.new()
-			shape.size = Vector3(2.6, 0.9, 0.45)
-			_add_shape(body, shape, Vector3(0.0, 0.45, 0.0))
-		"brazier":
-			_add_cylinder(body, 0.18, 0.28, 0.9, Vector3(0.0, 0.45, 0.0), _marble)
-			_add_cylinder(body, 0.45, 0.25, 0.25, Vector3(0.0, 1.0, 0.0), _gold)
-			var flame := MeshInstance3D.new()
-			var sphere := SphereMesh.new()
-			sphere.radius = 0.22
-			sphere.height = 0.5
-			flame.mesh = sphere
-			flame.material_override = _glow_material(Color(1.0, 0.6, 0.25), 3.0)
-			flame.position = Vector3(0.0, 1.25, 0.0)
-			flame.set_meta("flame", true)
-			body.add_child(flame)
-			var light := OmniLight3D.new()
-			light.light_color = Color(1.0, 0.65, 0.35)
-			light.light_energy = 1.4
-			light.omni_range = 7.0
-			light.position = Vector3(0.0, 1.5, 0.0)
-			body.add_child(light)
-			var shape := _prism(0.4, 1.1, 16)
-			_add_shape(body, shape, Vector3(0.0, 0.55, 0.0))
+			shape.size = size
+			_add_shape(body, shape, Vector3(0.0, size.y * 0.5, 0.0))
+		"bench":
+			var size := Vector3(float(d.get("w", 2.4)), 0.45, 0.55)
+			_add_box(body, size, Vector3(0.0, size.y * 0.5, 0.0), _concrete_plain)
+			var shape := BoxShape3D.new()
+			shape.size = size
+			_add_shape(body, shape, Vector3(0.0, size.y * 0.5, 0.0))
+		"frame":
+			var w: float = float(d.get("w", 2.4))
+			var h: float = float(d.get("h", 3.2))
+			for side in [-1.0, 1.0]:
+				var post := Vector3(0.3, h, 0.3)
+				_add_box(body, post, Vector3(side * w * 0.5, h * 0.5, 0.0), _concrete_plain)
+				var shape := BoxShape3D.new()
+				shape.size = post
+				_add_shape(body, shape, Vector3(side * w * 0.5, h * 0.5, 0.0))
+			_add_box(body, Vector3(w + 0.3, 0.3, 0.3), Vector3(0.0, h + 0.15, 0.0), _concrete_plain)
+			body.set_meta("no_mantle", true)
+		"column":
+			var h: float = float(d.get("h", 4.0))
+			var r: float = float(d.get("r", 0.22))
+			_add_cylinder(body, r, r, h, Vector3(0.0, h * 0.5, 0.0), _concrete_plain, 16)
+			_add_shape(body, _prism(r, h, 12), Vector3(0.0, h * 0.5, 0.0))
+			body.set_meta("no_mantle", true)
+		"figure":
+			_build_figure(body)
 
-func _add_cylinder(parent: Node3D, top: float, bottom: float, h: float, pos: Vector3, mat: Material) -> MeshInstance3D:
+## A grey figure for scale, like the people in an architect's model.
+func _build_figure(body: StaticBody3D) -> void:
+	body.set_meta("no_mantle", true)
+	for side in [-0.09, 0.09]:
+		_add_cylinder(body, 0.065, 0.055, 0.82, Vector3(side, 0.41, 0.0), _figure, 8)
+	var torso := MeshInstance3D.new()
+	var capsule := CapsuleMesh.new()
+	capsule.radius = 0.17
+	capsule.height = 0.72
+	capsule.radial_segments = 12
+	capsule.rings = 4
+	torso.mesh = capsule
+	torso.material_override = _figure
+	torso.position.y = 1.16
+	torso.scale = Vector3(1.0, 1.0, 0.7)
+	body.add_child(torso)
+	var head := MeshInstance3D.new()
+	var sphere := SphereMesh.new()
+	sphere.radius = 0.11
+	sphere.height = 0.24
+	sphere.radial_segments = 12
+	sphere.rings = 6
+	head.mesh = sphere
+	head.material_override = _figure
+	head.position.y = 1.64
+	body.add_child(head)
+	var shape := CapsuleShape3D.new()
+	shape.radius = 0.25
+	shape.height = 1.75
+	_add_shape(body, shape, Vector3(0.0, 0.875, 0.0))
+
+func _add_cylinder(parent: Node3D, top: float, bottom: float, h: float, pos: Vector3, mat: Material, segments: int = 16) -> MeshInstance3D:
 	var m := MeshInstance3D.new()
 	var cyl := CylinderMesh.new()
 	cyl.top_radius = top
 	cyl.bottom_radius = bottom
 	cyl.height = h
-	cyl.radial_segments = 16
+	cyl.radial_segments = segments
+	cyl.rings = 1
 	m.mesh = cyl
 	m.material_override = mat
 	m.position = pos
@@ -379,17 +598,11 @@ func _add_shape(body: StaticBody3D, shape: Shape3D, pos: Vector3) -> void:
 
 func _build_shards() -> void:
 	var gem := SphereMesh.new()
-	gem.radius = 0.22
-	gem.height = 0.6
+	gem.radius = 0.2
+	gem.height = 0.52
 	gem.radial_segments = 4
 	gem.rings = 2
-	var halo := SphereMesh.new()
-	halo.radius = 0.36
-	halo.height = 0.72
-	halo.radial_segments = 12
-	halo.rings = 6
-	var gem_mat := _glow_material(Color(1.0, 0.82, 0.35), 2.2)
-	var halo_mat := _halo_material(Color(1.0, 0.8, 0.4))
+	var gem_mat := _glow_material(ACCENT, 1.4)
 	var list: Array = data.get("shards", []) as Array
 	for i in list.size():
 		var p: Array = list[i] as Array
@@ -399,10 +612,6 @@ func _build_shards() -> void:
 		m.mesh = gem
 		m.material_override = gem_mat
 		root.add_child(m)
-		var h := MeshInstance3D.new()
-		h.mesh = halo
-		h.material_override = halo_mat
-		root.add_child(h)
 		add_child(root)
 		_shards.append({node = root, home = root.position, pos = root.position, taken = false, offset = float(i) * 0.7})
 
@@ -413,31 +622,38 @@ func set_shards_taken(indices: Array[int]) -> void:
 		(_shards[i]["node"] as Node3D).visible = not taken
 		_shards[i]["pos"] = _shards[i]["home"]
 
+func shard_position(index: int) -> Vector3:
+	return _shards[index]["home"] as Vector3
+
+func shard_taken(index: int) -> bool:
+	return bool(_shards[index]["taken"])
+
 func _build_seals() -> void:
 	for d in data.get("seals", []) as Array:
 		var def: Dictionary = d as Dictionary
 		var id: String = str(def["id"])
 		var ground: float = float(island(str(def["island"])).get("y", 0.0))
 		var pos := Vector3(float(def["x"]), ground, float(def["z"]))
-		var pedestal := StaticBody3D.new()
-		pedestal.position = pos
-		pedestal.set_meta("surface", "stone")
-		add_child(pedestal)
-		_add_cylinder(pedestal, 0.5, 0.7, 0.8, Vector3(0.0, 0.4, 0.0), _marble)
-		var shape := _prism(0.65, 0.8, 16)
-		_add_shape(pedestal, shape, Vector3(0.0, 0.4, 0.0))
-		var seal := _seal_mesh(id)
-		seal.position = pos + Vector3(0.0, 1.7, 0.0)
+		var plinth := StaticBody3D.new()
+		plinth.position = pos
+		plinth.set_meta("surface", "concrete")
+		add_child(plinth)
+		_add_box(plinth, Vector3(0.9, 0.9, 0.9), Vector3(0.0, 0.45, 0.0), _concrete_plain)
+		var shape := BoxShape3D.new()
+		shape.size = Vector3(0.9, 0.9, 0.9)
+		_add_shape(plinth, shape, Vector3(0.0, 0.45, 0.0))
+		var seal := seal_mesh(id, 2.0)
+		seal.position = pos + Vector3(0.0, 1.8, 0.0)
 		add_child(seal)
 		var sky_beam := MeshInstance3D.new()
 		var cyl := CylinderMesh.new()
-		cyl.top_radius = 0.18
-		cyl.bottom_radius = 0.18
-		cyl.height = 120.0
+		cyl.top_radius = 0.07
+		cyl.bottom_radius = 0.07
+		cyl.height = 140.0
 		cyl.radial_segments = 8
 		sky_beam.mesh = cyl
-		sky_beam.material_override = _beam_material(SEAL_COLORS[id], 120.0, 0.28)
-		sky_beam.position = pos + Vector3(0.0, 61.0, 0.0)
+		sky_beam.material_override = _beam_material(ACCENT, 140.0, 1.6)
+		sky_beam.position = pos + Vector3(0.0, 72.5, 0.0)
 		add_child(sky_beam)
 		var bp: Array = def.get("beam", [def["x"], def["z"]]) as Array
 		var beam_pos := Vector3(float(bp[0]), ground, float(bp[1]))
@@ -446,44 +662,42 @@ func _build_seals() -> void:
 		bcyl.top_radius = _beam_radius
 		bcyl.bottom_radius = _beam_radius
 		bcyl.height = 30.0
-		bcyl.radial_segments = 20
+		bcyl.radial_segments = 32
 		beam.mesh = bcyl
-		beam.material_override = _beam_material(Color(0.6, 0.85, 1.0), 30.0, 0.7)
+		beam.material_override = _beam_material(ACCENT, 30.0, 0.55)
 		beam.position = beam_pos + Vector3(0.0, 15.0, 0.0)
 		beam.visible = false
 		add_child(beam)
-		_seals.append({id = id, node = seal, sky = sky_beam, beam = beam, pos = pos + Vector3(0.0, 1.7, 0.0), beam_pos = beam_pos, taken = false})
+		_seals.append({id = id, node = seal, sky = sky_beam, beam = beam, pos = pos + Vector3(0.0, 1.8, 0.0), beam_pos = beam_pos, taken = false})
 
-func _seal_mesh(id: String) -> Node3D:
+## The three seals are told apart by their shape: a circle for dawn, a
+## square for noon, a triangle for dusk.
+func seal_mesh(id: String, energy: float) -> Node3D:
 	var root := Node3D.new()
-	var color: Color = SEAL_COLORS[id]
-	var ring := MeshInstance3D.new()
-	var torus := TorusMesh.new()
-	torus.inner_radius = 0.42
-	torus.outer_radius = 0.55
-	torus.rings = 24
-	torus.ring_segments = 8
-	ring.mesh = torus
-	ring.material_override = _glow_material(color, 2.0)
-	ring.rotation.x = PI * 0.5
-	root.add_child(ring)
-	var core := MeshInstance3D.new()
-	var disc := CylinderMesh.new()
-	disc.top_radius = 0.3
-	disc.bottom_radius = 0.3
-	disc.height = 0.06
-	disc.radial_segments = 16 if id != "noon" else 6
-	core.mesh = disc
-	core.material_override = _glow_material(color.lightened(0.3), 2.6)
-	core.rotation.x = PI * 0.5
-	root.add_child(core)
-	var halo := MeshInstance3D.new()
-	var sphere := SphereMesh.new()
-	sphere.radius = 0.9
-	sphere.height = 1.8
-	halo.mesh = sphere
-	halo.material_override = _halo_material(color)
-	root.add_child(halo)
+	var mat := _glow_material(ACCENT, energy)
+	match id:
+		"dawn":
+			var ring := MeshInstance3D.new()
+			var torus := TorusMesh.new()
+			torus.inner_radius = 0.42
+			torus.outer_radius = 0.52
+			torus.rings = 32
+			torus.ring_segments = 8
+			ring.mesh = torus
+			ring.material_override = mat
+			ring.rotation.x = PI * 0.5
+			root.add_child(ring)
+		"noon":
+			for k in 4:
+				var a: float = PI * 0.5 * k
+				var bar := _add_box(root, Vector3(0.9, 0.1, 0.1), Vector3(sin(a) * 0.4, cos(a) * 0.4, 0.0), mat)
+				bar.rotation.z = -a
+		_:
+			for k in 3:
+				var a: float = TAU * k / 3.0
+				var mid := Vector2(sin(a + PI), cos(a + PI)) * 0.27
+				var bar := _add_box(root, Vector3(0.94, 0.1, 0.1), Vector3(mid.x, mid.y + 0.05, 0.0), mat)
+				bar.rotation.z = -a
 	return root
 
 func set_seals_state(taken: Array[String]) -> void:
@@ -494,6 +708,18 @@ func set_seals_state(taken: Array[String]) -> void:
 		(s["sky"] as Node3D).visible = not t
 		(s["beam"] as Node3D).visible = t
 
+func seal_position(id: String) -> Vector3:
+	for s in _seals:
+		if str(s["id"]) == id:
+			return s["pos"] as Vector3
+	return Vector3.ZERO
+
+func beam_position(id: String) -> Vector3:
+	for s in _seals:
+		if str(s["id"]) == id:
+			return s["beam_pos"] as Vector3
+	return Vector3.ZERO
+
 func _build_sockets() -> void:
 	var hub: Dictionary = island(str(data.get("hub_island", "cadran")))
 	var ground: float = float(hub.get("y", 0.0))
@@ -503,13 +729,14 @@ func _build_sockets() -> void:
 		var p: Array = list[i] as Array
 		var body := StaticBody3D.new()
 		body.position = Vector3(float(p[0]), ground, float(p[1]))
-		body.set_meta("surface", "stone")
+		body.set_meta("surface", "concrete")
 		add_child(body)
-		_add_cylinder(body, 0.4, 0.55, 1.0, Vector3(0.0, 0.5, 0.0), _marble)
-		_add_cylinder(body, 0.5, 0.4, 0.12, Vector3(0.0, 1.06, 0.0), _gold)
-		var shape := _prism(0.5, 1.1, 16)
-		_add_shape(body, shape, Vector3(0.0, 0.55, 0.0))
-		var seal := _seal_mesh(ids[i % ids.size()])
+		_add_box(body, Vector3(0.7, 1.0, 0.7), Vector3(0.0, 0.5, 0.0), _concrete_plain)
+		_add_box(body, Vector3(0.4, 0.02, 0.4), Vector3(0.0, 1.01, 0.0), _ink)
+		var shape := BoxShape3D.new()
+		shape.size = Vector3(0.7, 1.0, 0.7)
+		_add_shape(body, shape, Vector3(0.0, 0.5, 0.0))
+		var seal := seal_mesh(ids[i % ids.size()], 1.6)
 		seal.position = body.position + Vector3(0.0, 1.8, 0.0)
 		seal.scale = Vector3.ONE * 0.8
 		seal.visible = false
@@ -526,48 +753,13 @@ func socket_position(seal_id: String) -> Vector3:
 			return (s["base"] as Vector3) + Vector3(0.0, 1.8, 0.0)
 	return Vector3.ZERO
 
-# --- observatory, sundial, scenery ------------------------------------------
-
-func _build_observatory() -> void:
-	var o: Dictionary = data.get("observatory", {}) as Dictionary
-	if o.is_empty():
-		return
-	var pos := Vector3(float(o["x"]), _ground_y(float(o["x"]), float(o["z"])), float(o["z"]))
-	var floor_ring := StaticBody3D.new()
-	floor_ring.position = pos
-	floor_ring.set_meta("surface", "stone")
-	add_child(floor_ring)
-	_add_cylinder(floor_ring, 1.9, 1.9, 0.04, Vector3(0.0, 0.02, 0.0), _marble)
-	_add_cylinder(floor_ring, 0.35, 0.5, 1.4, Vector3(0.0, 0.7, 0.0), _gold)
-	var column := _prism(0.5, 1.4, 16)
-	_add_shape(floor_ring, column, Vector3(0.0, 0.7, 0.0))
-	_armillary = Node3D.new()
-	_armillary.position = pos + Vector3(0.0, 2.6, 0.0)
-	add_child(_armillary)
-	for k in 3:
-		var ring := MeshInstance3D.new()
-		var torus := TorusMesh.new()
-		torus.inner_radius = 1.25 - k * 0.22
-		torus.outer_radius = 1.33 - k * 0.22
-		torus.rings = 36
-		torus.ring_segments = 6
-		ring.mesh = torus
-		ring.material_override = _gold
-		ring.rotation = Vector3(PI * 0.5 * k, k * 0.6, 0.0)
-		_armillary.add_child(ring)
-	var core := MeshInstance3D.new()
-	var sphere := SphereMesh.new()
-	sphere.radius = 0.3
-	sphere.height = 0.6
-	core.mesh = sphere
-	core.material_override = _glow_material(Color(1.0, 0.85, 0.5), 3.0)
-	_armillary.add_child(core)
+# --- sundial and scenery --------------------------------------------------------
 
 func observatory_position() -> Vector3:
 	var o: Dictionary = data.get("observatory", {}) as Dictionary
-	return Vector3(float(o.get("x", 0.0)), 0.0, float(o.get("z", 0.0)))
+	return Vector3(float(o.get("x", 0.0)), ground_y(float(o.get("x", 0.0)), float(o.get("z", 0.0))), float(o.get("z", 0.0)))
 
-## Hour marks around the Dial's needle: each gold line points where the
+## Hour lines around the Dial's needle: each graphite line points where the
 ## needle's shadow falls at that hour, with the hour in Roman numerals.
 func _build_sundial() -> void:
 	var needle: ShadowSystem.Caster = shadows.find("cad_aiguille")
@@ -577,7 +769,7 @@ func _build_sundial() -> void:
 	var root := Node3D.new()
 	root.position = Vector3(needle.foot.x, needle.plane + 0.02, needle.foot.z)
 	add_child(root)
-	_add_cylinder(root, 2.9, 2.9, 0.04, Vector3.ZERO, _marble)
+	_add_cylinder(root, 2.9, 2.9, 0.04, Vector3.ZERO, _concrete_plain, 48)
 	for i in ROMAN.size():
 		var h: float = 7.0 + i
 		var dir: Vector3 = Sun.direction_for(h, max_elevation)
@@ -585,61 +777,61 @@ func _build_sundial() -> void:
 		var angle: float = atan2(flat.x, flat.y)
 		var line := MeshInstance3D.new()
 		var box := BoxMesh.new()
-		box.size = Vector3(0.05, 0.03, 1.3)
+		box.size = Vector3(0.025, 0.01, 1.3)
 		line.mesh = box
-		line.material_override = _gold
-		line.position = Vector3(flat.x * 1.25, 0.03, flat.y * 1.25)
+		line.material_override = _ink
+		line.position = Vector3(flat.x * 1.25, 0.025, flat.y * 1.25)
 		line.rotation.y = angle
 		root.add_child(line)
 		var label := Label3D.new()
 		label.text = ROMAN[i]
-		label.font_size = 48
+		label.font_size = 40
 		label.pixel_size = 0.006
-		label.modulate = Color(0.45, 0.32, 0.12)
+		label.modulate = Color(0.16, 0.16, 0.17)
 		label.outline_size = 0
-		label.position = Vector3(flat.x * 2.3, 0.05, flat.y * 2.3)
+		label.position = Vector3(flat.x * 2.3, 0.04, flat.y * 2.3)
 		label.rotation = Vector3(-PI * 0.5, angle + PI, 0.0)
 		root.add_child(label)
 
-func _build_far_islands() -> void:
+## Monumental white volumes far away, rising from the mist: towers and
+## floating slabs, paled by the fog.
+func _build_far_architecture() -> void:
 	var rng := RandomNumberGenerator.new()
-	rng.seed = 2024
-	for i in 22:
-		var a: float = rng.randf() * TAU
-		var dist: float = rng.randf_range(150.0, 320.0)
-		var r: float = rng.randf_range(4.0, 18.0)
+	rng.seed = 2026
+	for i in 20:
+		var a: float = TAU * (float(i) + rng.randf_range(0.0, 0.7)) / 20.0
+		var dist: float = rng.randf_range(220.0, 420.0)
+		var base := Vector3(cos(a) * dist, 0.0, sin(a) * dist)
 		var root := Node3D.new()
-		root.position = Vector3(cos(a) * dist, rng.randf_range(-35.0, 45.0), sin(a) * dist)
+		root.position = base
+		root.rotation.y = rng.randf() * TAU
 		add_child(root)
-		var top := MeshInstance3D.new()
-		var cyl := CylinderMesh.new()
-		cyl.top_radius = r
-		cyl.bottom_radius = r * 0.95
-		cyl.height = 0.8
-		cyl.radial_segments = 20
-		top.mesh = cyl
-		top.material_override = _grass_material
-		root.add_child(top)
-		var under := MeshInstance3D.new()
-		under.mesh = _rock_mesh(r * 0.95, r * rng.randf_range(1.0, 1.8), i * 31 + 5)
-		under.material_override = _rock_material
-		under.position.y = -0.4
-		root.add_child(under)
+		match i % 2:
+			0:
+				var w: float = rng.randf_range(6.0, 16.0)
+				var h: float = rng.randf_range(80.0, 180.0)
+				var top: float = rng.randf_range(-10.0, 70.0)
+				_add_box(root, Vector3(w, h, rng.randf_range(6.0, 16.0)), Vector3(0.0, top - h * 0.5, 0.0), _concrete_plain)
+			_:
+				var w: float = rng.randf_range(24.0, 60.0)
+				var d: float = rng.randf_range(10.0, 28.0)
+				var y: float = rng.randf_range(-25.0, 35.0)
+				_add_box(root, Vector3(w, rng.randf_range(1.5, 3.5), d), Vector3(0.0, y, 0.0), _concrete_plain)
 
-func _build_sea() -> void:
-	var sea := MeshInstance3D.new()
+func _build_mist() -> void:
+	var mist := MeshInstance3D.new()
 	var plane := PlaneMesh.new()
 	plane.size = Vector2(9000.0, 9000.0)
-	sea.mesh = plane
+	mist.mesh = plane
 	var mat := ShaderMaterial.new()
-	mat.shader = preload("res://shaders/sea.gdshader")
-	sea.material_override = mat
-	sea.position = Vector3(0.0, -55.0, 0.0)
-	sea.name = "Sea"
-	add_child(sea)
+	mat.shader = preload("res://shaders/mist.gdshader")
+	mist.material_override = mat
+	mist.position = Vector3(0.0, MIST_Y, 0.0)
+	mist.name = "Mist"
+	add_child(mist)
 
-func sea_material() -> ShaderMaterial:
-	return (get_node("Sea") as MeshInstance3D).material_override as ShaderMaterial
+func mist_material() -> ShaderMaterial:
+	return (get_node("Mist") as MeshInstance3D).material_override as ShaderMaterial
 
 # --- per frame -----------------------------------------------------------------
 
@@ -650,17 +842,14 @@ func _process(delta: float) -> void:
 			continue
 		var node: Node3D = s["node"]
 		node.rotation.y = _time * 1.6 + float(s["offset"])
-		node.position = (s["pos"] as Vector3) + Vector3(0.0, sin(_time * 2.0 + float(s["offset"])) * 0.12, 0.0)
+		node.position = (s["pos"] as Vector3) + Vector3(0.0, sin(_time * 2.0 + float(s["offset"])) * 0.1, 0.0)
 	for s in _seals:
 		(s["node"] as Node3D).rotation.y = _time * 0.8
 		(s["node"] as Node3D).position.y = (s["pos"] as Vector3).y + sin(_time * 1.3) * 0.1
 	for s in _sockets:
 		(s["node"] as Node3D).rotation.y = -_time * 0.5
-	if _armillary != null:
-		_armillary.rotation.y = _time * 0.3
-		(_armillary.get_child(1) as Node3D).rotation.z = _time * 0.5
 
-## Shard magnet and pickups, seals, beams and the observatory.
+## Shard magnet and pickups, seals, beams and the Oculus.
 func update_pickups(player_pos: Vector3, delta: float) -> void:
 	var chest: Vector3 = player_pos + Vector3(0.0, 1.0, 0.0)
 	for i in _shards.size():
@@ -674,7 +863,7 @@ func update_pickups(player_pos: Vector3, delta: float) -> void:
 			(s["node"] as Node3D).visible = false
 			shard_collected.emit(i, pos)
 		elif dist < _magnet:
-			s["pos"] = pos.move_toward(chest, delta * (4.0 + (_magnet - dist) * 6.0))
+			s["pos"] = pos.move_toward(chest, delta * (5.0 + (_magnet - dist) * 7.0))
 		else:
 			s["pos"] = pos.move_toward(s["home"], delta * 3.0)
 	for s in _seals:

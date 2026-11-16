@@ -1,18 +1,19 @@
 # =============================================================================
-# SaveManager.gd — Autoload (Singleton): progress and settings on disk
+# SaveManager.gd: Autoload (Singleton) keeping progress and settings on disk
 # =============================================================================
 # user://gnomon_save.json (in the browser: IndexedDB of the site, shared by
 # every game of the origin, hence the unique file name):
 #   version    SAVE_VERSION; another version starts a fresh save
 #   run        the run in progress (GameState.to_dict()), or {} when none
-#   best       best finished run: time, shards
+#   best       best finished run: time, shards, splits (time of the first
+#              arrival on each platform, compared during the next runs)
 #   settings   language, muted, sensitivity, invert_y
 # =============================================================================
 
 extends Node
 
 const PATH: String = "user://gnomon_save.json"
-const SAVE_VERSION: int = 1
+const SAVE_VERSION: int = 2
 
 var data: Dictionary = {}
 
@@ -64,10 +65,17 @@ func best() -> Dictionary:
 	return data["best"] as Dictionary
 
 ## Keeps the faster finished run (ties: more shards). Returns true if new.
-func store_best(time: float, shards: int) -> bool:
+func store_best(time: float, shards: int, splits: Dictionary) -> bool:
 	var b: Dictionary = best()
 	var better: bool = b.is_empty() or time < float(b.get("time", INF)) or (is_equal_approx(time, float(b.get("time", INF))) and shards > int(b.get("shards", 0)))
 	if better:
-		data["best"] = {time = time, shards = shards}
+		data["best"] = {time = time, shards = shards, splits = splits}
 	save()
 	return better
+
+## Time of the first arrival on a platform in the best run, or -1.
+func best_split(island: String) -> float:
+	var splits: Variant = best().get("splits", {})
+	if splits is Dictionary and (splits as Dictionary).has(island):
+		return float((splits as Dictionary)[island])
+	return -1.0

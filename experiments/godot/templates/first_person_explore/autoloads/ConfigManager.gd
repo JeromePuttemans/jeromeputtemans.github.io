@@ -1,5 +1,5 @@
 # =============================================================================
-# ConfigManager.gd — Autoload (Singleton)
+# ConfigManager.gd: Autoload (Singleton)
 # =============================================================================
 # Loads data/config.json and exposes typed getters. First in the autoload
 # list: every other singleton reads its values from here.

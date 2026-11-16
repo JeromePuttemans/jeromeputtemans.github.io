@@ -1,20 +1,25 @@
 # =============================================================================
-# Main.gd — Root of the game: builds everything and runs the phases
+# Main.gd: root of the game, builds everything and runs the phases
 # =============================================================================
 # TREE (all built by code)
-#   WorldEnvironment (sky shader, fog, glow), DirectionalLight3D (the sun,
-#   no engine shadows: only black stones cast shadows, drawn by
+#   WorldEnvironment (sky shader, white fog, light glow), DirectionalLight3D
+#   (the sun, no engine shadows: only black stones cast shadows, drawn by
 #   ShadowSystem), Sun, ShadowSystem, World, Effects3D, Player, CameraRig,
 #   UI (HUD), Menus (title, pause, results), Fade.
 # PHASES (GameState.Phase)
 #   MENU     the camera circles the archipelago while the sun sweeps the
 #            day; a click starts or continues the run (and locks the mouse)
-#   PLAYING  arrivals on islands (banner, tip, save), pickups, falls, light
+#   PLAYING  arrivals on platforms (banner, tip, split, save), pickups,
+#            dashes, ledge grabs, launches, falls, quick returns, light
 #            columns, seals set in the Dial, the great gnomon rising
 #   PAUSED   tree paused, mouse free, settings
-#   ENDING   at the observatory: control off, the view turns to the west
-#            while the sun sets and the stars appear
+#   ENDING   at the Oculus: control off, the view turns to the west while
+#            the sun sets and the stars appear
 #   END      results, then back to MENU
+# TEST MODES (arguments after "--" on the command line)
+#   --check       geometric checks of the level (tests/LevelCheck.gd), quit
+#   --bot         the test bot plays the whole game (tests/TestBot.gd)
+#   --shot=NAME   a still image from a preset viewpoint (tests/Shots.gd)
 # =============================================================================
 
 extends Node3D
@@ -42,6 +47,7 @@ var _streak_time: float = 0.0
 var _title_time: float = 0.0
 var _was_moving: bool = false
 var _capture_grace: float = 0.0
+var _excitement: float = 0.0
 var _hub: String = "cadran"
 
 func _ready() -> void:
@@ -61,8 +67,13 @@ func _ready() -> void:
 	world.name = "World"
 	_pausable(world)
 	world.build(shadows)
+	var args: PackedStringArray = OS.get_cmdline_user_args()
+	if args.has("--check"):
+		var problems: int = LevelCheck.run(world, shadows)
+		get_tree().quit(1 if problems > 0 else 0)
+		return
 	_hub = str(world.data.get("hub_island", "cadran"))
-	sun.sea_material = world.sea_material()
+	sun.mist_material = world.mist_material()
 	GameState.shard_total = world.shard_total()
 	effects = Effects3D.new()
 	effects.name = "Effects"
@@ -71,7 +82,7 @@ func _ready() -> void:
 	player.name = "Player"
 	player.shadows = shadows
 	player.sun = sun
-	player.void_y = world.lowest_y - ConfigManager.get_float("void_depth", 16.0)
+	player.void_y = world.lowest_y - ConfigManager.get_float("void_depth", 14.0)
 	player.ground_at = Callable(world, "island_at")
 	_pausable(player)
 	rig = CameraRig.new()
@@ -86,14 +97,33 @@ func _ready() -> void:
 	player.jumped.connect(func() -> void:
 		Sfx.play("jump", 1.0, 0.06, -4.0)
 		rig.jump_kick())
+	player.dashed.connect(_on_dash)
+	player.dash_refilled.connect(func() -> void:
+		hud.flash_refill()
+		Sfx.play("refill", 1.0, 0.03, -6.0))
+	player.mantled.connect(func() -> void:
+		Sfx.play("mantle", 1.0, 0.05)
+		rig.mantle_kick())
+	player.launched.connect(_on_launch)
 	player.fell_out.connect(_on_fell_out)
 	world.shard_collected.connect(_on_shard)
 	world.seal_taken.connect(_on_seal)
 	world.beam_entered.connect(_on_beam)
 	world.observatory_reached.connect(_on_observatory)
+	GameState.split_reached.connect(func(_island: String, _time: float) -> void: Sfx.play("split", 1.0, 0.0, -4.0))
 	_build_ui()
 	Sfx.ambience = true
 	_enter_menu()
+	for arg in args:
+		if arg == "--bot":
+			var bot: Node = (load("res://tests/TestBot.gd") as GDScript).new()
+			bot.set("main", self)
+			add_child(bot)
+		elif arg.begins_with("--shot="):
+			var shots: Node = (load("res://tests/Shots.gd") as GDScript).new()
+			shots.set("main", self)
+			shots.set("shot", arg.substr(7))
+			add_child(shots)
 
 func _pausable(node: Node) -> void:
 	node.process_mode = Node.PROCESS_MODE_PAUSABLE
@@ -110,15 +140,15 @@ func _build_environment() -> void:
 	environment.sky = sky
 	environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	environment.reflected_light_source = Environment.REFLECTION_SOURCE_DISABLED
-	environment.tonemap_mode = Environment.TONE_MAPPER_FILMIC
-	environment.tonemap_exposure = 1.05
+	environment.tonemap_mode = Environment.TONE_MAPPER_LINEAR
+	environment.tonemap_exposure = 1.0
 	environment.fog_enabled = true
-	environment.fog_density = 0.0028
+	environment.fog_density = 0.0034
 	environment.fog_sky_affect = 0.0
 	environment.glow_enabled = true
-	environment.glow_intensity = 0.7
-	environment.glow_bloom = 0.04
-	environment.glow_hdr_threshold = 1.0
+	environment.glow_intensity = 0.45
+	environment.glow_bloom = 0.0
+	environment.glow_hdr_threshold = 1.15
 	var we := WorldEnvironment.new()
 	we.environment = environment
 	add_child(we)
@@ -134,6 +164,7 @@ func _build_ui() -> void:
 	hud = Hud.new()
 	hud.theme = theme
 	hud.sun = sun
+	hud.player = player
 	hud.shard_total = world.shard_total()
 	ui.add_child(hud)
 	var menus := CanvasLayer.new()
@@ -186,7 +217,7 @@ func _enter_menu() -> void:
 	sun.control_enabled = false
 	rig.follow = false
 	rig.look_enabled = false
-	rig.set_astrolabe_visible(false)
+	rig.set_dial_visible(false)
 	shadows.set_shadows_visible(true)
 	hud.visible = false
 	pause_menu.visible = false
@@ -194,15 +225,20 @@ func _enter_menu() -> void:
 	title.refresh()
 	title.visible = true
 	fade.color.a = 0.0
+	Music.playing = true
+	Music.intensity = 0.15
+
+func _gnomon_def() -> Dictionary:
+	for c in world.data.get("casters", []) as Array:
+		if str((c as Dictionary)["id"]) == "gnomon":
+			return c as Dictionary
+	return {}
 
 func _apply_run_state() -> void:
 	world.set_shards_taken(GameState.shards)
 	world.set_seals_state(GameState.seals_taken)
 	world.set_sockets_state(GameState.seals_placed)
-	var gnomon: Dictionary = {}
-	for c in world.data.get("casters", []) as Array:
-		if str((c as Dictionary)["id"]) == "gnomon":
-			gnomon = c
+	var gnomon: Dictionary = _gnomon_def()
 	if not gnomon.is_empty():
 		shadows.set_height("gnomon", float(gnomon.get("h_raised", gnomon["h"])) if GameState.gnomon_raised else float(gnomon["h"]))
 
@@ -227,22 +263,25 @@ func _start(new_game: bool) -> void:
 	rig.set_view(yaw, -0.08)
 	rig.follow = true
 	rig.look_enabled = true
-	rig.set_astrolabe_visible(true)
+	rig.set_dial_visible(true)
 	sun.set_hour_now(GameState.hour)
 	shadows.set_sun(sun.direction())
 	sun.control_enabled = true
 	player.control_enabled = true
 	GameState.set_phase(GameState.Phase.PLAYING)
 	fade.color = Color(1.0, 1.0, 1.0, 1.0)
-	fade.fade_from(0.8)
+	fade.fade_from(0.6)
 	if fresh:
 		GameState.visit(GameState.checkpoint)
 		GameState.save_run()
-		await get_tree().create_timer(1.0).timeout
-		GameState.banner(StringManager.t("island_" + GameState.checkpoint))
+		await get_tree().create_timer(0.8).timeout
+		_banner_for(GameState.checkpoint)
 		Sfx.play("island")
 		GameState.show_tip("tip_start")
 		GameState.show_tip(str(world.island(GameState.checkpoint).get("tip", "")))
+
+func _banner_for(island: String) -> void:
+	GameState.banner(StringManager.t("island_" + island), UiTheme.level_text(float(world.island(island).get("y", 0.0))))
 
 func _open_pause() -> void:
 	if GameState.phase != GameState.Phase.PLAYING:
@@ -262,8 +301,14 @@ func _resume() -> void:
 	GameState.set_phase(GameState.Phase.PLAYING)
 
 func _notification(what: int) -> void:
-	if what == NOTIFICATION_APPLICATION_FOCUS_OUT and GameState.phase == GameState.Phase.PLAYING and not _busy:
+	if what == NOTIFICATION_APPLICATION_FOCUS_OUT and GameState.phase == GameState.Phase.PLAYING and not _busy and not _test_mode():
 		_open_pause()
+
+func _test_mode() -> bool:
+	for arg in OS.get_cmdline_user_args():
+		if arg == "--bot" or arg.begins_with("--shot="):
+			return true
+	return DisplayServer.get_name() == "headless"
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("pause"):
@@ -275,6 +320,10 @@ func _unhandled_input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 		return
 	if GameState.phase != GameState.Phase.PLAYING:
+		return
+	if event.is_action_pressed("reset") and not _busy:
+		quick_return()
+		get_viewport().set_input_as_handled()
 		return
 	if event is InputEventMouseButton and (event as InputEventMouseButton).pressed:
 		var mb: InputEventMouseButton = event as InputEventMouseButton
@@ -289,30 +338,36 @@ func _unhandled_input(event: InputEvent) -> void:
 # --- frame -----------------------------------------------------------------------
 
 func _process(delta: float) -> void:
+	if rig == null:
+		return
 	_streak_time = maxf(_streak_time - delta, 0.0)
+	_excitement = maxf(_excitement - delta * 0.35, 0.0)
 	match GameState.phase:
 		GameState.Phase.MENU:
 			_title_flight(delta)
 		GameState.Phase.PLAYING:
 			_capture_grace = maxf(_capture_grace - delta, 0.0)
-			if Input.mouse_mode != Input.MOUSE_MODE_CAPTURED and _capture_grace <= 0.0 and not _busy and DisplayServer.get_name() != "headless":
+			if Input.mouse_mode != Input.MOUSE_MODE_CAPTURED and _capture_grace <= 0.0 and not _busy and not _test_mode():
 				_open_pause()
 			var moving: bool = absf(sun.speed) > 0.05
 			if moving and not _was_moving:
 				shadows.pulse()
 			_was_moving = moving
+			var speed: float = Vector2(player.velocity.x, player.velocity.z).length()
+			var air: float = 0.0 if player.is_on_floor() else 0.25
+			Music.intensity = clampf(speed / 11.0 * 0.55 + air + _excitement + clampf(absf(sun.speed), 0.0, 1.0) * 0.2, 0.0, 1.0)
 
 func _title_flight(delta: float) -> void:
 	_title_time += delta
-	var a: float = 0.6 + _title_time * 0.045
-	var centre := Vector3(6.0, 0.0, -4.0)
-	rig.global_position = centre + Vector3(cos(a) * 58.0, 20.0 + sin(_title_time * 0.11) * 4.0, sin(a) * 58.0)
-	rig.look_at(centre + Vector3(0.0, -2.0, 0.0), Vector3.UP)
+	var a: float = 1.9 + _title_time * 0.035
+	var centre := Vector3(10.0, 0.0, -8.0)
+	rig.global_position = centre + Vector3(cos(a) * 96.0, 34.0 + sin(_title_time * 0.11) * 5.0, sin(a) * 96.0)
+	rig.look_at(centre + Vector3(0.0, -6.0, 0.0), Vector3.UP)
 	sun.set_hour_now(12.0 + 4.6 * sin(_title_time * 0.16))
 	shadows.set_sun(sun.direction())
 
 func _physics_process(delta: float) -> void:
-	if GameState.phase != GameState.Phase.PLAYING:
+	if player == null or GameState.phase != GameState.Phase.PLAYING:
 		return
 	GameState.add_time(delta)
 	GameState.hour = sun.hour
@@ -320,6 +375,8 @@ func _physics_process(delta: float) -> void:
 	if _busy:
 		return
 	world.update_pickups(player.global_position, delta)
+	if player.floor_caster >= 0 and player.carry_velocity.length() > 1.5:
+		GameState.show_tip("tip_launch")
 	var island: String = world.island_at(player.global_position) if player.is_on_floor() else ""
 	if island != "" and island != GameState.checkpoint:
 		_arrive(island)
@@ -327,9 +384,11 @@ func _physics_process(delta: float) -> void:
 func _arrive(island: String) -> void:
 	var first: bool = GameState.visit(island)
 	if first:
-		GameState.banner(StringManager.t("island_" + island))
+		_banner_for(island)
 		Sfx.play("island")
 		GameState.show_tip(str(world.island(island).get("tip", "")))
+		if island == _hub:
+			GameState.show_tip("tip_dash")
 	GameState.hour = sun.hour
 	GameState.save_run()
 	if island == _hub and not GameState.seals_to_place().is_empty():
@@ -338,7 +397,7 @@ func _arrive(island: String) -> void:
 # --- events ----------------------------------------------------------------------
 
 func _on_step(surface: String) -> void:
-	var sound: String = "step_" + (surface if surface in ["grass", "stone", "shadow"] else "stone")
+	var sound: String = "step_" + (surface if surface in ["concrete", "stone", "shadow"] else "concrete")
 	Sfx.play(sound, 1.0, 0.1, 0.0 if player.sprinting else -3.0)
 
 func _on_land(impact: float, surface: String) -> void:
@@ -351,6 +410,34 @@ func _on_land(impact: float, surface: String) -> void:
 	if impact > 7.0:
 		effects.dust(player.global_position, 16, 3.5)
 
+func _on_dash() -> void:
+	GameState.dashes += 1
+	_excitement = minf(_excitement + 0.35, 0.6)
+	Sfx.play("dash", 1.0, 0.06)
+	rig.dash_kick()
+	var dir := Vector3(player.velocity.x, 0.0, player.velocity.z).normalized()
+	effects.streak(player.global_position, dir)
+
+func _on_launch(speed: float) -> void:
+	if speed < 3.0:
+		return
+	GameState.launches += 1
+	_excitement = minf(_excitement + 0.5, 0.7)
+	Sfx.play("launch", clampf(0.8 + speed * 0.04, 0.8, 1.3), 0.03)
+	rig.add_shake(0.2)
+
+## Back to the last platform at once, without counting a fall.
+func quick_return() -> void:
+	if _busy:
+		return
+	_busy = true
+	player.control_enabled = false
+	await fade.fade_to(Color(0.97, 0.97, 0.96, 1.0), 0.15)
+	player.teleport(world.spawn_point(GameState.checkpoint))
+	await fade.fade_from(0.2)
+	_busy = false
+	player.control_enabled = GameState.phase == GameState.Phase.PLAYING or GameState.phase == GameState.Phase.PAUSED
+
 func _on_fell_out() -> void:
 	if _busy:
 		return
@@ -358,13 +445,13 @@ func _on_fell_out() -> void:
 	player.control_enabled = false
 	Sfx.play("fall")
 	GameState.add_fall()
-	await fade.fade_to(Color(0.96, 0.94, 1.0, 1.0), 0.6)
+	var duration: float = ConfigManager.get_float("respawn_fade", 0.3)
+	await fade.fade_to(Color(0.97, 0.97, 0.96, 1.0), duration)
 	player.teleport(world.spawn_point(GameState.checkpoint))
 	Sfx.set_wind(0.0)
-	await get_tree().create_timer(0.2).timeout
 	Sfx.play("respawn")
-	effects.burst(player.global_position + Vector3(0.0, 1.0, 0.0), Color(0.8, 0.85, 1.0), 30, 3.0, 1.0, -1.0)
-	await fade.fade_from(0.6)
+	effects.burst(player.global_position + Vector3(0.0, 1.0, 0.0), World.ACCENT, 24, 3.0, 0.8, -1.0)
+	await fade.fade_from(duration)
 	_busy = false
 	player.control_enabled = GameState.phase == GameState.Phase.PLAYING or GameState.phase == GameState.Phase.PAUSED
 	GameState.show_tip("tip_fall")
@@ -373,8 +460,10 @@ func _on_shard(index: int, pos: Vector3) -> void:
 	GameState.collect_shard(index)
 	_streak = _streak + 1 if _streak_time > 0.0 else 0
 	_streak_time = 3.0
+	_excitement = minf(_excitement + 0.25, 0.6)
 	Sfx.play("shard", pow(1.0595, mini(_streak, 7) * 2), 0.0)
-	effects.burst(pos, Color(1.0, 0.85, 0.4), 28, 4.5, 0.8, 3.0)
+	effects.burst(pos, World.ACCENT, 22, 4.0, 0.7, 3.0)
+	player.refill_dash()
 
 func _on_seal(id: String, pos: Vector3) -> void:
 	if GameState.seals_taken.has(id):
@@ -382,7 +471,7 @@ func _on_seal(id: String, pos: Vector3) -> void:
 	GameState.take_seal(id)
 	world.set_seals_state(GameState.seals_taken)
 	Sfx.play("seal")
-	effects.burst(pos, (World.SEAL_COLORS[id] as Color), 70, 7.0, 1.5, 1.0, 1.5)
+	effects.burst(pos, World.ACCENT, 60, 7.0, 1.4, 1.0, 1.5)
 	rig.add_shake(0.4)
 	GameState.banner(StringManager.t("seal_" + id))
 	GameState.show_tip("tip_beam")
@@ -393,14 +482,14 @@ func _on_beam(_id: String) -> void:
 	_busy = true
 	player.control_enabled = false
 	Sfx.play("beam")
-	await fade.fade_to(Color(0.8, 0.92, 1.0, 1.0), 0.7)
+	var duration: float = ConfigManager.get_float("beam_fade", 0.45)
+	await fade.fade_to(Color(1.0, 0.98, 0.96, 1.0), duration)
 	var spawn: Vector3 = world.spawn_point(_hub)
 	player.teleport(spawn)
 	var socket: Vector3 = world.socket_position("noon")
 	var to: Vector3 = socket - spawn
 	rig.set_view(atan2(-to.x, -to.z), -0.05)
-	await get_tree().create_timer(0.2).timeout
-	await fade.fade_from(0.7)
+	await fade.fade_from(duration)
 	_busy = false
 	player.control_enabled = true
 	if GameState.checkpoint != _hub:
@@ -413,12 +502,12 @@ func _place_seals() -> void:
 		return
 	_placing = true
 	for id in GameState.seals_to_place():
-		await get_tree().create_timer(0.9).timeout
+		await get_tree().create_timer(0.5).timeout
 		GameState.place_seal(id)
 		world.set_sockets_state(GameState.seals_placed)
 		var p: Vector3 = world.socket_position(id)
 		Sfx.play("socket")
-		effects.burst(p, (World.SEAL_COLORS[id] as Color), 50, 5.0, 1.2, 1.5)
+		effects.burst(p, World.ACCENT, 40, 5.0, 1.1, 1.5)
 		rig.add_shake(0.3)
 		GameState.banner(StringManager.t("banner_seal_placed", {seal = StringManager.t("seal_" + id), n = GameState.seals_placed.size()}))
 	_placing = false
@@ -426,20 +515,18 @@ func _place_seals() -> void:
 		_raise_gnomon()
 
 func _raise_gnomon() -> void:
-	await get_tree().create_timer(2.0).timeout
-	var def: Dictionary = {}
-	for c in world.data.get("casters", []) as Array:
-		if str((c as Dictionary)["id"]) == "gnomon":
-			def = c
+	await get_tree().create_timer(1.2).timeout
+	var def: Dictionary = _gnomon_def()
 	if def.is_empty():
 		return
 	GameState.banner(StringManager.t("banner_gnomon"))
 	var low: float = float(def["h"])
 	var high: float = float(def.get("h_raised", low))
-	var duration: float = ConfigManager.get_float("gnomon_rise_time", 7.0)
+	var duration: float = ConfigManager.get_float("gnomon_rise_time", 5.5)
 	var base := Vector3(float(def["x"]), 0.0, float(def["z"]))
 	var t: float = 0.0
 	var next_rumble: float = 0.0
+	_excitement = 0.7
 	while t < duration:
 		t += get_process_delta_time()
 		shadows.set_height("gnomon", lerpf(low, high, smoothstep(0.0, 1.0, t / duration)))
@@ -462,21 +549,22 @@ func _on_observatory() -> void:
 	GameState.set_phase(GameState.Phase.ENDING)
 	player.control_enabled = false
 	sun.control_enabled = false
+	Music.intensity = 0.4
 	Sfx.play("ending")
 	sun.drive_to(18.8)
 	var t: float = 0.0
-	while t < 8.0:
+	while t < 7.0:
 		var dt: float = get_process_delta_time()
 		t += dt
 		rig.set_view(lerp_angle(rig.yaw, PI * 0.5, dt * 0.6), lerpf(rig.pitch, 0.12, dt * 0.6))
 		if sun.hour > 17.3 and shadows.shadows_visible:
 			shadows.set_shadows_visible(false)
 		await get_tree().process_frame
-	var record: bool = SaveManager.store_best(GameState.time, GameState.shards.size())
-	var result: Dictionary = {time = GameState.time, shards = GameState.shards.size(), total = GameState.shard_total, falls = GameState.falls, record = record}
+	var record: bool = SaveManager.store_best(GameState.time, GameState.shards.size(), GameState.splits)
+	var result: Dictionary = {time = GameState.time, shards = GameState.shards.size(), total = GameState.shard_total, falls = GameState.falls, dashes = GameState.dashes, launches = GameState.launches, record = record}
 	SaveManager.clear_run()
 	GameState.set_phase(GameState.Phase.END)
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
-	rig.set_astrolabe_visible(false)
+	rig.set_dial_visible(false)
 	hud.visible = false
 	end_screen.show_results(result)

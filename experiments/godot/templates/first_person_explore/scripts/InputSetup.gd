@@ -1,11 +1,13 @@
 # =============================================================================
-# InputSetup.gd — Registers the input actions at startup
+# InputSetup.gd: Registers the input actions at startup
 # =============================================================================
 # Letter keys use physical key codes: the keys at the W/A/S/D and Q/E
 # positions work on any layout (Z/Q/S/D and A/E on an AZERTY keyboard);
-# key_name() gives the letter printed on the player's keyboard. Pads: left
-# stick to move, right stick to look, A to jump, left stick click to run,
-# shoulders or triggers to move the sun, Start to pause.
+# key_name() gives the letter printed on the player's keyboard.
+# DASH: a press throws the body forward, holding it keeps the run.
+# Pads: left stick to move, right stick to look, A to jump, B or X to
+# dash, shoulders or triggers to move the sun, Y to go back to the last
+# platform, Start to pause.
 # =============================================================================
 
 class_name InputSetup
@@ -19,9 +21,13 @@ static func register() -> void:
 	_action("move_left", [KEY_A, KEY_LEFT], [], JOY_AXIS_LEFT_X, -1.0)
 	_action("move_right", [KEY_D, KEY_RIGHT], [], JOY_AXIS_LEFT_X, 1.0)
 	_action("jump", [KEY_SPACE], [JOY_BUTTON_A], JOY_AXIS_INVALID, 0.0)
-	_action("sprint", [KEY_SHIFT], [JOY_BUTTON_LEFT_STICK, JOY_BUTTON_B], JOY_AXIS_INVALID, 0.0)
+	_action("dash", [KEY_SHIFT], [JOY_BUTTON_B, JOY_BUTTON_X, JOY_BUTTON_LEFT_STICK], JOY_AXIS_INVALID, 0.0)
+	var right_click := InputEventMouseButton.new()
+	right_click.button_index = MOUSE_BUTTON_RIGHT
+	InputMap.action_add_event("dash", right_click)
 	_action("time_back", [KEY_Q], [JOY_BUTTON_LEFT_SHOULDER], JOY_AXIS_TRIGGER_LEFT, 1.0)
 	_action("time_forward", [KEY_E], [JOY_BUTTON_RIGHT_SHOULDER], JOY_AXIS_TRIGGER_RIGHT, 1.0)
+	_action("reset", [KEY_R], [JOY_BUTTON_Y], JOY_AXIS_INVALID, 0.0)
 	_action("pause", [KEY_ESCAPE, KEY_P], [JOY_BUTTON_START], JOY_AXIS_INVALID, 0.0)
 
 static func _action(action: String, keys: Array, buttons: Array, axis: JoyAxis, direction: float) -> void:

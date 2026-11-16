@@ -1,5 +1,5 @@
 # =============================================================================
-# Sun.gd — The hour of the day, which the player controls
+# Sun.gd: The hour of the day, which the player controls
 # =============================================================================
 # COURSE: the sun rises in the east (+x) at 6:00, culminates in the south
 #   (+z) at noon at sun_max_elevation_deg, and sets in the west at 18:00:
@@ -13,9 +13,10 @@
 #   time_ramp seconds (a tap moves a few minutes, a long press sweeps the
 #   day); a mouse wheel notch moves it by wheel_step. The hour follows the
 #   target with exponential smoothing, and a tick sounds every quarter hour.
-# LOOK: light colour and energy, sky, fog, ambient light and the sea of
-#   clouds all follow the sun's elevation, warmer in the evening; `night`
-#   (ending) fades everything to a starry dusk.
+# LOOK: light colour and energy, sky, fog, ambient light and the mist
+#   below follow the sun's elevation. The palette stays almost colourless:
+#   white at noon, barely warm at dawn and dusk; `night` (ending) fades
+#   everything to a starry graphite dusk.
 # =============================================================================
 
 class_name Sun
@@ -33,7 +34,7 @@ var speed: float = 0.0               # hours per second, for the HUD and sounds
 var light: DirectionalLight3D = null
 var environment: Environment = null
 var sky_material: ShaderMaterial = null
-var sea_material: ShaderMaterial = null
+var mist_material: ShaderMaterial = null
 
 var _hold: float = 0.0
 var _smoothing: float = 9.0
@@ -100,19 +101,19 @@ func _apply() -> void:
 	var low: float = 1.0 - smoothstep(5.0, 35.0, elevation)
 	var evening: float = smoothstep(12.0, 16.5, hour)
 	var night: float = smoothstep(17.4, 18.5, hour)
-	var zenith: Color = Color(0.2, 0.42, 0.84).lerp(Color(0.27, 0.32, 0.62), low)
-	var horizon_low: Color = Color(1.0, 0.72, 0.5).lerp(Color(1.0, 0.52, 0.42), evening)
-	var horizon: Color = Color(0.78, 0.86, 0.96).lerp(horizon_low, low)
-	var sun_color: Color = Color(1.0, 0.97, 0.9).lerp(Color(1.0, 0.72, 0.48).lerp(Color(1.0, 0.58, 0.36), evening), low)
-	zenith = zenith.lerp(Color(0.02, 0.03, 0.09), night)
-	horizon = horizon.lerp(Color(0.12, 0.08, 0.2), night)
-	sun_color = sun_color.lerp(Color(0.5, 0.3, 0.4), night)
-	var below: Color = horizon.lerp(Color(0.45, 0.5, 0.66), 0.5).lerp(Color(0.04, 0.04, 0.1), night)
+	var zenith: Color = Color(0.77, 0.8, 0.85).lerp(Color(0.79, 0.79, 0.85), low)
+	var horizon_low: Color = Color(0.98, 0.92, 0.86).lerp(Color(0.98, 0.88, 0.85), evening)
+	var horizon: Color = Color(0.95, 0.95, 0.94).lerp(horizon_low, low)
+	var sun_color: Color = Color(1.0, 0.98, 0.95).lerp(Color(1.0, 0.87, 0.74).lerp(Color(1.0, 0.8, 0.68), evening), low)
+	zenith = zenith.lerp(Color(0.04, 0.045, 0.065), night)
+	horizon = horizon.lerp(Color(0.21, 0.2, 0.25), night)
+	sun_color = sun_color.lerp(Color(0.55, 0.45, 0.5), night)
+	var below: Color = horizon.lerp(Color(0.86, 0.87, 0.89), 0.5).lerp(Color(0.05, 0.05, 0.07), night)
 	if light != null:
 		if dir.y > 0.01:
 			light.basis = Basis.looking_at(-dir, Vector3.UP)
 		light.light_color = sun_color
-		light.light_energy = lerpf(1.25, 0.9, low) * (1.0 - night * 0.95)
+		light.light_energy = lerpf(0.9, 0.8, low) * (1.0 - night * 0.95)
 	if sky_material != null:
 		sky_material.set_shader_parameter("sun_dir", dir)
 		sky_material.set_shader_parameter("zenith_color", zenith)
@@ -122,8 +123,8 @@ func _apply() -> void:
 		sky_material.set_shader_parameter("night", night)
 	if environment != null:
 		environment.fog_light_color = horizon
-		environment.ambient_light_color = zenith.lerp(horizon, 0.55)
-		environment.ambient_light_energy = lerpf(0.75, 0.6, low) * (1.0 - night * 0.6)
-	if sea_material != null:
-		sea_material.set_shader_parameter("light_color", horizon.lerp(sun_color, 0.35))
-		sea_material.set_shader_parameter("shade_color", below.lerp(zenith, 0.3))
+		environment.ambient_light_color = zenith.lerp(horizon, 0.6)
+		environment.ambient_light_energy = lerpf(0.62, 0.58, low) * (1.0 - night * 0.7)
+	if mist_material != null:
+		mist_material.set_shader_parameter("light_color", horizon)
+		mist_material.set_shader_parameter("shade_color", below.lerp(zenith, 0.25))

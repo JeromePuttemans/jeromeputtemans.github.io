@@ -1,9 +1,10 @@
 # =============================================================================
-# Effects3D.gd — One-shot particle bursts (CPUParticles3D)
+# Effects3D.gd: One-shot particle bursts (CPUParticles3D)
 # =============================================================================
-# Glowing billboards in additive blending: shards taken, seals, landing
-# dust, sockets, the gnomon's dust as it rises, the void's sparkles on
-# respawn. Each burst frees itself when its particles have died.
+# Small square billboards, blended rather than added: on a white world an
+# additive glow would vanish. Accent colour for shards and seals, graphite
+# for dashes and launches, pale concrete dust for landings and the gnomon
+# rising. Each burst frees itself when its particles have died.
 # =============================================================================
 
 class_name Effects3D
@@ -14,7 +15,7 @@ var _materials: Dictionary = {}
 
 func _ready() -> void:
 	_quad = QuadMesh.new()
-	_quad.size = Vector2(0.12, 0.12)
+	_quad.size = Vector2(0.1, 0.1)
 
 func _material(additive: bool) -> StandardMaterial3D:
 	if _materials.has(additive):
@@ -30,7 +31,7 @@ func _material(additive: bool) -> StandardMaterial3D:
 	return m
 
 ## amount particles thrown outwards at `speed` from `pos`, for `life` s.
-func burst(pos: Vector3, color: Color, amount: int, speed: float, life: float, gravity: float = 0.0, size: float = 1.0, additive: bool = true, spread: float = 180.0) -> void:
+func burst(pos: Vector3, color: Color, amount: int, speed: float, life: float, gravity: float = 0.0, size: float = 1.0, additive: bool = false, spread: float = 180.0, direction: Vector3 = Vector3.UP) -> void:
 	var p := CPUParticles3D.new()
 	p.one_shot = true
 	p.explosiveness = 0.95
@@ -38,7 +39,7 @@ func burst(pos: Vector3, color: Color, amount: int, speed: float, life: float, g
 	p.lifetime = life
 	p.mesh = _quad
 	p.material_override = _material(additive)
-	p.direction = Vector3.UP
+	p.direction = direction
 	p.spread = spread
 	p.initial_velocity_min = speed * 0.4
 	p.initial_velocity_max = speed
@@ -58,4 +59,8 @@ func burst(pos: Vector3, color: Color, amount: int, speed: float, life: float, g
 
 ## Ring of dust spreading on the ground.
 func dust(pos: Vector3, amount: int, speed: float) -> void:
-	burst(pos + Vector3(0.0, 0.1, 0.0), Color(0.85, 0.78, 0.65, 0.6), amount, speed, 0.7, 2.0, 2.2, false, 80.0)
+	burst(pos + Vector3(0.0, 0.1, 0.0), Color(0.78, 0.78, 0.76, 0.7), amount, speed, 0.7, 2.0, 2.2, false, 80.0)
+
+## Graphite streaks left behind by a dash, thrown backwards.
+func streak(pos: Vector3, dir: Vector3) -> void:
+	burst(pos + Vector3(0.0, 0.9, 0.0), Color(0.15, 0.15, 0.17, 0.55), 14, 5.0, 0.35, 0.0, 0.8, false, 25.0, -dir)
